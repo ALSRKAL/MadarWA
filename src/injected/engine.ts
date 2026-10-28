@@ -202,10 +202,29 @@ class MadarEngine {
 
   private handleStoreAdd = (raw: unknown): void => {
     const msg = raw as WppMsg;
+    if (!msg) return;
+
+    // WhatsApp can insert a revoked model as a brand-new store row instead of
+    // mutating the original model's type. Treat both paths as revocations.
+    if (msg.type === "revoked") {
+      const protocol = msg.protocolMessageKey;
+      const candidates = resolveRevokeCandidates({
+        protocolFull: msgKeyToId(protocol),
+        protocolStanza: protocol?.id,
+        afterFull: msgKeyToId(msg.id),
+        afterStanza: msg.id?.id,
+      });
+      const known = findSnapshotByCandidates(this.msgIndex, candidates);
+      const recent =
+        typeof msg.t === "number" && Date.now() - msg.t * 1000 <= 48 * 60 * 60_000;
+      if (known || recent) this.processStoreRevoke(msg);
+      return;
+    }
+
     this.indexMessage(msg);
     const fresh =
-      Boolean(msg?.isNewMsg) ||
-      (typeof msg?.t === "number" && Date.now() - msg.t * 1000 < 10 * 60_000);
+      Boolean(msg.isNewMsg) ||
+      (typeof msg.t === "number" && Date.now() - msg.t * 1000 < 10 * 60_000);
     if (fresh) this.startMediaCapture(msg, MEDIA_CAPTURE_WINDOW_MS);
   };
 
