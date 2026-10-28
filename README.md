@@ -194,7 +194,7 @@ npm run verify
 
 **نتيجة البوابة الحالية:** `typecheck` ✅ · `95/95 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
-**تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 156. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2` (`WPP.loader.isReady`)، واتصال محرك MAIN، ونجاح `engine.ping`، وتركيب رأس 40px وشريط التنقل الأصليين، واختبار العربية RTL والإنجليزية LTR والثيمين الداكن والفاتح. كما أُرسل حدث إلغاء تجريبي عبر `WPP.emit` مع صف `#main [data-id]` وهمي: ظهر النص الأصلي والمرسل والوقت **داخل فقاعة واتساب**، وأُضيف السجل إلى الخزنة (العدد 1). عمليات الإرسال/الحملات الحقيقية تحتاج حساباً مسجلاً وتُختبر من حسابك.
+**تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chrome for Testing 153. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2` (`WPP.loader.isReady`)، واتصال محرك MAIN، ونجاح `engine.ping`، وتركيب رأس 40px وشريط التنقل الأصليين، واختبار العربية RTL والإنجليزية LTR والثيمين الداكن والفاتح. كما أُرسل حدث إلغاء تجريبي عبر `WPP.emit` مع صف `#main [data-id]` وهمي: ظهر النص الأصلي والمرسل والوقت **داخل فقاعة واتساب**، وأُضيف السجل إلى الخزنة (العدد 1). عمليات الإرسال/الحملات الحقيقية تحتاج حساباً مسجلاً وتُختبر من حسابك.
 
 ### الخصوصية والأمان
 
@@ -479,7 +479,7 @@ npm run verify
 
 **Current gate:** `typecheck` ✅ · `95/95 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
-**Real browser smoke test:** `dist/` was loaded as an unpacked extension in Chromium 156. Verified: local `@wppconnect/wa-js 4.7.2` loads (`WPP.loader.isReady`), the MAIN engine attaches, `engine.ping` succeeds, the 40px header and native rail mount, Arabic RTL and English LTR both render, and dark/light tokens switch correctly. A mock `#main [data-id]` row plus a synthetic `WPP.emit('chat.msg_revoke')` produced the exact original text, sender and timestamp **inside the WhatsApp bubble** and a matching vault entry (count 1). Real sends/campaigns still require a signed-in account and must be tested with your own number.
+**Real browser smoke test:** `dist/` was loaded as an unpacked extension in Chrome for Testing 153. Verified: local `@wppconnect/wa-js 4.7.2` loads (`WPP.loader.isReady`), the MAIN engine attaches, `engine.ping` succeeds, the 40px header and native rail mount, Arabic RTL and English LTR both render, and dark/light tokens switch correctly. A mock `#main [data-id]` row plus a synthetic `WPP.emit('chat.msg_revoke')` produced the exact original text, sender and timestamp **inside the WhatsApp bubble** and a matching vault entry (count 1). Real sends/campaigns still require a signed-in account and must be tested with your own number.
 
 ### Privacy & security
 
