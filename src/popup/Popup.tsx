@@ -21,16 +21,12 @@ interface ContentStatus {
 
 function OrbitMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <ellipse cx="12" cy="12" rx="9.2" ry="4.1" fill="none" stroke="currentColor" strokeWidth="1.6" transform="rotate(-28 12 12)" opacity="0.9" />
-      <circle cx="12" cy="12" r="3" fill="currentColor" />
-      <circle cx="19.2" cy="7.4" r="1.7" fill="#a7f3d0" />
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <ellipse cx="12" cy="12" rx="9.2" ry="4.1" stroke="currentColor" strokeWidth="1.75" transform="rotate(-28 12 12)" />
+      <circle cx="12" cy="12" r="2.8" fill="currentColor" />
+      <circle cx="19.2" cy="7.4" r="1.5" fill="currentColor" />
     </svg>
   );
-}
-
-function cn(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(" ");
 }
 
 export function Popup() {
@@ -73,10 +69,7 @@ export function Popup() {
   }, []);
 
   useEffect(() => {
-    const listener = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      area: string,
-    ) => {
+    const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
       if (area !== "local") return;
       const settingsChange = changes[STORAGE_KEYS.settings];
       if (settingsChange) {
@@ -153,12 +146,12 @@ export function Popup() {
     await chrome.storage.local.set({ [STORAGE_KEYS.settings]: next });
   };
 
-  const statusTone =
+  const statusState =
     status?.engine?.ready && status.engine.connected
-      ? "bg-emerald-400"
+      ? "live"
       : status?.bridgeConnected
-        ? "bg-amber-400"
-        : "bg-rose-400";
+        ? "waiting"
+        : "offline";
   const statusLabel = !tabFound
     ? t("popup.notOnWhatsapp")
     : status?.engine?.ready && status.engine.connected
@@ -170,54 +163,64 @@ export function Popup() {
           : t("status.disconnected");
 
   return (
-    <div className={cn("popup-bg min-h-[430px] p-4", !loaded && "opacity-90")} dir={dir} lang={settings.language}>
-      <header className="flex items-start gap-3">
-        <div className="popup-hero flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white">
-          <OrbitMark className="h-6 w-6" />
-        </div>
+    <div className={`min-h-[398px] ${!loaded ? "opacity-90" : ""}`} dir={dir} lang={settings.language}>
+      <header className="flex h-12 items-center gap-2 px-4">
+        <span className="flex h-6 w-6 items-center justify-center text-wa-brand">
+          <OrbitMark className="h-[18px] w-[18px]" />
+        </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[17px] font-bold leading-6">{t("popup.title")}</h1>
-          <p className="text-[11px] text-slate-400">{t("popup.subtitle")}</p>
+          <h1 className="truncate text-[14px] font-semibold leading-5">{t("popup.title")}</h1>
+          <p className="truncate text-[9.5px] leading-4 text-wa-muted">{t("popup.subtitle")}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void switchLanguage()}
-          className="h-7 rounded-lg border border-slate-700 px-2 text-[10px] font-bold text-slate-200 transition-colors hover:bg-slate-800"
-        >
-          {t("popup.language")}
-        </button>
+        <div className="flex h-6 items-center rounded-md bg-wa-input p-0.5" role="group" aria-label="Language">
+          {(["ar", "en"] as const).map((language) => (
+            <button
+              key={language}
+              type="button"
+              onClick={() => {
+                if (language !== settings.language) void switchLanguage();
+              }}
+              aria-pressed={settings.language === language}
+              className={`h-5 rounded px-1.5 text-[9.5px] font-bold uppercase ${
+                settings.language === language ? "bg-wa-brand/10 text-wa-brand" : "text-wa-muted"
+              }`}
+            >
+              {language === "ar" ? "AR" : "EN"}
+            </button>
+          ))}
+        </div>
       </header>
 
-      <div className="popup-card mt-4 flex items-center justify-between px-3 py-2.5">
+      <div className="flex h-9 items-center justify-between border-y border-wa-line px-4">
         <div className="flex items-center gap-2">
-          <span className={cn("h-2 w-2 rounded-full", statusTone)} />
-          <span className="text-[11px] font-semibold">{statusLabel}</span>
+          <span className="popup-status-dot" data-state={statusState} />
+          <span className="text-[10.5px] font-medium">{statusLabel}</span>
         </div>
-        <span className="text-[9px] text-slate-500">{t("popup.engineStatus")}</span>
+        <span className="text-[9px] text-wa-muted">{t("popup.engineStatus")}</span>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="popup-card px-3 py-2.5">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-            <span className="text-[10px]">{t("popup.vaultCount")}</span>
-          </div>
-          <p className="mt-1 text-xl font-bold leading-7 text-rose-300">{vaultCount}</p>
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between border-b border-wa-line py-2">
+          <span className="flex items-center gap-1.5 text-[10.5px] text-wa-muted">
+            <Trash2 className="h-3.5 w-3.5" />
+            {t("popup.vaultCount")}
+          </span>
+          <span className="tabular-nums text-[15px] font-bold leading-5">{vaultCount}</span>
         </div>
-        <div className="popup-card px-3 py-2.5">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <Users className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-[10px]">{t("popup.rulesCount")}</span>
-          </div>
-          <p className="mt-1 text-xl font-bold leading-7 text-emerald-300">{rulesCount}</p>
+        <div className="flex items-center justify-between py-2">
+          <span className="flex items-center gap-1.5 text-[10.5px] text-wa-muted">
+            <Users className="h-3.5 w-3.5" />
+            {t("popup.rulesCount")}
+          </span>
+          <span className="tabular-nums text-[15px] font-bold leading-5">{rulesCount}</span>
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="space-y-2 px-4 pb-3">
         <button
           type="button"
           onClick={() => void openDashboard()}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-[13px] font-bold text-white shadow-lg shadow-emerald-950/40 transition hover:brightness-110 active:scale-[0.99]"
+          className="popup-primary flex h-9 w-full items-center justify-center gap-2 rounded-md text-[12px] font-semibold"
         >
           <LayoutDashboard className="h-4 w-4" />
           {t("popup.openDashboard")}
@@ -226,45 +229,45 @@ export function Popup() {
           <button
             type="button"
             onClick={() => void openWhatsApp()}
-            className="popup-card flex h-9 items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors hover:bg-slate-800/60"
+            className="popup-secondary flex h-8 items-center justify-center gap-1.5 rounded-md text-[10.5px] font-medium"
           >
-            <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
+            <MessageCircle className="h-3.5 w-3.5" />
             {t("popup.openWhatsapp")}
           </button>
           <button
             type="button"
             onClick={() => void lockPanel()}
             disabled={!settings.pin.enabled}
-            className="popup-card flex h-9 items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-40"
+            className="popup-secondary flex h-8 items-center justify-center gap-1.5 rounded-md text-[10.5px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Lock className="h-3.5 w-3.5 text-amber-400" />
+            <Lock className="h-3.5 w-3.5" />
             {t("popup.lock")}
           </button>
         </div>
       </div>
 
       {lockNote ? (
-        <p className="mt-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-center text-[10px] text-emerald-200">
+        <p className="mx-4 mb-2 rounded-md border border-wa-line bg-wa-surface px-2 py-1.5 text-center text-[9.5px] text-wa-text">
           {lockNote}
         </p>
       ) : null}
 
       {!tabFound ? (
-        <p className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-center text-[10px] leading-5 text-amber-200">
+        <p className="mx-4 mb-2 rounded-md border border-wa-warning/25 bg-wa-warning/10 px-2 py-1.5 text-center text-[9.5px] leading-4 text-wa-warning">
           {t("errors.bridgeUnavailable")}
         </p>
       ) : null}
 
-      <footer className="mt-4 flex items-center justify-between border-t border-slate-800 pt-2.5">
-        <span className="flex items-center gap-1 text-[9px] text-slate-500">
-          <ShieldCheck className="h-3 w-3 text-emerald-500" />
+      <footer className="mx-4 flex h-7 items-center justify-between border-t border-wa-line">
+        <span className="flex items-center gap-1 text-[8.5px] text-wa-muted">
+          <ShieldCheck className="h-3 w-3" />
           {t("popup.version", { version: EXTENSION_VERSION })}
         </span>
         <a
           href="https://github.com/ALSRKAL/MadarWA"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[9px] text-slate-500 transition-colors hover:text-emerald-400"
+          className="flex items-center gap-1 text-[8.5px] text-wa-muted hover:text-wa-text"
         >
           GitHub
           <ExternalLink className="h-2.5 w-2.5" />

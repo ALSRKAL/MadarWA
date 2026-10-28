@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Delete, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, Delete, Loader2, LockKeyhole } from "lucide-react";
 import { verifyPin } from "../../shared/utils/pin";
 import { contentController } from "../controller";
 import { useAppStore, useT } from "../store";
 
+function OrbitMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <ellipse cx="12" cy="12" rx="9.2" ry="4.1" stroke="currentColor" strokeWidth="1.75" transform="rotate(-28 12 12)" />
+      <circle cx="12" cy="12" r="2.8" fill="currentColor" />
+      <circle cx="19.2" cy="7.4" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function LockScreen() {
   const t = useT();
   const settings = useAppStore((state) => state.settings);
+  const theme = useAppStore((state) => state.theme);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,6 +46,7 @@ export function LockScreen() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      event.stopPropagation();
       if (/^\d$/.test(event.key)) {
         event.preventDefault();
         setPin((current) => (current.length >= 8 ? current : current + event.key));
@@ -55,35 +67,37 @@ export function LockScreen() {
   return (
     <div
       className="mw-app fixed inset-0 z-[2147483600] flex items-center justify-center px-4"
-      data-madarwa-theme={settings.theme === "auto" ? undefined : settings.theme}
-      style={{ pointerEvents: "auto", background: "radial-gradient(900px 600px at 50% 0%, rgba(16,185,129,.16), transparent 60%), #050a14" }}
+      data-madarwa-theme={settings.theme === "auto" ? theme : settings.theme}
+      dir={settings.language === "ar" ? "rtl" : "ltr"}
+      lang={settings.language}
+      style={{ pointerEvents: "auto" }}
       role="dialog"
       aria-modal="true"
       aria-label={t("privacy.unlockTitle")}
     >
-      <div className="w-full max-w-sm">
-        <div className="mb-7 flex flex-col items-center text-center">
-          <div className="mw-hero-orbit relative flex h-16 w-16 items-center justify-center rounded-2xl">
-            <LockKeyhole className="h-7 w-7 text-white" />
+      <div className="w-full max-w-[320px]">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-wa-surface text-wa-brand">
+            <OrbitMark className="h-6 w-6" />
           </div>
-          <h1 className="mt-4 text-xl font-bold text-white">{t("privacy.unlockTitle")}</h1>
-          <p className="mt-1 text-xs text-slate-400">{t("privacy.unlockHint")}</p>
+          <h1 className="mt-3 text-[16px] font-semibold leading-6">{t("privacy.unlockTitle")}</h1>
+          <p className="mt-1 text-[10.5px] text-wa-muted">{t("privacy.unlockHint")}</p>
         </div>
 
         <div key={shake} className={shake > 0 ? "mw-shake" : undefined}>
-          <div className="mb-5 flex items-center justify-center gap-2.5">
+          <div className="mb-4 flex items-center justify-center gap-2">
             {Array.from({ length: 8 }).map((_, index) => (
               <span key={index} className="mw-pin-dot" data-filled={index < pin.length} />
             ))}
           </div>
 
           {error ? (
-            <p className="mb-3 rounded-lg border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-center text-[12px] font-semibold text-rose-300">
+            <p className="mb-3 rounded-md border border-wa-danger/25 bg-wa-danger/10 px-2.5 py-1.5 text-center text-[10.5px] font-medium text-wa-danger">
               {error}
             </p>
           ) : null}
 
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             {keys.map((key) => (
               <button
                 key={key}
@@ -99,7 +113,7 @@ export function LockScreen() {
             ))}
             <button
               type="button"
-              className="mw-keypad-key flex items-center justify-center text-sm text-slate-400"
+              className="mw-keypad-key text-[12px] text-wa-muted"
               onClick={() => {
                 setPin("");
                 setError("");
@@ -127,7 +141,7 @@ export function LockScreen() {
               }}
               aria-label="Backspace"
             >
-              <Delete className="h-5 w-5" />
+              <Delete className="h-4 w-4" />
             </button>
           </div>
 
@@ -135,15 +149,15 @@ export function LockScreen() {
             type="button"
             disabled={busy || pin.length < 4}
             onClick={() => void submit()}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mw-btn mw-btn-primary mt-2.5 h-10 w-full"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {t("privacy.unlock")}
           </button>
         </div>
 
-        <div className="mt-7 flex items-center justify-center gap-1.5 text-[10px] text-slate-500">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-[9px] text-wa-muted">
+          <LockKeyhole className="h-3 w-3" />
           {t("app.name")} · {t("app.poweredBy")}
         </div>
       </div>

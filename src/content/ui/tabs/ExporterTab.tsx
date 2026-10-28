@@ -178,7 +178,7 @@ export function ExporterTab() {
   const preview = filtered.slice(0, 200);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<Users className="h-4 w-4" />}
         title={t("exporter.title")}
@@ -187,8 +187,8 @@ export function ExporterTab() {
       />
 
       <Card>
-        <h3 className="mb-2 text-[12px] font-bold">{t("exporter.source")}</h3>
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-[color:var(--mw-input)] p-1">
+        <h3 className="mb-2 text-[11px] font-semibold">{t("exporter.source")}</h3>
+        <div className="grid grid-cols-3 gap-1 rounded-md bg-wa-input p-0.5">
           {(
             [
               { id: "groupMembers" as const, label: t("exporter.groupMembers") },
@@ -203,8 +203,8 @@ export function ExporterTab() {
               className={cn(
                 "rounded-lg px-2 py-1.5 text-[11px] font-semibold transition-colors",
                 source === item.id
-                  ? "bg-brand-500/18 text-brand-300 ring-1 ring-brand-500/30"
-                  : "mw-muted hover:text-[color:var(--mw-text)]",
+                  ? "bg-wa-brand/10 text-wa-brand"
+                  : "text-wa-muted hover:text-wa-text",
               )}
             >
               {item.label}
@@ -236,7 +236,7 @@ export function ExporterTab() {
                 </Button>
               </div>
             </Field>
-            {loadingGroups ? <p className="mw-muted text-[10px]">{t("exporter.loadingGroups")}</p> : null}
+            {loadingGroups ? <p className="text-[10px] text-wa-muted">{t("exporter.loadingGroups")}</p> : null}
           </div>
         ) : null}
 
@@ -262,7 +262,7 @@ export function ExporterTab() {
       </Card>
 
       <Card>
-        <h3 className="mb-2 text-[12px] font-bold">{t("exporter.filters")}</h3>
+        <h3 className="mb-2 text-[11px] font-semibold">{t("exporter.filters")}</h3>
         <div className="space-y-0.5">
           {source === "groupMembers" ? (
             <Toggle checked={excludeAdmins} onChange={setExcludeAdmins} label={t("exporter.excludeAdmins")} />
@@ -283,7 +283,7 @@ export function ExporterTab() {
 
       <Card>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-[12px] font-bold">{t("exporter.preview")}</h3>
+          <h3 className="text-[11px] font-semibold">{t("exporter.preview")}</h3>
           <div className="flex gap-1.5">
             <Button
               variant="secondary"
@@ -324,13 +324,13 @@ export function ExporterTab() {
               {preview.map((row) => (
                 <div
                   key={`${row.id}-${row.phone}`}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-[color:var(--mw-border)] px-2.5 py-2"
+                  className="flex items-center justify-between gap-2 rounded-md border border-wa-line px-2.5 py-1.5"
                 >
                   <div className="min-w-0">
                     <p className="mw-code truncate text-[11px] font-semibold" dir="ltr">
                       {row.phone}
                     </p>
-                    <p className="mw-muted truncate text-[10px]">
+                    <p className="truncate text-[10px] text-wa-muted">
                       {row.name || t("common.unnamed")}
                       {isParticipant(row) ? ` · ${row.groupName}` : ""}
                     </p>

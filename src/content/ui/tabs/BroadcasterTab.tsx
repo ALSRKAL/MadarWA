@@ -245,7 +245,7 @@ export function BroadcasterTab() {
             : t("status.idle");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<Megaphone className="h-4 w-4" />}
         title={t("broadcaster.title")}
@@ -255,14 +255,14 @@ export function BroadcasterTab() {
 
       <Card>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[12px] font-bold">{t("broadcaster.recipients")}</h3>
+          <h3 className="text-[11px] font-semibold">{t("broadcaster.recipients")}</h3>
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge tone="success">{t("broadcaster.parsedCount", { count: combined.recipients.length })}</Badge>
             {combined.invalid > 0 ? <Badge tone="danger">{t("broadcaster.invalidCount", { count: combined.invalid })}</Badge> : null}
             {combined.duplicates > 0 ? <Badge tone="warning">{t("broadcaster.duplicatesRemoved", { count: combined.duplicates })}</Badge> : null}
           </div>
         </div>
-        <p className="mw-muted mb-2 text-[11px] leading-5">{t("broadcaster.recipientsHint")}</p>
+        <p className="text-wa-muted mb-2 text-[11px] leading-5">{t("broadcaster.recipientsHint")}</p>
         <TextArea
           dir="ltr"
           className="mw-code min-h-[110px] text-left text-[12px]"
@@ -275,7 +275,7 @@ export function BroadcasterTab() {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label
             className={cn(
-              "mw-card inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition-colors hover:bg-[color:var(--mw-hover)]",
+              "mw-card inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition-colors hover:bg-wa-hover",
               (busy || fileBusy) && "pointer-events-none opacity-50",
             )}
           >
@@ -293,7 +293,7 @@ export function BroadcasterTab() {
             />
           </label>
           {fileName ? (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-brand-500/10 px-2 py-1 text-[10px] font-semibold text-brand-300">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-wa-brand/10 px-2 py-1 text-[10px] font-semibold text-wa-brand">
               <FileSpreadsheet className="h-3 w-3" />
               {fileName} · {formatNumber(fileRecipients.length, settings.language)}
               <button
@@ -303,13 +303,13 @@ export function BroadcasterTab() {
                   setFileName("");
                   setFileRecipients([]);
                 }}
-                className="rounded p-0.5 hover:bg-brand-500/20"
+                className="rounded p-0.5 hover:bg-wa-brand/15"
               >
                 <X className="h-3 w-3" />
               </button>
             </span>
           ) : null}
-          {fileBusy ? <span className="mw-muted text-[10px]">{t("common.loading")}</span> : null}
+          {fileBusy ? <span className="text-wa-muted text-[10px]">{t("common.loading")}</span> : null}
         </div>
 
         <div className="mt-3">
@@ -329,7 +329,7 @@ export function BroadcasterTab() {
 
       <Card>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[12px] font-bold">{t("broadcaster.messageSection")}</h3>
+          <h3 className="text-[11px] font-semibold">{t("broadcaster.messageSection")}</h3>
           <Button variant="ghost" size="sm" icon={<Eye className="h-3.5 w-3.5" />} onClick={() => setPreviewOpen(true)}>
             {t("broadcaster.preview")}
           </Button>
@@ -342,7 +342,7 @@ export function BroadcasterTab() {
           maxLength={4096}
           disabled={busy}
         />
-        <p className="mw-muted mt-1.5 text-[10.5px] leading-5">
+        <p className="text-wa-muted mt-1.5 text-[10.5px] leading-5">
           {t("broadcaster.variablesHint", {
             name: "{{name}}",
             custom1: "{{custom1}}",
@@ -350,7 +350,7 @@ export function BroadcasterTab() {
             phone: "{{phone}}",
           })}
         </p>
-        <p className="mw-muted text-[10.5px] leading-5">{t("broadcaster.spintaxHint")}</p>
+        <p className="text-wa-muted text-[10.5px] leading-5">{t("broadcaster.spintaxHint")}</p>
         <div className="mt-1">
           <Toggle
             checked={settings.broadcaster.randomizeWithSpintax}
@@ -360,15 +360,15 @@ export function BroadcasterTab() {
           />
         </div>
 
-        <div className="mt-3 rounded-xl border border-[color:var(--mw-border)] p-2.5">
+        <div className="mt-3 rounded-lg border border-wa-line p-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold">{t("broadcaster.attachment")}</p>
-              <p className="mw-muted text-[10px] leading-5">{t("broadcaster.attachmentHint")}</p>
+              <p className="text-wa-muted text-[10px] leading-5">{t("broadcaster.attachmentHint")}</p>
             </div>
             <label
               className={cn(
-                "mw-card inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition-colors hover:bg-[color:var(--mw-hover)]",
+                "mw-card inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition-colors hover:bg-wa-hover",
                 busy && "pointer-events-none opacity-50",
               )}
             >
@@ -387,20 +387,20 @@ export function BroadcasterTab() {
             </label>
           </div>
           {attachment ? (
-            <div className="mt-2 flex items-center gap-2 rounded-lg bg-brand-500/8 px-2 py-2">
+            <div className="mt-2 flex items-center gap-2 rounded-lg bg-wa-brand/10 px-2 py-2">
               {attachment.type === "image" || attachment.type === "sticker" ? (
                 <img src={attachment.dataUrl} alt="" className="h-10 w-10 rounded-md object-cover" />
               ) : (
-                <FileSpreadsheet className="h-5 w-5 text-brand-400" />
+                <FileSpreadsheet className="h-5 w-5 text-wa-brand" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[11px] font-semibold">{t("broadcaster.attachmentSelected", { name: attachment.name })}</p>
-                <p className="mw-muted mw-lang-pill text-[9px]">{Math.ceil(attachmentSize(attachment.dataUrl) / 1024)} KB</p>
+                <p className="text-wa-muted mw-lang-pill text-[9px]">{Math.ceil(attachmentSize(attachment.dataUrl) / 1024)} KB</p>
               </div>
               <button
                 type="button"
                 onClick={() => setAttachment(null)}
-                className="mw-muted rounded-lg p-1 hover:bg-[color:var(--mw-hover)]"
+                className="text-wa-muted rounded-lg p-1 hover:bg-wa-hover"
                 aria-label={t("broadcaster.removeAttachment")}
               >
                 <X className="h-4 w-4" />
@@ -411,7 +411,7 @@ export function BroadcasterTab() {
       </Card>
 
       <Card>
-        <h3 className="mb-2 text-[12px] font-bold">{t("broadcaster.antiBanSection")}</h3>
+        <h3 className="mb-2 text-[11px] font-semibold">{t("broadcaster.antiBanSection")}</h3>
         <div className="grid grid-cols-2 gap-2.5">
           <Field label={t("broadcaster.minDelay")}>
             <TextInput
@@ -466,8 +466,8 @@ export function BroadcasterTab() {
       </Card>
 
       <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-[12px] font-bold">{t("broadcaster.progress")}</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-[11px] font-semibold">{t("broadcaster.progress")}</h3>
           <div className="flex gap-1.5">
             {!busy ? (
               <Button
@@ -504,22 +504,22 @@ export function BroadcasterTab() {
         </div>
 
         {validation.active ? (
-          <div className="mb-3 rounded-xl border border-brand-500/25 bg-brand-500/8 px-3 py-2.5">
-            <p className="text-[11px] font-semibold text-brand-300">
+          <div className="mb-3 rounded-md border border-wa-brand/25 bg-wa-brand/10 px-3 py-2">
+            <p className="text-[11px] font-semibold text-wa-brand">
               {t("broadcaster.validating", { current: formatNumber(validation.current, settings.language), total: formatNumber(validation.total, settings.language) })}
             </p>
             <Progress className="mt-2" value={validation.current} max={validation.total} striped />
           </div>
         ) : campaign.total > 0 ? (
           <>
-            <div className="mb-3 flex items-center justify-between text-[11px]">
-              <span className="mw-muted">{t("broadcaster.progress")}</span>
+            <div className="mb-2 flex items-center justify-between text-[10.5px]">
+              <span className="text-wa-muted">{t("broadcaster.progress")}</span>
               <span className="mw-lang-pill font-bold">
                 {formatNumber(campaign.processed, settings.language)} / {formatNumber(campaign.total, settings.language)}
               </span>
             </div>
             <Progress value={campaign.processed} max={campaign.total} striped={isRunning} />
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mw-card mt-3 grid grid-cols-3">
               <Stat label={t("broadcaster.sent")} value={formatNumber(campaign.sent, settings.language)} tone="success" />
               <Stat label={t("broadcaster.failed")} value={formatNumber(campaign.failed, settings.language)} tone="danger" />
               <Stat label={t("broadcaster.invalid")} value={formatNumber(campaign.invalid, settings.language)} tone="warning" />
@@ -532,36 +532,36 @@ export function BroadcasterTab() {
         {campaign.logs.length > 0 ? (
           <div className="mt-3">
             <div className="mb-1.5 flex items-center justify-between">
-              <h4 className="text-[11px] font-bold">{t("broadcaster.liveLog")}</h4>
+              <h4 className="text-[10.5px] font-semibold">{t("broadcaster.liveLog")}</h4>
               <button
                 type="button"
                 onClick={downloadReport}
-                className="mw-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-[color:var(--mw-hover)] hover:text-[color:var(--mw-text)]"
+                className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
               >
                 <Download className="h-3 w-3" />
                 {t("broadcaster.report")}
               </button>
             </div>
-            <div className="mw-scroll max-h-52 space-y-1 overflow-y-auto rounded-xl border border-[color:var(--mw-border)] bg-[color:var(--mw-input)] p-1.5">
+            <div className="mw-scroll max-h-52 space-y-1 overflow-y-auto rounded-lg border border-wa-line bg-wa-input p-1.5">
               {[...campaign.logs].reverse().slice(0, 60).map((log, index) => (
                 <div key={`${log.at}-${log.index}-${index}`} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-[10px]">
                   <span
                     className={cn(
                       "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[8px] font-bold",
                       log.status === "sent"
-                        ? "bg-emerald-500/20 text-emerald-300"
+                        ? "bg-wa-brand/15 text-wa-brand"
                         : log.status === "invalid"
-                          ? "bg-amber-500/20 text-amber-300"
+                          ? "bg-wa-warning/15 text-wa-warning"
                           : log.status === "failed"
-                            ? "bg-rose-500/20 text-rose-300"
-                            : "bg-slate-500/20 text-slate-300",
+                            ? "bg-wa-danger/15 text-wa-danger"
+                            : "bg-wa-muted/15 text-wa-muted",
                     )}
                   >
                     {log.status === "sent" ? "✓" : log.status === "failed" ? "!" : log.status === "invalid" ? "?" : "–"}
                   </span>
                   <span className="mw-code min-w-0 flex-1 truncate text-[10px]">{log.phone}</span>
-                  <span className="mw-muted max-w-[45%] truncate text-[9px]">{log.detail}</span>
-                  <span className="mw-muted mw-lang-pill shrink-0 text-[9px]">{formatTime(log.at, settings.language)}</span>
+                  <span className="text-wa-muted max-w-[45%] truncate text-[9px]">{log.detail}</span>
+                  <span className="text-wa-muted mw-lang-pill shrink-0 text-[9px]">{formatTime(log.at, settings.language)}</span>
                 </div>
               ))}
             </div>
@@ -579,13 +579,13 @@ export function BroadcasterTab() {
         title={t("broadcaster.previewTitle")}
         closeLabel={t("common.close")}
       >
-        <p className="mw-muted mb-2 text-[11px] leading-5">{t("broadcaster.previewHint")}</p>
-        <div className="rounded-2xl bg-[#0b141a] p-3 text-[12px] text-slate-100 shadow-inner">
+        <p className="text-wa-muted mb-2 text-[11px] leading-5">{t("broadcaster.previewHint")}</p>
+        <div className="rounded-lg bg-[#0b141a] p-3 text-[12px] text-wa-text">
           {previewText ? (
-            <div className="ms-auto max-w-[85%] rounded-xl rounded-te-sm bg-[#005c4b] px-3 py-2 leading-6 whitespace-pre-wrap">{previewText}</div>
+            <div className="ms-auto max-w-[85%] rounded-lg rounded-te-sm bg-[#005c4b] px-3 py-2 leading-6 whitespace-pre-wrap">{previewText}</div>
           ) : null}
           {attachment ? (
-            <div className="ms-auto mt-1 max-w-[85%] rounded-xl bg-[#005c4b] px-3 py-2 text-[11px]">
+            <div className="ms-auto mt-1 max-w-[85%] rounded-lg bg-[#005c4b] px-3 py-2 text-[11px]">
               {attachment.type === "image" ? (
                 <img src={attachment.dataUrl} alt="" className="max-h-40 rounded-lg" />
               ) : (
@@ -596,9 +596,9 @@ export function BroadcasterTab() {
               )}
             </div>
           ) : null}
-          {!previewText && !attachment ? <p className="mw-muted text-center text-[11px]">{t("broadcaster.noMessage")}</p> : null}
+          {!previewText && !attachment ? <p className="text-wa-muted text-center text-[11px]">{t("broadcaster.noMessage")}</p> : null}
         </div>
-        <p className="mw-muted mw-lang-pill mt-2 text-end text-[9px]">{formatTime(Date.now(), settings.language)} ✓✓</p>
+        <p className="text-wa-muted mw-lang-pill mt-2 text-end text-[9px]">{formatTime(Date.now(), settings.language)} ✓✓</p>
       </Modal>
     </div>
   );

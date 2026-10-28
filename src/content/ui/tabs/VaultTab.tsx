@@ -6,7 +6,6 @@ import type { AntiDeleteSettings, DeletedMessage } from "../../../shared/types";
 import { contentController } from "../../controller";
 import { useAppStore, useSettings, useT } from "../../store";
 import {
-  Alert,
   Badge,
   Button,
   Card,
@@ -82,7 +81,7 @@ export function VaultTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<ShieldAlert className="h-4 w-4" />}
         title={t("vault.title")}
@@ -90,7 +89,7 @@ export function VaultTab() {
         action={<Badge tone={vault.length > 0 ? "danger" : "neutral"}>{t("vault.count", { count: formatNumber(vault.length, settings.language) })}</Badge>}
       />
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <Toggle
           checked={settings.antiDelete.enabled}
           onChange={(value) => patchAntiDelete({ enabled: value })}
@@ -124,7 +123,7 @@ export function VaultTab() {
       </Card>
 
       <div className="relative">
-        <Search className="absolute inset-y-0 start-3 my-auto h-4 w-4 text-[color:var(--mw-muted)]" />
+        <Search className="absolute inset-y-0 start-3 my-auto h-4 w-4 text-wa-muted" />
         <TextInput
           className="ps-9"
           placeholder={t("vault.search")}
@@ -135,7 +134,7 @@ export function VaultTab() {
           <button
             type="button"
             onClick={() => setSearch("")}
-            className="mw-muted absolute inset-y-0 end-2 my-auto h-6 rounded px-1.5 text-[10px] hover:bg-[color:var(--mw-hover)]"
+            className="text-wa-muted absolute inset-y-0 end-2 my-auto h-6 rounded px-1.5 text-[10px] hover:bg-wa-hover"
           >
             {t("common.clear")}
           </button>
@@ -143,21 +142,21 @@ export function VaultTab() {
       </div>
 
       {vault.length === 0 ? (
-        <EmptyState icon={<Inbox className="h-9 w-9" />} title={t("vault.empty")} body={t("vault.emptyHint")} />
+        <EmptyState icon={<Inbox className="h-6 w-6" />} title={t("vault.empty")} body={t("vault.emptyHint")} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={<Search className="h-8 w-8" />} title={t("common.noResults")} />
+        <EmptyState icon={<Search className="h-5 w-5" />} title={t("common.noResults")} />
       ) : (
-        <div className="space-y-2">
+        <div className="mw-card divide-y divide-wa-line">
           {filtered.map((entry) => (
-            <Card key={entry.id} className="p-3">
+            <div key={entry.id} className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-[12px] font-bold">{entry.chatName || entry.chatId}</p>
+                    <p className="truncate text-[11.5px] font-semibold">{entry.chatName || entry.chatId}</p>
                     <Badge tone={entry.isGroup ? "brand" : "neutral"}>{entry.isGroup ? t("vault.group") : t("vault.private")}</Badge>
                     {entry.recoveredFromCache ? <Badge tone="success">{t("vault.recovered")}</Badge> : null}
                   </div>
-                  <div className="mw-muted mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9.5px]">
+                  <div className="text-wa-muted mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9.5px]">
                     <span>{formatDateTime(entry.revokedAt, settings.language)}</span>
                     <span>·</span>
                     <span>
@@ -165,24 +164,24 @@ export function VaultTab() {
                     </span>
                   </div>
                 </div>
-                <span className="mw-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.timestamp, settings.language)}</span>
+                <span className="text-wa-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.timestamp, settings.language)}</span>
               </div>
 
               {entry.text ? (
-                <p className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-[color:var(--mw-input)] px-2.5 py-2 text-[11.5px] leading-6">
+                <p className="mt-2 whitespace-pre-wrap break-words border-s-2 border-wa-brand/40 ps-2.5 text-[11px] leading-5">
                   {entry.text}
                 </p>
               ) : (
-                <div className="mt-2 rounded-xl border border-dashed border-[color:var(--mw-border)] px-2.5 py-2">
+                <div className="mt-2 rounded-sm bg-wa-input/50 px-2.5 py-2">
                   <Badge tone="neutral">{mediaLabel(entry)}</Badge>
                   {!entry.recoveredFromCache ? (
-                    <p className="mw-muted mt-1 text-[10px] leading-5">{t("vault.notCached")}</p>
+                    <p className="text-wa-muted mt-1 text-[10px] leading-5">{t("vault.notCached")}</p>
                   ) : null}
                 </div>
               )}
 
-              <div className="mt-2 flex items-center justify-between gap-1 border-t border-[color:var(--mw-border)] pt-1.5">
-                <span className="mw-muted mw-code truncate text-[9px]" dir="ltr">
+              <div className="mt-2 flex items-center justify-between gap-1 border-t border-wa-line pt-1.5">
+                <span className="text-wa-muted mw-code truncate text-[9px]" dir="ltr">
                   {entry.revokedBy || ""}
                 </span>
                 <div className="flex items-center gap-1">
@@ -190,14 +189,14 @@ export function VaultTab() {
                   <button
                     type="button"
                     onClick={() => void openChat(entry)}
-                    className="mw-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition-colors hover:bg-[color:var(--mw-hover)] hover:text-[color:var(--mw-text)]"
+                    className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition-colors hover:bg-wa-hover hover:text-wa-text"
                   >
                     <ExternalLink className="h-3 w-3" />
                     {t("vault.openChat")}
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
@@ -209,8 +208,6 @@ export function VaultTab() {
           </Button>
         </div>
       ) : null}
-
-      <Alert tone="info">{t("vault.emptyHint")}</Alert>
 
       <Modal
         open={clearOpen}

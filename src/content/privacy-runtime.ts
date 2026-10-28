@@ -34,9 +34,9 @@ export function detectTheme(): ThemeName {
   try {
     const html = document.documentElement;
     const body = document.body;
-    if (html.classList.contains("dark") || body.classList.contains("dark")) return "dark";
-    if (html.getAttribute("data-theme") === "dark") return "dark";
 
+    // WhatsApp 2026 can keep `body.dark` while rendering a light palette, so
+    // the rendered surface colour is the only truthful signal.
     const candidates = [body, document.querySelector("#app"), html].filter(Boolean) as HTMLElement[];
     for (const element of candidates) {
       const style = getComputedStyle(element);
@@ -46,6 +46,9 @@ export function detectTheme(): ThemeName {
       const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
       return luminance < 0.45 ? "dark" : "light";
     }
+
+    if (html.classList.contains("dark") || body.classList.contains("dark")) return "dark";
+    if (html.getAttribute("data-theme") === "dark") return "dark";
   } catch {
     // Fall through to the dark default, which matches WhatsApp's default theme.
   }

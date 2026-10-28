@@ -33,7 +33,7 @@ export function createDefaultSettings(): AppSettings {
           enabled: false,
           matchType: "fallback",
           pattern: "",
-          response: "أهلاً بك {{name}} 👋 كيف يمكننا مساعدتك؟",
+          response: "أهلاً بك {{name}}، كيف يمكننا مساعدتك؟",
           scope: "private",
           cooldownMinutes: 240,
           typingSeconds: 2,
@@ -43,7 +43,7 @@ export function createDefaultSettings(): AppSettings {
         {
           id: "tpl-1",
           label: "ترحيب",
-          text: "أهلاً وسهلاً {{name}}، سعداء بتواصلك معنا 🌿",
+          text: "أهلاً وسهلاً {{name}}، سعداء بتواصلك معنا.",
         },
         {
           id: "tpl-2",

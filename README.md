@@ -49,13 +49,13 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 
 | الوحدة | ما تفعله فعلياً |
 |---|---|
-| 🛡️ **الخصوصية والتمويه** | تمويه معاينات القائمة، الأسماء، الصور، الرسائل والوسائط عبر `body[data-madarwa-*]` وحقن CSS. إظهار عند المرور فقط. إخفاء مؤشرات الاتصال والكتابة. إيقاف إيصالات القراءة و«آخر ظهور/متصل» عبر `WPP.privacy` الحقيقي، مع حفظ القيمة الأصلية لاستعادتها عند الإيقاف. |
-| 🔒 **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
-| 🗑️ **خزنة الرسائل المحذوفة** | التقاط كل رسالة جديدة وتخزينها بمفتاح `id`، ثم عند `chat.msg_revoke` استرجاع النص والمرسل والوقت من الذاكرة/التخزين. خزنة قابلة للبحث، فتح المحادثة، نسخ النص، تنبيه داخلي، إشعار سطح مكتب وعدّاد شارة. |
-| 🚀 **الإرسال الجماعي الذكي** | لصق أرقام أو رفع CSV/XLSX. تطبيع دولي (حذف `+` والمسافات والأصفار البادئة ودعم الأرقام العربية)، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي، دفعات وراحة، إيقاف/استئناف/إيقاف نهائي، سجل مباشر وتقرير CSV. |
-| 🤖 **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. قوالب رد سريع للإرسال أو الإدراج في حقل الكتابة. |
-| 👥 **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
-| 🔗 **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، اختبار اتصال وسجل تسليم. |
+| **الخصوصية والتمويه** | تمويه معاينات القائمة، الأسماء، الصور، الرسائل والوسائط عبر `body[data-madarwa-*]` وحقن CSS. إظهار عند المرور فقط. إخفاء مؤشرات الاتصال والكتابة. إيقاف إيصالات القراءة و«آخر ظهور/متصل» عبر `WPP.privacy` الحقيقي، مع حفظ القيمة الأصلية لاستعادتها عند الإيقاف. |
+| **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
+| **خزنة الرسائل المحذوفة** | التقاط كل رسالة جديدة وتخزينها بمفتاح `id`، ثم عند `chat.msg_revoke` استرجاع النص والمرسل والوقت من الذاكرة/التخزين. خزنة قابلة للبحث، فتح المحادثة، نسخ النص، تنبيه داخلي، إشعار سطح مكتب وعدّاد شارة. |
+| **الإرسال الجماعي الذكي** | لصق أرقام أو رفع CSV/XLSX. تطبيع دولي (حذف `+` والمسافات والأصفار البادئة ودعم الأرقام العربية)، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي، دفعات وراحة، إيقاف/استئناف/إيقاف نهائي، سجل مباشر وتقرير CSV. |
+| **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. قوالب رد سريع للإرسال أو الإدراج في حقل الكتابة. |
+| **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
+| **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، اختبار اتصال وسجل تسليم. |
 | 🧭 **واجهة موحّدة** | 6 تبويبات، تبديل عربي/إنجليزي فوري، اتجاه RTL/LTR تلقائي، ثيم داكن/فاتح يتبع واتساب، زر عائم احتياطي إذا تغيّر DOM، ونافذة Popup سريعة. |
 
 ### المعمارية
@@ -331,13 +331,13 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 
 | Module | What it actually does |
 |---|---|
-| 🛡️ **Privacy & stealth** | Blur chat-list previews, names, avatars, messages and media using `body[data-madarwa-*]` CSS. Hover to reveal. Hide presence and typing indicators. Toggle real WhatsApp account privacy for read receipts and online visibility through `WPP.privacy`, restoring the captured original value when disabled. |
-| 🔒 **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
-| 🗑️ **Anti-delete vault** | Caches every new message by ID, then on `chat.msg_revoke` recovers text, sender and timestamp from memory/storage. Searchable vault, open chat, copy text, in-chat toast, optional desktop notification and badge. |
-| 🚀 **Smart broadcaster** | Paste numbers or upload CSV/XLSX. International sanitizer (strips `+`, spaces, trunk zeros, supports Arabic-Indic digits), pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter, batch cooldowns, start/pause/resume/stop, live logs and CSV report. |
-| 🤖 **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Quick templates can be sent to the active chat or inserted into the composer. |
-| 👥 **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
-| 🔗 **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations to a webhook from the service worker with `X-MadarWA-Token`, test delivery and inspect a delivery log. |
+| **Privacy & stealth** | Blur chat-list previews, names, avatars, messages and media using `body[data-madarwa-*]` CSS. Hover to reveal. Hide presence and typing indicators. Toggle real WhatsApp account privacy for read receipts and online visibility through `WPP.privacy`, restoring the captured original value when disabled. |
+| **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
+| **Anti-delete vault** | Caches every new message by ID, then on `chat.msg_revoke` recovers text, sender and timestamp from memory/storage. Searchable vault, open chat, copy text, in-chat toast, optional desktop notification and badge. |
+| **Smart broadcaster** | Paste numbers or upload CSV/XLSX. International sanitizer (strips `+`, spaces, trunk zeros, supports Arabic-Indic digits), pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter, batch cooldowns, start/pause/resume/stop, live logs and CSV report. |
+| **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Quick templates can be sent to the active chat or inserted into the composer. |
+| **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
+| **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations to a webhook from the service worker with `X-MadarWA-Token`, test delivery and inspect a delivery log. |
 | 🧭 **Unified UI** | Six tabs, instant AR/EN switch, automatic RTL/LTR, dark/light theme following WhatsApp, floating fallback launcher if the header DOM changes, and a quick popup. |
 
 ### Architecture

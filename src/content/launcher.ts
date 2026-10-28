@@ -1,3 +1,4 @@
+import { tFor } from "../shared/i18n";
 import { useAppStore } from "./store";
 
 const HOST_ID = "madarwa-launcher-host";
@@ -6,60 +7,86 @@ const LAUNCHER_CSS = `
 :host { all: initial; }
 .host { display: flex; align-items: center; justify-content: center; }
 button {
-  width: 34px; height: 34px; border: 0; padding: 0; cursor: pointer;
-  border-radius: 11px; display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(145deg, #10b981 0%, #047857 100%);
-  box-shadow: 0 6px 18px -6px rgba(4, 120, 87, .8), inset 0 1px 0 rgba(255,255,255,.25);
-  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
-  position: relative; outline: none;
+  width: 40px; height: 40px; border: 0; padding: 0; cursor: pointer;
+  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: #00a884; position: relative; outline: none;
+  transition: background .12s ease, color .12s ease;
 }
-button:hover { transform: translateY(-1px) scale(1.05); filter: brightness(1.06); }
-button:active { transform: scale(.96); }
-button:focus-visible { box-shadow: 0 0 0 3px rgba(16,185,129,.45), 0 6px 18px -6px rgba(4,120,87,.8); }
-button[data-active="true"] { box-shadow: 0 0 0 3px rgba(16,185,129,.38), 0 8px 24px -6px rgba(4,120,87,.95); }
+button:hover { background: rgba(134, 150, 160, .18); }
+button[data-active="true"] { background: rgba(0, 168, 132, .12); }
+button:focus-visible { outline: 2px solid #00a884; outline-offset: 2px; }
 svg { width: 20px; height: 20px; display: block; }
 .dot {
-  position: absolute; inset-inline-end: -2px; inset-block-start: -2px; width: 9px; height: 9px;
-  border-radius: 999px; background: #64748b; border: 2px solid #0b1220; box-sizing: content-box;
-  transition: background .2s ease;
+  position: absolute; inset-inline-end: 8px; bottom: 7px; width: 6px; height: 6px;
+  border-radius: 999px; background: #8696a0; box-shadow: 0 0 0 2px #202c33;
 }
-button[data-connected="true"] .dot { background: #34d399; }
-button[data-engine="false"] .dot { background: #f59e0b; }
+button[data-theme="light"] .dot { box-shadow: 0 0 0 2px #f0f2f5; }
+button[data-state="live"] .dot { background: #06cf9c; }
+button[data-state="waiting"] .dot { background: #f59e0b; }
+button[data-state="offline"] .dot { background: #f15c6d; }
+button[data-state="live"] .dot::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 999px;
+  border: 1px solid rgba(0, 168, 132, .55); animation: madar-live 2.4s ease-out infinite;
+}
+@keyframes madar-live {
+  0% { transform: scale(.7); opacity: .8; }
+  70% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+.badge {
+  position: absolute; top: 1px; inset-inline-end: 1px; min-width: 14px; height: 14px;
+  border-radius: 999px; background: #f15c6d; color: #1b1013;
+  font: 700 9px/14px Inter, "Segoe UI", sans-serif; text-align: center; padding: 0 3px;
+  box-sizing: border-box; display: none;
+}
+.badge[data-visible="true"] { display: block; }
+@media (prefers-reduced-motion: reduce) {
+  button, .dot, .dot::after { transition: none !important; animation: none !important; }
+}
 `;
 
-const ORBIT_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true">
-  <ellipse cx="12" cy="12" rx="9.1" ry="4.2" fill="none" stroke="#ffffff" stroke-width="1.7" transform="rotate(-28 12 12)" opacity="0.92"/>
-  <circle cx="12" cy="12" r="3.1" fill="#ffffff"/>
-  <circle cx="19.1" cy="7.5" r="1.9" fill="#a7f3d0"/>
+const ORBIT_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+  <ellipse cx="12" cy="12" rx="9.1" ry="4.1" stroke="currentColor" stroke-width="1.75" transform="rotate(-28 12 12)"/>
+  <circle cx="12" cy="12" r="2.8" fill="currentColor"/>
+  <circle cx="19.1" cy="7.4" r="1.5" fill="currentColor"/>
 </svg>`;
 
 function findHeaderMount(): HTMLElement | null {
-  const headers = Array.from(document.querySelectorAll<HTMLElement>("#side header, header"));
-  const visible = headers.find((header) => {
-    const rect = header.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  });
-  if (!visible) return null;
+  const headers = Array.from(document.querySelectorAll<HTMLElement>("#side header, header"))
+    .map((header) => ({ header, rect: header.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0);
 
-  const buttons = Array.from(visible.querySelectorAll<HTMLElement>('[role="button"], button'));
+  // WhatsApp's new shell has a narrow full-height app rail plus a wide chat-list
+  // header. The launcher belongs in the wide top header, not in the rail.
+  const wide = headers
+    .filter(({ rect }) => rect.width >= 180 && rect.height <= 140)
+    .sort((a, b) => b.rect.width - a.rect.width)[0];
+  if (!wide) return null;
+
+  const target = wide.header;
+  const buttons = Array.from(target.querySelectorAll<HTMLElement>('[role="button"], button'));
   const last = buttons[buttons.length - 1];
   const toolbar = last?.parentElement;
-  if (toolbar && toolbar !== visible && toolbar.getBoundingClientRect().width > 0) {
-    return toolbar;
+  if (toolbar && toolbar !== target) {
+    const rect = toolbar.getBoundingClientRect();
+    if (rect.width >= 60 && rect.height > 0) return toolbar;
   }
-  return visible;
+  return target;
 }
 
 /**
- * Mounts the launcher inside WhatsApp's top navigation bar when the DOM allows
- * it, and falls back to a floating action button (rendered by React) otherwise.
+ * Mounts the launcher inside WhatsApp's own sidebar header. The host is a
+ * single 40px circular icon button so it inherits the native rhythm; a
+ * floating draggable fallback is rendered by React only when the header is
+ * absent (QR/login screens).
  */
 export class LauncherManager {
   private host: HTMLElement | null = null;
   private interval = 0;
   private unsubscribe: (() => void) | null = null;
   private button: HTMLButtonElement | null = null;
-  private dot: HTMLSpanElement | null = null;
+  private badge: HTMLSpanElement | null = null;
+  private mountTarget: HTMLElement | null = null;
 
   start(): void {
     if (this.interval) return;
@@ -69,18 +96,22 @@ export class LauncherManager {
   }
 
   private ensureMounted(): void {
+    const mount = findHeaderMount();
+
     if (this.host?.isConnected) {
-      useAppStore.getState().setLauncherFallback(false);
-      this.syncState();
-      return;
+      if (mount && (this.mountTarget === mount || this.mountTarget?.contains(this.host))) {
+        useAppStore.getState().setLauncherFallback(false);
+        this.syncState();
+        return;
+      }
+      this.host.remove();
+      this.host = null;
+      this.button = null;
+      this.badge = null;
+      this.mountTarget = null;
     }
 
-    const mount = findHeaderMount();
     if (!mount) {
-      if (this.host) {
-        this.host.remove();
-        this.host = null;
-      }
       useAppStore.getState().setLauncherFallback(true);
       return;
     }
@@ -95,8 +126,7 @@ export class LauncherManager {
       "justify-content:center",
       "flex:0 0 auto",
       "align-self:center",
-      "margin-inline-start:6px",
-      "margin-inline-end:2px",
+      "margin-inline-start:2px",
       "z-index:5",
       "pointer-events:auto",
     ].join(";");
@@ -109,9 +139,7 @@ export class LauncherManager {
     wrap.className = "host";
     const button = document.createElement("button");
     button.type = "button";
-    button.title = "MadarWA";
-    button.setAttribute("aria-label", "MadarWA — فتح لوحة التحكم");
-    button.innerHTML = `${ORBIT_SVG}<span class="dot"></span>`;
+    button.innerHTML = `${ORBIT_SVG}<span class="dot"></span><span class="badge"></span>`;
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -129,27 +157,40 @@ export class LauncherManager {
       host.remove();
       this.host = null;
       this.button = null;
-      this.dot = null;
+      this.badge = null;
+      this.mountTarget = null;
       useAppStore.getState().setLauncherFallback(true);
       return;
     }
 
     this.host = host;
     this.button = button;
-    this.dot = button.querySelector<HTMLSpanElement>(".dot");
+    this.badge = button.querySelector<HTMLSpanElement>(".badge");
+    this.mountTarget = mount;
     useAppStore.getState().setLauncherFallback(false);
     this.syncState();
   }
 
   private syncState(): void {
     const state = useAppStore.getState();
-    if (this.button) {
-      this.button.dataset.active = String(state.panelOpen);
-      this.button.dataset.connected = String(state.bridgeConnected && state.engine.connected);
-      this.button.dataset.engine = String(state.engine.ready);
-    }
-    if (this.dot) {
-      this.dot.style.display = state.bridgeConnected ? "block" : "none";
+    if (!this.button) return;
+
+    const language = state.settings.language;
+    const label = tFor(language)("launcher.open");
+    this.button.title = label;
+    this.button.setAttribute("aria-label", label);
+    this.button.dataset.active = String(state.panelOpen);
+    this.button.dataset.theme = state.theme;
+    this.button.dataset.state = !state.bridgeConnected
+      ? "offline"
+      : state.engine.ready && state.engine.connected
+        ? "live"
+        : "waiting";
+
+    if (this.badge) {
+      const count = state.vault.length;
+      this.badge.textContent = count > 99 ? "99+" : String(count);
+      this.badge.dataset.visible = String(count > 0);
     }
   }
 
@@ -161,6 +202,7 @@ export class LauncherManager {
     this.host?.remove();
     this.host = null;
     this.button = null;
-    this.dot = null;
+    this.badge = null;
+    this.mountTarget = null;
   }
 }

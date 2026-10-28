@@ -105,10 +105,10 @@ export function PrivacyTab() {
         subtitle={t("privacy.subtitle")}
       />
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
-          <EyeOff className="h-3.5 w-3.5 text-brand-400" />
-          <h3 className="text-[12px] font-bold">{t("privacy.blurSection")}</h3>
+          <EyeOff className="h-3.5 w-3.5 text-wa-brand" />
+          <h3 className="text-[11px] font-semibold">{t("privacy.blurSection")}</h3>
         </div>
         <Toggle
           checked={settings.privacy.blurPreview}
@@ -142,10 +142,10 @@ export function PrivacyTab() {
         />
       </Card>
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
-          <UserX className="h-3.5 w-3.5 text-brand-400" />
-          <h3 className="text-[12px] font-bold">{t("privacy.presenceSection")}</h3>
+          <UserX className="h-3.5 w-3.5 text-wa-brand" />
+          <h3 className="text-[11px] font-semibold">{t("privacy.presenceSection")}</h3>
         </div>
         <Toggle
           checked={settings.privacy.hidePresence}
@@ -162,10 +162,10 @@ export function PrivacyTab() {
         />
       </Card>
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
-          <MessageSquareOff className="h-3.5 w-3.5 text-brand-400" />
-          <h3 className="text-[12px] font-bold">{t("privacy.receiptsSection")}</h3>
+          <MessageSquareOff className="h-3.5 w-3.5 text-wa-brand" />
+          <h3 className="text-[11px] font-semibold">{t("privacy.receiptsSection")}</h3>
         </div>
         <Toggle
           checked={settings.privacy.disableReadReceipts}
@@ -192,10 +192,10 @@ export function PrivacyTab() {
         </div>
       </Card>
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
-          <KeyRound className="h-3.5 w-3.5 text-brand-400" />
-          <h3 className="text-[12px] font-bold">{t("privacy.lockSection")}</h3>
+          <KeyRound className="h-3.5 w-3.5 text-wa-brand" />
+          <h3 className="text-[11px] font-semibold">{t("privacy.lockSection")}</h3>
           {settings.pin.enabled ? <Badge tone="success">{t("common.on")}</Badge> : null}
         </div>
 
@@ -207,11 +207,11 @@ export function PrivacyTab() {
         />
 
         {settings.pin.enabled && !pinFormOpen ? (
-          <div className="mt-2 space-y-3 rounded-xl border border-[color:var(--mw-border)] px-3 py-3">
+          <div className="mt-2 space-y-3 rounded-md border border-wa-line px-3 py-3">
             <div className="flex items-end gap-2">
               <Field label={t("privacy.idleMinutes")} className="flex-1">
                 <div className="relative">
-                  <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-[color:var(--mw-muted)]" />
+                  <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
                   <TextInput
                     className="ps-8"
                     type="number"
@@ -243,7 +243,7 @@ export function PrivacyTab() {
         ) : null}
 
         {pinFormOpen ? (
-          <div className="mt-2 space-y-3 rounded-xl border border-brand-500/25 bg-brand-500/5 px-3 py-3">
+          <div className="mt-2 space-y-3 rounded-md border border-wa-brand/25 bg-wa-brand/5 px-3 py-3">
             <Field label={t("privacy.pinCode")}>
               <TextInput
                 type="password"
@@ -274,7 +274,7 @@ export function PrivacyTab() {
             </Field>
             <Field label={t("privacy.idleMinutes")} error={pinError}>
               <div className="relative">
-                <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-[color:var(--mw-muted)]" />
+                <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
                 <TextInput
                   className="ps-8"
                   type="number"
@@ -312,16 +312,16 @@ export function PrivacyTab() {
         ) : null}
 
         {!settings.pin.enabled && !pinFormOpen ? (
-          <p className="mw-muted px-2.5 pb-2 pt-1 text-[10px] leading-5">
+          <p className="text-wa-muted px-2.5 pb-2 pt-1 text-[10px] leading-5">
             <VolumeX className="me-1 inline h-3 w-3" />
             {t("privacy.lockEnableHint")}
           </p>
         ) : null}
       </Card>
 
-      <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-[color:var(--mw-muted)]">
+      <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-wa-muted">
         <ImageOff className="h-3 w-3" />
-        <ShieldCheck className="h-3 w-3 text-brand-400" />
+        <ShieldCheck className="h-3 w-3 text-wa-brand" />
         {t("app.poweredBy")}
       </div>
     </div>

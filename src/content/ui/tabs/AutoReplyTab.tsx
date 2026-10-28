@@ -21,7 +21,6 @@ import {
   TextArea,
   TextInput,
   Toggle,
-  cn,
 } from "../components";
 
 const MATCH_TYPES: RuleMatchType[] = ["exact", "contains", "startsWith", "regex", "fallback"];
@@ -169,7 +168,7 @@ export function AutoReplyTab() {
         action={<Badge tone={settings.autoReply.enabled ? "success" : "neutral"}>{settings.autoReply.enabled ? t("common.active") : t("common.inactive")}</Badge>}
       />
 
-      <Card className="p-1.5">
+      <Card className="p-0">
         <Toggle
           checked={settings.autoReply.enabled}
           onChange={(value) => patchAutoReply({ enabled: value })}
@@ -180,11 +179,11 @@ export function AutoReplyTab() {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[12px] font-bold">{t("autoreply.rules")}</h3>
+          <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.rules")}</h3>
           <Button
             size="sm"
             variant="secondary"
-            icon={<Plus className="h-3.5 w-3.5" />}
+            icon={<Plus className="h-3 w-3" />}
             onClick={() => {
               setEditorError("");
               setDraft({
@@ -205,29 +204,29 @@ export function AutoReplyTab() {
         </div>
 
         {settings.autoReply.rules.length === 0 ? (
-          <EmptyState title={t("autoreply.noRules")} body={t("autoreply.fallbackHint")} icon={<Bot className="h-8 w-8" />} />
+          <EmptyState title={t("autoreply.noRules")} body={t("autoreply.fallbackHint")} icon={<Bot className="h-5 w-5" />} />
         ) : (
-          <div className="space-y-2">
+          <div className="mw-card divide-y divide-wa-line">
             {settings.autoReply.rules.map((rule) => (
-              <Card key={rule.id} className="p-3">
+              <div key={rule.id} className="p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="truncate text-[12px] font-bold">{rule.name || t("common.unnamed")}</p>
+                      <p className="truncate text-[11.5px] font-semibold">{rule.name || t("common.unnamed")}</p>
                       <Badge tone={rule.matchType === "fallback" ? "warning" : "brand"}>{matchLabel(t, rule.matchType)}</Badge>
                       {!rule.enabled ? <Badge tone="neutral">{t("common.off")}</Badge> : null}
                     </div>
                     {rule.matchType !== "fallback" ? (
-                      <p className="mw-muted mw-code mt-1 truncate text-[10.5px]">{rule.pattern}</p>
+                      <p className="mw-code mt-1 truncate text-[10px] text-wa-muted">{rule.pattern}</p>
                     ) : null}
-                    <p className="mw-muted mt-1 line-clamp-2 text-[11px] leading-5">{rule.response}</p>
-                    <div className="mw-muted mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9.5px]">
+                    <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{rule.response}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-wa-muted">
                       <span>{scopeLabel(t, rule.scope)}</span>
                       <span>
-                        {t("autoreply.cooldown")}: {rule.cooldownMinutes}
+                        {t("autoreply.cooldown")}: <span className="mw-num">{rule.cooldownMinutes}</span>
                       </span>
                       <span>
-                        {t("autoreply.typing")}: {rule.typingSeconds}
+                        {t("autoreply.typing")}: <span className="mw-num">{rule.typingSeconds}</span>
                       </span>
                     </div>
                   </div>
@@ -246,12 +245,13 @@ export function AutoReplyTab() {
                     </IconButton>
                   </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t border-[color:var(--mw-border)] pt-2">
-                  <span className="mw-muted text-[9.5px]">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
+                <div className="mt-2 flex items-center justify-between border-t border-wa-line pt-2">
+                  <span className="text-[9px] text-wa-muted">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={rule.enabled}
+                    aria-label={rule.name || t("autoreply.ruleActive")}
                     onClick={() =>
                       patchAutoReply({
                         rules: settings.autoReply.rules.map((entry) =>
@@ -259,15 +259,12 @@ export function AutoReplyTab() {
                         ),
                       })
                     }
-                    className={cn(
-                      "relative h-5 w-9 rounded-full transition-colors",
-                      rule.enabled ? "bg-brand-500" : "bg-slate-500/40",
-                    )}
+                    className="mw-toggle"
                   >
-                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all", rule.enabled ? "start-[18px]" : "start-0.5")} />
+                    <span />
                   </button>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
@@ -278,11 +275,11 @@ export function AutoReplyTab() {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[12px] font-bold">{t("autoreply.templates")}</h3>
+          <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.templates")}</h3>
           <Button
             size="sm"
             variant="secondary"
-            icon={<Plus className="h-3.5 w-3.5" />}
+            icon={<Plus className="h-3 w-3" />}
             onClick={() => {
               setTemplateError("");
               setTemplateDraft({ id: uid("tpl"), label: "", text: "" });
@@ -293,15 +290,15 @@ export function AutoReplyTab() {
         </div>
 
         {settings.autoReply.templates.length === 0 ? (
-          <EmptyState title={t("autoreply.templates")} icon={<Type className="h-8 w-8" />} />
+          <EmptyState title={t("autoreply.templates")} icon={<Type className="h-5 w-5" />} />
         ) : (
-          <div className="space-y-2">
+          <div className="mw-card divide-y divide-wa-line">
             {settings.autoReply.templates.map((template) => (
-              <Card key={template.id} className="p-3">
+              <div key={template.id} className="p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-[12px] font-bold">{template.label}</p>
-                    <p className="mw-muted mt-1 line-clamp-2 text-[11px] leading-5">{template.text}</p>
+                    <p className="truncate text-[11.5px] font-semibold">{template.label}</p>
+                    <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{template.text}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
                     <IconButton label={t("common.edit")} onClick={() => setTemplateDraft({ ...template })}>
@@ -312,7 +309,7 @@ export function AutoReplyTab() {
                     </IconButton>
                   </div>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[color:var(--mw-border)] pt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-wa-line pt-2">
                   <Button size="sm" variant="secondary" icon={<Send className="h-3 w-3" />} onClick={() => void dispatchTemplate(template, "send")}>
                     {t("autoreply.sendTemplate")}
                   </Button>
@@ -321,11 +318,11 @@ export function AutoReplyTab() {
                   </Button>
                   <CopyButton text={template.text} label={t("common.copy")} copiedLabel={t("common.copied")} />
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
-        <p className="mw-muted mt-2 text-[10px] leading-5">{t("autoreply.variables", { name: "{{name}}" })}</p>
+        <p className="mt-2 text-[9.5px] leading-5 text-wa-muted">{t("autoreply.variables", { name: "{{name}}" })}</p>
       </div>
 
       <Modal

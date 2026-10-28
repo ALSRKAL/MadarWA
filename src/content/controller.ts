@@ -112,7 +112,9 @@ export class ContentController {
     this.lastSaved = signature(settings);
     initI18n(settings.language);
     useAppStore.getState().setSettings(settings);
-    useAppStore.getState().setTheme(settings.theme === "auto" ? detectTheme() : settings.theme);
+    const initialTheme = settings.theme === "auto" ? detectTheme() : settings.theme;
+    useAppStore.getState().setTheme(initialTheme);
+    document.body?.setAttribute("data-madarwa-theme", initialTheme);
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
 
@@ -139,7 +141,13 @@ export class ContentController {
       useAppStore.getState().setRecipients(report.recipients);
     }
 
-    this.cleanups.push(watchTheme((theme) => useAppStore.getState().setTheme(theme)));
+    this.cleanups.push(
+      watchTheme((theme) => {
+        useAppStore.getState().setTheme(theme);
+        const current = useAppStore.getState().settings;
+        document.body?.setAttribute("data-madarwa-theme", current.theme === "auto" ? theme : current.theme);
+      }),
+    );
 
     this.bridge.onConnectionChange((connected) => {
       useAppStore.getState().setBridgeConnected(connected);
@@ -266,6 +274,10 @@ export class ContentController {
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
     if (!settings.pin.enabled) useAppStore.getState().setLocked(false);
+    document.body?.setAttribute(
+      "data-madarwa-theme",
+      settings.theme === "auto" ? useAppStore.getState().theme : settings.theme,
+    );
 
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     this.settingsTimer = window.setTimeout(() => {

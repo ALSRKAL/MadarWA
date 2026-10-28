@@ -172,7 +172,7 @@ export function ToolsTab() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<Webhook className="h-4 w-4" />}
         title={t("tools.title")}
@@ -300,7 +300,7 @@ export function ToolsTab() {
               <button
                 type="button"
                 onClick={() => void contentController.refreshWebhookLog()}
-                className="mw-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-[color:var(--mw-hover)] hover:text-[color:var(--mw-text)]"
+                className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
               >
                 <RefreshCw className="h-3 w-3" />
                 {t("common.refresh")}
@@ -309,7 +309,7 @@ export function ToolsTab() {
                 <button
                   type="button"
                   onClick={() => void contentController.clearWebhookLog()}
-                  className="mw-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-[color:var(--mw-hover)] hover:text-[color:var(--mw-text)]"
+                  className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
                 >
                   <Trash2 className="h-3 w-3" />
                   {t("common.clear")}
@@ -321,22 +321,22 @@ export function ToolsTab() {
           {webhookLog.length === 0 ? (
             <EmptyState title={t("tools.noLogs")} icon={<Webhook className="h-7 w-7" />} />
           ) : (
-            <div className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-xl border border-[color:var(--mw-border)] bg-[color:var(--mw-input)] p-1.5">
+            <div className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-md border border-wa-line bg-wa-input p-1.5">
               {webhookLog.map((entry) => (
                 <div key={entry.id} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-[10px]">
                   {entry.ok ? (
-                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-brand" />
                   ) : (
-                    <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
+                    <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-danger" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="mw-code truncate text-[9.5px]" dir="ltr">
                       {entry.url}
                     </p>
-                    {entry.error ? <p className="mw-muted truncate text-[9px]">{entry.error}</p> : null}
+                    {entry.error ? <p className="text-wa-muted truncate text-[9px]">{entry.error}</p> : null}
                   </div>
                   <span className="mw-lang-pill shrink-0 text-[9px]">{entry.status || "—"}</span>
-                  <span className="mw-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.at, settings.language)}</span>
+                  <span className="text-wa-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.at, settings.language)}</span>
                 </div>
               ))}
             </div>
@@ -348,7 +348,7 @@ export function ToolsTab() {
             <h4 className="text-[11px] font-bold">{t("tools.payloadTitle")}</h4>
             <CopyButton text={samplePayload} label={t("common.copy")} copiedLabel={t("common.copied")} />
           </div>
-          <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-xl border border-[color:var(--mw-border)] bg-[color:var(--mw-input)] p-2.5 text-[9.5px] leading-5">
+          <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-[9.5px] leading-5">
             {samplePayload}
           </pre>
         </div>
@@ -356,24 +356,24 @@ export function ToolsTab() {
 
       <Card>
         <SectionTitle icon={<ExternalLink className="h-4 w-4" />} title={t("tools.quickLinks")} />
-        <div className="flex flex-col gap-1.5">
+        <div className="mw-card divide-y divide-wa-line">
           <a
             href="https://github.com/ALSRKAL/MadarWA"
             target="_blank"
             rel="noopener noreferrer"
-            className="mw-card flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-semibold transition-colors hover:bg-[color:var(--mw-hover)]"
+            className="flex items-center justify-between px-3 py-2 text-[10.5px] font-medium hover:bg-wa-hover"
           >
             {t("tools.repo")}
-            <ExternalLink className="h-3.5 w-3.5 text-brand-400" />
+            <ExternalLink className="h-3.5 w-3.5 text-wa-brand" />
           </a>
           <a
             href="https://github.com/ALSRKAL/MadarWA#readme"
             target="_blank"
             rel="noopener noreferrer"
-            className="mw-card flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-semibold transition-colors hover:bg-[color:var(--mw-hover)]"
+            className="flex items-center justify-between px-3 py-2 text-[10.5px] font-medium hover:bg-wa-hover"
           >
             {t("tools.docs")}
-            <ExternalLink className="h-3.5 w-3.5 text-brand-400" />
+            <ExternalLink className="h-3.5 w-3.5 text-wa-brand" />
           </a>
         </div>
       </Card>
