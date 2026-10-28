@@ -21,8 +21,9 @@ import {
   Badge,
   Button,
   Card,
+  ConfigureButton,
   CopyButton,
-  EmptyState,
+  Disclosure,
   Field,
   SectionTitle,
   TextArea,
@@ -48,6 +49,7 @@ export function ToolsTab() {
   const [forwardRevoked, setForwardRevoked] = useState(settings.webhook.forwardRevoked);
   const [webhookError, setWebhookError] = useState("");
   const [testing, setTesting] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; status: number; error: string } | null>(null);
 
   useEffect(() => {
@@ -235,77 +237,108 @@ export function ToolsTab() {
           action={<Badge tone={enabled ? "success" : "neutral"}>{enabled ? t("common.on") : t("common.off")}</Badge>}
         />
 
-        <div className="space-y-2.5">
-          <Toggle checked={enabled} onChange={setEnabled} label={t("tools.webhookEnable")} />
-          <Field label={t("tools.webhookUrl")} error={webhookError}>
-            <TextInput
-              dir="ltr"
-              className="mw-code text-left"
-              placeholder={t("tools.webhookUrlPlaceholder")}
-              value={url}
-              onChange={(event) => {
-                setUrl(event.target.value);
-                setWebhookError("");
-              }}
-              onBlur={() => {
-                if (url.trim() && urlCheck && !urlCheck.ok) setWebhookError(t("tools.invalidUrl"));
-              }}
-            />
-          </Field>
-          {urlCheck && !urlCheck.ok ? <Alert tone="warning">{t("tools.privateBlocked")}</Alert> : null}
-          <Field label={t("tools.webhookToken")} hint={t("tools.webhookTokenHint")}>
-            <TextInput
-              dir="ltr"
-              className="mw-code text-left"
-              type="password"
-              autoComplete="new-password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-            />
-          </Field>
-          <WebhookForwardToggles
-            forwardMessages={forwardMessages}
-            forwardRevoked={forwardRevoked}
-            setForwardMessages={setForwardMessages}
-            setForwardRevoked={setForwardRevoked}
-            labels={{ messages: t("tools.forwardMessages"), revoked: t("tools.forwardRevoked") }}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => void saveWebhook()}>
-              {t("common.save")}
-            </Button>
-            <Button
-              size="sm"
-              loading={testing}
-              icon={<Webhook className="h-3.5 w-3.5" />}
-              onClick={() => void testWebhook()}
-              disabled={!url.trim()}
-            >
-              {testing ? t("tools.testing") : t("tools.test")}
-            </Button>
-          </div>
-          {testResult ? (
-            <Alert tone={testResult.ok ? "success" : "danger"}>
-              {testResult.ok
-                ? t("tools.testSuccess", { status: testResult.status })
-                : t("tools.testFailed", { error: testResult.error || testResult.status || "" })}
-            </Alert>
-          ) : null}
-        </div>
+        <Toggle checked={enabled} onChange={setEnabled} label={t("tools.webhookEnable")} />
 
-        <div className="mt-3">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h4 className="text-[11px] font-bold">{t("tools.logs")}</h4>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => void contentController.refreshWebhookLog()}
-                className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
-              >
-                <RefreshCw className="h-3 w-3" />
-                {t("common.refresh")}
-              </button>
-              {webhookLog.length > 0 ? (
+        {enabled ? (
+          <div className="px-3 pb-2">
+            <div className="flex items-center justify-between gap-2 border-t border-wa-line pt-2">
+              <span className="mw-code min-w-0 truncate text-[9.5px] text-wa-muted" dir="ltr">
+                {url.trim() || t("tools.webhookUrlPlaceholder")}
+              </span>
+              <ConfigureButton
+                open={configOpen}
+                onClick={() => setConfigOpen((value) => !value)}
+                label={t("common.configure")}
+                title={t("tools.webhook")}
+              />
+            </div>
+
+            <Disclosure open={configOpen}>
+              <div className="space-y-2.5">
+                <Field label={t("tools.webhookUrl")} error={webhookError}>
+                  <TextInput
+                    dir="ltr"
+                    className="mw-code text-left"
+                    placeholder={t("tools.webhookUrlPlaceholder")}
+                    value={url}
+                    onChange={(event) => {
+                      setUrl(event.target.value);
+                      setWebhookError("");
+                    }}
+                    onBlur={() => {
+                      if (url.trim() && urlCheck && !urlCheck.ok) setWebhookError(t("tools.invalidUrl"));
+                    }}
+                  />
+                </Field>
+                {urlCheck && !urlCheck.ok ? <Alert tone="warning">{t("tools.privateBlocked")}</Alert> : null}
+                <Field label={t("tools.webhookToken")} hint={t("tools.webhookTokenHint")}>
+                  <TextInput
+                    dir="ltr"
+                    className="mw-code text-left"
+                    type="password"
+                    autoComplete="new-password"
+                    value={token}
+                    onChange={(event) => setToken(event.target.value)}
+                  />
+                </Field>
+                <WebhookForwardToggles
+                  forwardMessages={forwardMessages}
+                  forwardRevoked={forwardRevoked}
+                  setForwardMessages={setForwardMessages}
+                  setForwardRevoked={setForwardRevoked}
+                  labels={{ messages: t("tools.forwardMessages"), revoked: t("tools.forwardRevoked") }}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => void saveWebhook()}>
+                    {t("common.save")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    loading={testing}
+                    icon={<Webhook className="h-3.5 w-3.5" />}
+                    onClick={() => void testWebhook()}
+                    disabled={!url.trim()}
+                  >
+                    {testing ? t("tools.testing") : t("tools.test")}
+                  </Button>
+                </div>
+                {testResult ? (
+                  <Alert tone={testResult.ok ? "success" : "danger"}>
+                    {testResult.ok
+                      ? t("tools.testSuccess", { status: testResult.status })
+                      : t("tools.testFailed", { error: testResult.error || testResult.status || "" })}
+                  </Alert>
+                ) : null}
+
+                <div className="border-t border-wa-line pt-2">
+                  <div className="mb-1 flex items-center justify-between">
+                    <h4 className="text-[10.5px] font-semibold">{t("tools.payloadTitle")}</h4>
+                    <CopyButton text={samplePayload} label={t("common.copy")} copiedLabel={t("common.copied")} />
+                  </div>
+                  <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-[9.5px] leading-5">
+                    {samplePayload}
+                  </pre>
+                </div>
+              </div>
+            </Disclosure>
+          </div>
+        ) : (
+          <p className="text-wa-muted px-3 pb-2 text-[10px] leading-5">{t("tools.webhookHint")}</p>
+        )}
+
+        {webhookLog.length > 0 ? (
+          <div className="border-t border-wa-line px-3 py-2.5">
+            <div className="mb-1.5 flex items-center justify-between">
+              <h4 className="text-[11px] font-bold">{t("tools.logs")}</h4>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => void contentController.refreshWebhookLog()}
+                  className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  {t("common.refresh")}
+                </button>
                 <button
                   type="button"
                   onClick={() => void contentController.clearWebhookLog()}
@@ -314,13 +347,9 @@ export function ToolsTab() {
                   <Trash2 className="h-3 w-3" />
                   {t("common.clear")}
                 </button>
-              ) : null}
+              </div>
             </div>
-          </div>
 
-          {webhookLog.length === 0 ? (
-            <EmptyState title={t("tools.noLogs")} icon={<Webhook className="h-7 w-7" />} />
-          ) : (
             <div className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-md border border-wa-line bg-wa-input p-1.5">
               {webhookLog.map((entry) => (
                 <div key={entry.id} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-[10px]">
@@ -340,18 +369,8 @@ export function ToolsTab() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between">
-            <h4 className="text-[11px] font-bold">{t("tools.payloadTitle")}</h4>
-            <CopyButton text={samplePayload} label={t("common.copy")} copiedLabel={t("common.copied")} />
           </div>
-          <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-[9.5px] leading-5">
-            {samplePayload}
-          </pre>
-        </div>
+        ) : null}
       </Card>
 
       <Card>

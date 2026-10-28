@@ -160,7 +160,7 @@ export function AutoReplyTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<Bot className="h-4 w-4" />}
         title={t("autoreply.title")}
@@ -177,101 +177,107 @@ export function AutoReplyTab() {
         />
       </Card>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.rules")}</h3>
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={<Plus className="h-3 w-3" />}
-            onClick={() => {
-              setEditorError("");
-              setDraft({
-                id: uid("rule"),
-                name: "",
-                enabled: true,
-                matchType: "contains",
-                pattern: "",
-                response: "",
-                scope: "private",
-                cooldownMinutes: 30,
-                typingSeconds: 2,
-              });
-            }}
-          >
-            {t("autoreply.addRule")}
-          </Button>
-        </div>
-
-        {settings.autoReply.rules.length === 0 ? (
-          <EmptyState title={t("autoreply.noRules")} body={t("autoreply.fallbackHint")} icon={<Bot className="h-5 w-5" />} />
-        ) : (
-          <div className="mw-card divide-y divide-wa-line">
-            {settings.autoReply.rules.map((rule) => (
-              <div key={rule.id} className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="truncate text-[11.5px] font-semibold">{rule.name || t("common.unnamed")}</p>
-                      <Badge tone={rule.matchType === "fallback" ? "warning" : "brand"}>{matchLabel(t, rule.matchType)}</Badge>
-                      {!rule.enabled ? <Badge tone="neutral">{t("common.off")}</Badge> : null}
-                    </div>
-                    {rule.matchType !== "fallback" ? (
-                      <p className="mw-code mt-1 truncate text-[10px] text-wa-muted">{rule.pattern}</p>
-                    ) : null}
-                    <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{rule.response}</p>
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-wa-muted">
-                      <span>{scopeLabel(t, rule.scope)}</span>
-                      <span>
-                        {t("autoreply.cooldown")}: <span className="mw-num">{rule.cooldownMinutes}</span>
-                      </span>
-                      <span>
-                        {t("autoreply.typing")}: <span className="mw-num">{rule.typingSeconds}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <IconButton
-                      label={t("common.edit")}
-                      onClick={() => {
-                        setEditorError("");
-                        setDraft({ ...rule });
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </IconButton>
-                    <IconButton label={t("common.delete")} onClick={() => setDeleteRule(rule)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </IconButton>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between border-t border-wa-line pt-2">
-                  <span className="text-[9px] text-wa-muted">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={rule.enabled}
-                    aria-label={rule.name || t("autoreply.ruleActive")}
-                    onClick={() =>
-                      patchAutoReply({
-                        rules: settings.autoReply.rules.map((entry) =>
-                          entry.id === rule.id ? { ...entry, enabled: !entry.enabled } : entry,
-                        ),
-                      })
-                    }
-                    className="mw-toggle"
-                  >
-                    <span />
-                  </button>
-                </div>
-              </div>
-            ))}
+      {settings.autoReply.enabled ? (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.rules")}</h3>
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<Plus className="h-3 w-3" />}
+              onClick={() => {
+                setEditorError("");
+                setDraft({
+                  id: uid("rule"),
+                  name: "",
+                  enabled: true,
+                  matchType: "contains",
+                  pattern: "",
+                  response: "",
+                  scope: "private",
+                  cooldownMinutes: 30,
+                  typingSeconds: 2,
+                });
+              }}
+            >
+              {t("autoreply.addRule")}
+            </Button>
           </div>
-        )}
-        <div className="mt-2">
-          <Alert tone="info">{t("autoreply.fallbackHint")}</Alert>
+
+          {settings.autoReply.rules.length === 0 ? (
+            <EmptyState title={t("autoreply.noRules")} body={t("autoreply.fallbackHint")} icon={<Bot className="h-5 w-5" />} />
+          ) : (
+            <div className="mw-card divide-y divide-wa-line">
+              {settings.autoReply.rules.map((rule) => (
+                <div key={rule.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="truncate text-[11.5px] font-semibold">{rule.name || t("common.unnamed")}</p>
+                        <Badge tone={rule.matchType === "fallback" ? "warning" : "brand"}>{matchLabel(t, rule.matchType)}</Badge>
+                        {!rule.enabled ? <Badge tone="neutral">{t("common.off")}</Badge> : null}
+                      </div>
+                      {rule.matchType !== "fallback" ? (
+                        <p className="mw-code mt-1 truncate text-[10px] text-wa-muted">{rule.pattern}</p>
+                      ) : null}
+                      <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{rule.response}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-wa-muted">
+                        <span>{scopeLabel(t, rule.scope)}</span>
+                        <span>
+                          {t("autoreply.cooldown")}: <span className="mw-num">{rule.cooldownMinutes}</span>
+                        </span>
+                        <span>
+                          {t("autoreply.typing")}: <span className="mw-num">{rule.typingSeconds}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <IconButton
+                        label={t("common.edit")}
+                        onClick={() => {
+                          setEditorError("");
+                          setDraft({ ...rule });
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </IconButton>
+                      <IconButton label={t("common.delete")} onClick={() => setDeleteRule(rule)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </IconButton>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between border-t border-wa-line pt-2">
+                    <span className="text-[9px] text-wa-muted">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={rule.enabled}
+                      aria-label={rule.name || t("autoreply.ruleActive")}
+                      onClick={() =>
+                        patchAutoReply({
+                          rules: settings.autoReply.rules.map((entry) =>
+                            entry.id === rule.id ? { ...entry, enabled: !entry.enabled } : entry,
+                          ),
+                        })
+                      }
+                      className="mw-toggle"
+                    >
+                      <span />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-2">
+            <Alert tone="info">{t("autoreply.fallbackHint")}</Alert>
+          </div>
         </div>
-      </div>
+      ) : (
+        <Card>
+          <EmptyState icon={<Bot className="h-5 w-5" />} title={t("autoreply.noRules")} body={t("autoreply.enableHint")} />
+        </Card>
+      )}
 
       <div>
         <div className="mb-2 flex items-center justify-between">

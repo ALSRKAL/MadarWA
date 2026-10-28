@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import {
   EyeOff,
-  ImageOff,
   KeyRound,
   LockKeyhole,
   MessageSquareOff,
   ShieldCheck,
+  ShieldOff,
   Timer,
   UserX,
   VolumeX,
@@ -14,7 +14,44 @@ import { createPinRecord, validatePinFormat } from "../../../shared/utils/pin";
 import type { PrivacySettings } from "../../../shared/types";
 import { contentController } from "../../controller";
 import { useAppStore, useSettings, useT } from "../../store";
-import { Alert, Badge, Button, Card, Field, SectionTitle, TextInput, Toggle } from "../components";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  ConfigureButton,
+  Disclosure,
+  Field,
+  SectionTitle,
+  TextInput,
+  Toggle,
+} from "../components";
+
+const ALL_PRIVACY_ON: PrivacySettings = {
+  blurPreview: true,
+  blurNames: true,
+  blurPhoneNumbers: true,
+  blurAvatars: true,
+  blurMessages: true,
+  blurMedia: true,
+  hidePresence: true,
+  hideTyping: true,
+  disableReadReceipts: true,
+  disableAudioReceipts: true,
+};
+
+const ALL_PRIVACY_OFF: PrivacySettings = {
+  blurPreview: false,
+  blurNames: false,
+  blurPhoneNumbers: false,
+  blurAvatars: false,
+  blurMessages: false,
+  blurMedia: false,
+  hidePresence: false,
+  hideTyping: false,
+  disableReadReceipts: false,
+  disableAudioReceipts: false,
+};
 
 export function PrivacyTab() {
   const t = useT();
@@ -23,6 +60,7 @@ export function PrivacyTab() {
   const pushToast = useAppStore((state) => state.pushToast);
   const privacyGuard = useAppStore((state) => state.privacyGuard);
 
+  const [lockOpen, setLockOpen] = useState(false);
   const [pinFormOpen, setPinFormOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -38,11 +76,17 @@ export function PrivacyTab() {
     setSettings({ ...settings, privacy: { ...settings.privacy, ...patch } });
   };
 
+  const applyPreset = (privacy: PrivacySettings, message: string) => {
+    setSettings({ ...settings, privacy });
+    pushToast({ kind: "success", title: message, body: "" });
+  };
+
   const togglePin = (enabled: boolean) => {
     if (enabled) {
       setPin("");
       setConfirmPin("");
       setPinError("");
+      setLockOpen(true);
       setPinFormOpen(true);
       return;
     }
@@ -98,15 +142,43 @@ export function PrivacyTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionTitle
         icon={<ShieldCheck className="h-4 w-4" />}
         title={t("privacy.title")}
         subtitle={t("privacy.subtitle")}
       />
 
+      <Card className="p-2">
+        <div className="mb-1.5 px-0.5">
+          <h3 className="text-[10px] font-semibold text-wa-muted">{t("privacy.quickActions")}</h3>
+        </div>
+        <div className="grid gap-1.5">
+          <Button
+            size="sm"
+            icon={<ShieldCheck className="h-3.5 w-3.5" />}
+            className="w-full"
+            onClick={() => applyPreset(ALL_PRIVACY_ON, t("privacy.presetStealth"))}
+          >
+            {t("privacy.fullStealth")}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<ShieldOff className="h-3.5 w-3.5" />}
+            className="w-full"
+            onClick={() => applyPreset(ALL_PRIVACY_OFF, t("privacy.presetOff"))}
+          >
+            {t("privacy.disableAll")}
+          </Button>
+        </div>
+        <p className="text-wa-muted px-0.5 pb-0.5 pt-1.5 text-[9.5px] leading-4">
+          {t("privacy.fullStealthHint")}
+        </p>
+      </Card>
+
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
+        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
           <EyeOff className="h-3.5 w-3.5 text-wa-brand" />
           <h3 className="text-[11px] font-semibold">{t("privacy.blurSection")}</h3>
         </div>
@@ -121,6 +193,12 @@ export function PrivacyTab() {
           onChange={(value) => patchPrivacy({ blurNames: value })}
           label={t("privacy.blurNames")}
           hint={t("privacy.blurNamesHint")}
+        />
+        <Toggle
+          checked={settings.privacy.blurPhoneNumbers}
+          onChange={(value) => patchPrivacy({ blurPhoneNumbers: value })}
+          label={t("privacy.blurPhoneNumbers")}
+          hint={t("privacy.blurPhoneNumbersHint")}
         />
         <Toggle
           checked={settings.privacy.blurAvatars}
@@ -143,7 +221,7 @@ export function PrivacyTab() {
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
+        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
           <UserX className="h-3.5 w-3.5 text-wa-brand" />
           <h3 className="text-[11px] font-semibold">{t("privacy.presenceSection")}</h3>
         </div>
@@ -163,7 +241,7 @@ export function PrivacyTab() {
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
+        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
           <MessageSquareOff className="h-3.5 w-3.5 text-wa-brand" />
           <h3 className="text-[11px] font-semibold">{t("privacy.receiptsSection")}</h3>
         </div>
@@ -179,21 +257,23 @@ export function PrivacyTab() {
           onChange={(value) => patchPrivacy({ disableAudioReceipts: value })}
           label={t("privacy.disableAudioReceipts")}
           hint={t("privacy.disableAudioReceiptsHint")}
+          action={
+            settings.privacy.disableAudioReceipts && privacyGuard ? (
+              <Badge tone={privacyGuard.active ? "success" : "warning"}>
+                {privacyGuard.active ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
+              </Badge>
+            ) : undefined
+          }
         />
-        {settings.privacy.disableAudioReceipts && privacyGuard ? (
-          <div className="px-1.5 pb-1.5">
-            <Badge tone={privacyGuard.active ? "success" : "warning"}>
-              {privacyGuard.active ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
-            </Badge>
+        {settings.privacy.disableReadReceipts || settings.privacy.disableAudioReceipts ? (
+          <div className="px-2 pb-2">
+            <Alert tone="warning">{t("privacy.warning")}</Alert>
           </div>
         ) : null}
-        <div className="mt-1 px-1">
-          <Alert tone="warning">{t("privacy.warning")}</Alert>
-        </div>
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">
+        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
           <KeyRound className="h-3.5 w-3.5 text-wa-brand" />
           <h3 className="text-[11px] font-semibold">{t("privacy.lockSection")}</h3>
           {settings.pin.enabled ? <Badge tone="success">{t("common.on")}</Badge> : null}
@@ -203,127 +283,136 @@ export function PrivacyTab() {
           checked={settings.pin.enabled || pinFormOpen}
           onChange={togglePin}
           label={t("privacy.lockEnable")}
-          hint={t("privacy.lockEnableHint")}
+          hint={settings.pin.enabled || pinFormOpen ? undefined : t("privacy.lockEnableHint")}
+          action={
+            settings.pin.enabled || pinFormOpen ? (
+              <ConfigureButton
+                open={lockOpen}
+                onClick={() => setLockOpen((value) => !value)}
+                label={t("common.configure")}
+                title={t("privacy.settingsAdvanced")}
+              />
+            ) : undefined
+          }
         />
 
-        {settings.pin.enabled && !pinFormOpen ? (
-          <div className="mt-2 space-y-3 rounded-md border border-wa-line px-3 py-3">
-            <div className="flex items-end gap-2">
-              <Field label={t("privacy.idleMinutes")} className="flex-1">
-                <div className="relative">
-                  <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
+        <Disclosure open={lockOpen && (settings.pin.enabled || pinFormOpen)}>
+          <div className="space-y-3">
+            {settings.pin.enabled && !pinFormOpen ? (
+              <>
+                <div className="flex items-end gap-2">
+                  <Field label={t("privacy.idleMinutes")} className="flex-1">
+                    <div className="relative">
+                      <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
+                      <TextInput
+                        className="ps-8"
+                        type="number"
+                        min={1}
+                        max={480}
+                        value={idle}
+                        onChange={(event) => setIdle(event.target.value)}
+                        onBlur={applyIdle}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") applyIdle();
+                        }}
+                      />
+                    </div>
+                  </Field>
+                  <Button variant="secondary" size="sm" onClick={() => setPinFormOpen(true)}>
+                    {t("common.edit")}
+                  </Button>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<LockKeyhole className="h-3.5 w-3.5" />}
+                  onClick={() => contentController.lockNow()}
+                  className="w-full"
+                >
+                  {t("privacy.lockNow")}
+                </Button>
+              </>
+            ) : null}
+
+            {pinFormOpen ? (
+              <div className="space-y-3">
+                <Field label={t("privacy.pinCode")}>
                   <TextInput
-                    className="ps-8"
-                    type="number"
-                    min={1}
-                    max={480}
-                    value={idle}
-                    onChange={(event) => setIdle(event.target.value)}
-                    onBlur={applyIdle}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") applyIdle();
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    maxLength={8}
+                    placeholder="••••"
+                    value={pin}
+                    onChange={(event) => {
+                      setPin(event.target.value.replace(/\D/g, "").slice(0, 8));
+                      setPinError("");
                     }}
                   />
+                </Field>
+                <Field label={t("privacy.pinConfirm")}>
+                  <TextInput
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    maxLength={8}
+                    placeholder="••••"
+                    value={confirmPin}
+                    onChange={(event) => {
+                      setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 8));
+                      setPinError("");
+                    }}
+                  />
+                </Field>
+                <Field label={t("privacy.idleMinutes")} error={pinError}>
+                  <div className="relative">
+                    <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
+                    <TextInput
+                      className="ps-8"
+                      type="number"
+                      min={1}
+                      max={480}
+                      value={idle}
+                      onChange={(event) => setIdle(event.target.value)}
+                    />
+                  </div>
+                </Field>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    loading={pinBusy}
+                    onClick={() => void savePin()}
+                    disabled={pin.length < 4 || confirmPin.length < 4}
+                    className="flex-1"
+                  >
+                    {t("common.save")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setPinFormOpen(false);
+                      setPin("");
+                      setConfirmPin("");
+                      setPinError("");
+                      if (!settings.pin.enabled) setLockOpen(false);
+                    }}
+                  >
+                    {t("common.cancel")}
+                  </Button>
                 </div>
-              </Field>
-              <Button variant="secondary" size="sm" onClick={() => setPinFormOpen(true)}>
-                {t("common.edit")}
-              </Button>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<LockKeyhole className="h-3.5 w-3.5" />}
-              onClick={() => contentController.lockNow()}
-              className="w-full"
-            >
-              {t("privacy.lockNow")}
-            </Button>
-          </div>
-        ) : null}
-
-        {pinFormOpen ? (
-          <div className="mt-2 space-y-3 rounded-md border border-wa-brand/25 bg-wa-brand/5 px-3 py-3">
-            <Field label={t("privacy.pinCode")}>
-              <TextInput
-                type="password"
-                inputMode="numeric"
-                autoComplete="new-password"
-                maxLength={8}
-                placeholder="••••"
-                value={pin}
-                onChange={(event) => {
-                  setPin(event.target.value.replace(/\D/g, "").slice(0, 8));
-                  setPinError("");
-                }}
-              />
-            </Field>
-            <Field label={t("privacy.pinConfirm")}>
-              <TextInput
-                type="password"
-                inputMode="numeric"
-                autoComplete="new-password"
-                maxLength={8}
-                placeholder="••••"
-                value={confirmPin}
-                onChange={(event) => {
-                  setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 8));
-                  setPinError("");
-                }}
-              />
-            </Field>
-            <Field label={t("privacy.idleMinutes")} error={pinError}>
-              <div className="relative">
-                <Timer className="absolute inset-y-0 start-2.5 my-auto h-3.5 w-3.5 text-wa-muted" />
-                <TextInput
-                  className="ps-8"
-                  type="number"
-                  min={1}
-                  max={480}
-                  value={idle}
-                  onChange={(event) => setIdle(event.target.value)}
-                />
               </div>
-            </Field>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                loading={pinBusy}
-                onClick={() => void savePin()}
-                disabled={pin.length < 4 || confirmPin.length < 4}
-                className="flex-1"
-              >
-                {t("common.save")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setPinFormOpen(false);
-                  setPin("");
-                  setConfirmPin("");
-                  setPinError("");
-                }}
-              >
-                {t("common.cancel")}
-              </Button>
-            </div>
+            ) : null}
+
+            {!settings.pin.enabled && !pinFormOpen ? (
+              <p className="text-wa-muted flex items-center gap-1 text-[10px] leading-5">
+                <VolumeX className="h-3 w-3 shrink-0" />
+                {t("privacy.lockEnableHint")}
+              </p>
+            ) : null}
           </div>
-        ) : null}
-
-        {!settings.pin.enabled && !pinFormOpen ? (
-          <p className="text-wa-muted px-2.5 pb-2 pt-1 text-[10px] leading-5">
-            <VolumeX className="me-1 inline h-3 w-3" />
-            {t("privacy.lockEnableHint")}
-          </p>
-        ) : null}
+        </Disclosure>
       </Card>
-
-      <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-wa-muted">
-        <ImageOff className="h-3 w-3" />
-        <ShieldCheck className="h-3 w-3 text-wa-brand" />
-        {t("app.poweredBy")}
-      </div>
     </div>
   );
 }

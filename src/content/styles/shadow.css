@@ -393,6 +393,220 @@ textarea.mw-input {
   cursor: not-allowed;
 }
 
+.mw-configure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--wa-line);
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(var(--wa-muted));
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.mw-configure:hover {
+  background: var(--wa-hover);
+  color: rgb(var(--wa-text));
+}
+
+.mw-configure.is-open {
+  border-color: rgb(var(--wa-brand) / 0.4);
+  color: rgb(var(--wa-brand-strong));
+}
+
+.mw-configure svg:last-child {
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.mw-configure.is-open svg:last-child {
+  transform: rotate(180deg);
+}
+
+.mw-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 200ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.mw-disclosure.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.mw-disclosure-inner {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: visibility 0s linear 200ms;
+}
+
+.mw-disclosure.is-open .mw-disclosure-inner {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.mw-disclosure-content {
+  border-top: 1px solid var(--wa-line);
+  background: rgb(var(--wa-surface));
+  padding: 10px 12px;
+  animation: mw-disclosure-in 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes mw-disclosure-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mw-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px;
+  border: 1px solid var(--wa-line);
+  border-radius: 8px;
+  background: var(--wa-surface);
+}
+
+.mw-step-group {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
+}
+
+.mw-step-line {
+  flex: 1 1 auto;
+  min-width: 8px;
+  height: 1px;
+  margin: 0 4px;
+  background: var(--wa-line);
+}
+
+.mw-step {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: rgb(var(--wa-muted));
+  font-size: 9.5px;
+  font-weight: 600;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.mw-step[data-state="active"] {
+  background: rgb(var(--wa-brand) / 0.1);
+  color: rgb(var(--wa-brand-strong));
+}
+
+.mw-step[data-state="done"] {
+  color: rgb(var(--wa-text));
+}
+
+.mw-step-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mw-step[data-state="active"] .mw-step-index {
+  border-color: rgb(var(--wa-brand));
+  background: rgb(var(--wa-brand));
+  color: var(--wa-on-brand);
+}
+
+.mw-step[data-state="done"] .mw-step-index {
+  border-color: transparent;
+  background: rgb(var(--wa-brand) / 0.15);
+  color: rgb(var(--wa-brand-strong));
+}
+
+.mw-step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mw-chips {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+  scrollbar-width: none;
+}
+
+.mw-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.mw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--wa-line);
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(var(--wa-muted));
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.mw-chip:hover {
+  background: var(--wa-hover);
+  color: rgb(var(--wa-text));
+}
+
+.mw-chip[data-active="1"] {
+  border-color: rgb(var(--wa-brand) / 0.35);
+  background: rgb(var(--wa-brand) / 0.12);
+  color: rgb(var(--wa-brand-strong));
+}
+
+.mw-chip-count {
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgb(var(--wa-muted) / 0.15);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .mw-badge {
   display: inline-flex;
   align-items: center;

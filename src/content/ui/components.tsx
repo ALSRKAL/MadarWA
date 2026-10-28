@@ -8,7 +8,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { AlertTriangle, Check, Copy, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Copy, Loader2, Settings, X } from "lucide-react";
 
 export function cn(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(" ");
@@ -111,6 +111,7 @@ export function Toggle({
   hint,
   disabled,
   warning,
+  action,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -118,6 +119,7 @@ export function Toggle({
   hint?: string;
   disabled?: boolean;
   warning?: boolean;
+  action?: ReactNode;
 }) {
   const id = useId();
   return (
@@ -139,21 +141,139 @@ export function Toggle({
         </div>
         {hint ? <p className="mt-0.5 text-[10.5px] leading-[1.55] text-wa-muted">{hint}</p> : null}
       </div>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={(event) => {
-          event.stopPropagation();
-          onChange(!checked);
-        }}
-        className="mw-toggle mt-0.5"
-      >
-        <span />
-      </button>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {action ? (
+          <span className="shrink-0" onClick={(event) => event.stopPropagation()}>
+            {action}
+          </span>
+        ) : null}
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
+          disabled={disabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            onChange(!checked);
+          }}
+          className="mw-toggle mt-0.5"
+        >
+          <span />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ConfigureButton({
+  open,
+  onClick,
+  label,
+  title,
+}: {
+  open: boolean;
+  onClick: () => void;
+  label: string;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      aria-label={label}
+      title={title ?? label}
+      className={cn("mw-configure", open && "is-open")}
+    >
+      <Settings className="h-3 w-3" />
+      <span>{label}</span>
+      <ChevronDown className="h-3 w-3 transition-transform" aria-hidden="true" />
+    </button>
+  );
+}
+
+export function Disclosure({ open, children }: { open: boolean; children: ReactNode }) {
+  if (!open) return null;
+  return (
+    <div className="mw-disclosure is-open">
+      <div className="mw-disclosure-inner">
+        <div className="mw-disclosure-content">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export interface StepItem {
+  id: number;
+  label: string;
+}
+
+export function Stepper({
+  steps,
+  active,
+  onSelect,
+  ariaLabel,
+}: {
+  steps: StepItem[];
+  active: number;
+  onSelect?: (id: number) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="mw-stepper" role="group" aria-label={ariaLabel}>
+      {steps.map((step, index) => {
+        const state = step.id === active ? "active" : step.id < active ? "done" : "idle";
+        return (
+          <div key={step.id} className="mw-step-group">
+            {index > 0 ? <span className="mw-step-line" aria-hidden="true" /> : null}
+            <button
+              type="button"
+              onClick={() => onSelect?.(step.id)}
+              data-state={state}
+              aria-current={state === "active" ? "step" : undefined}
+              className="mw-step"
+            >
+              <span className="mw-step-index">
+                {state === "done" ? <Check className="h-3 w-3" /> : step.id}
+              </span>
+              <span className="mw-step-label">{step.label}</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function FilterChips<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: Array<{ id: T; label: string; count?: number }>;
+  value: T;
+  onChange: (value: T) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="mw-chips" role="tablist" aria-label={ariaLabel}>
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          role="tab"
+          aria-selected={value === option.id}
+          onClick={() => onChange(option.id)}
+          className="mw-chip"
+          data-active={value === option.id ? "1" : "0"}
+        >
+          {option.label}
+          {typeof option.count === "number" ? <span className="mw-chip-count">{option.count}</span> : null}
+        </button>
+      ))}
     </div>
   );
 }
