@@ -153,7 +153,9 @@ function Drawer() {
     ? t("status.disconnected")
     : engine.ready && engine.connected
       ? t("status.connected")
-      : t("status.engineWaiting");
+      : engine.ready
+        ? t("status.waitingLogin")
+        : t("status.engineWaiting");
 
   const switchLanguage = () => {
     setSettings({ ...settings, language: settings.language === "ar" ? "en" : "ar" });

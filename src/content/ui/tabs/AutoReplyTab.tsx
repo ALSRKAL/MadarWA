@@ -264,7 +264,7 @@ export function AutoReplyTab() {
                       rule.enabled ? "bg-brand-500" : "bg-slate-500/40",
                     )}
                   >
-                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all", rule.enabled ? "ms-[18px]" : "ms-0.5")} />
+                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all", rule.enabled ? "start-[18px]" : "start-0.5")} />
                   </button>
                 </div>
               </Card>

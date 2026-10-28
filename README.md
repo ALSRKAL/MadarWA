@@ -189,6 +189,8 @@ npm run verify
 
 **نتيجة البوابة الحالية:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
+**تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 156 على صفحة تسجيل الدخول في واتساب ويب. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2` (`WPP.loader.isReady`)، واتصال محرك MAIN، ونجاح `engine.ping` عبر الجسر، وتركيب لوحة Shadow DOM، وتأثير مفتاح تمويه واحد على `body[data-madarwa-blur-preview]`، وتبديل AR/EN مع انعكاس `dir`. مسارات الإرسال والحذف التي تتطلب حساباً مسجلاً تحتاج اختباراً من حسابك.
+
 ### الخصوصية والأمان
 
 - **لا خادم، لا تتبّع:** لا يوجد Analytics أو Telemetry. `preload.js` يضبط `disableGoogleAnalytics: true` قبل تحميل wa-js.
@@ -466,6 +468,8 @@ npm run verify
 - No `node_modules` inside `dist/`.
 
 **Current gate:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
+
+**Real browser smoke test:** `dist/` was loaded as an unpacked extension in Chromium 156 against the WhatsApp Web login page. Verified: local `@wppconnect/wa-js 4.7.2` loads (`WPP.loader.isReady`), the MAIN engine attaches, `engine.ping` succeeds over the bridge, the Shadow DOM dashboard mounts, a privacy switch applies `body[data-madarwa-blur-preview]`, and the AR/EN switch flips `dir`. Signed-in send/revoke flows still require testing with your own account.
 
 ### Privacy & security
 

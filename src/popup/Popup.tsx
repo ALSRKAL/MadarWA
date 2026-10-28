@@ -163,9 +163,11 @@ export function Popup() {
     ? t("popup.notOnWhatsapp")
     : status?.engine?.ready && status.engine.connected
       ? t("status.connected")
-      : status?.bridgeConnected
-        ? t("status.engineWaiting")
-        : t("status.disconnected");
+      : status?.engine?.ready
+        ? t("status.waitingLogin")
+        : status?.bridgeConnected
+          ? t("status.engineWaiting")
+          : t("status.disconnected");
 
   return (
     <div className={cn("popup-bg min-h-[430px] p-4", !loaded && "opacity-90")} dir={dir} lang={settings.language}>
