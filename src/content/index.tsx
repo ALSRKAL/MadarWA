@@ -1,10 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import shadowCss from "./styles/shadow.css?inline";
+import { initI18n } from "../shared/i18n";
 import { contentController } from "./controller";
 import { App } from "./ui/App";
 
 const HOST_ID = "madarwa-shadow-host";
+
+initI18n("ar");
 
 function mount(): void {
   if (!location.hostname.endsWith("web.whatsapp.com")) return;

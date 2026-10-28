@@ -7,7 +7,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-10b981?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-67%20passing-10b981?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-68%20passing-10b981?style=flat-square" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
 
@@ -153,7 +153,7 @@ npm run verify
 | `npm install` | تثبيت الاعتماديات |
 | `npm run dev` | مراقبة `src/`, `public/`, `icons/`, `popup.html` وإعادة بناء `dist/` (بدون HMR؛ أعد تحميل الإضافة/الصفحة) |
 | `npm run typecheck` | `tsc --noEmit` — صفر أخطاء |
-| `npm test` | 67 اختبار Vitest |
+| `npm test` | 68 اختبار Vitest |
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
 | `npm run verify` | 65 فحصاً هيكلياً على `dist/` |
@@ -162,7 +162,7 @@ npm run verify
 
 ### الاختبارات والتحقق
 
-**67 اختباراً** في 8 ملفات:
+**68 اختباراً** في 9 ملفات:
 
 | الاختبار | العدد | التغطية |
 |---|---:|---|
@@ -174,6 +174,7 @@ npm run verify
 | `queue.test.ts` | 6 | Jitter، الدفعات، Pause/Resume، Stop، الأخطاء، طابور فارغ |
 | `defaults-i18n.test.ts` | 6 | تطهير الإعدادات، تطابق مفاتيح ar/en، القيم الافتراضية |
 | `pin.test.ts` | 6 | PBKDF2، ملح فريد، رفض الرمز الخاطئ، صيغة الرمز |
+| `ui-smoke.test.tsx` | 1 | تركيب اللوحة وعرض التبويبات الستة بالعربية والإنجليزية |
 
 `node scripts/verify-build.mjs` يتحقق من:
 
@@ -185,7 +186,7 @@ npm run verify
 - احتواء الحزم على نقاط التكامل الحقيقية: `chat.new_message`، `chat.msg_revoke`، `sendTextMessage`، Webhook، إلخ.
 - عدم وجود `node_modules` داخل `dist/`.
 
-**نتيجة البوابة الحالية:** `typecheck` ✅ · `67/67 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**نتيجة البوابة الحالية:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 ### الخصوصية والأمان
 
@@ -280,7 +281,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 67 Vitest tests
+├── tests/                        # 68 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
@@ -430,7 +431,7 @@ npm run verify
 | `npm install` | Install dependencies |
 | `npm run dev` | Watch `src/`, `public/`, `icons/`, `popup.html` and rebuild `dist/` (no HMR; reload extension/page) |
 | `npm run typecheck` | `tsc --noEmit` — zero errors |
-| `npm test` | 67 Vitest tests |
+| `npm test` | 68 Vitest tests |
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
 | `npm run verify` | 65 structural assertions on `dist/` |
@@ -439,7 +440,7 @@ npm run verify
 
 ### Tests & verification
 
-**67 tests** across 8 files:
+**68 tests** across 9 files:
 
 | Suite | Count | Coverage |
 |---|---:|---|
@@ -451,6 +452,7 @@ npm run verify
 | `queue.test.ts` | 6 | Jitter, batches, pause/resume, stop, failures, empty queue |
 | `defaults-i18n.test.ts` | 6 | Settings sanitization, ar/en key parity, defaults |
 | `pin.test.ts` | 6 | PBKDF2, unique salt, wrong PIN, format validation |
+| `ui-smoke.test.tsx` | 1 | Mounts the dashboard and renders all six tabs in Arabic and English |
 
 `node scripts/verify-build.mjs` asserts:
 
@@ -462,7 +464,7 @@ npm run verify
 - Bundles contain the real integration points (`chat.new_message`, `chat.msg_revoke`, `sendTextMessage`, webhooks, etc.).
 - No `node_modules` inside `dist/`.
 
-**Current gate:** `typecheck` ✅ · `67/67 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**Current gate:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 ### Privacy & security
 
@@ -557,7 +559,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 67 Vitest tests
+├── tests/                        # 68 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json

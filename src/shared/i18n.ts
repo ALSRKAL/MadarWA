@@ -774,6 +774,8 @@ export function initI18n(language: Language): typeof i18n {
 }
 
 export function tFor(language: Language): (key: string, variables?: Record<string, unknown>) => string {
+  // Safe in any execution order: the first translation initializes i18next.
+  initI18n(language);
   const translate = i18n.getFixedT(language);
   return (key, variables) => String(translate(key, variables as never));
 }
