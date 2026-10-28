@@ -7,7 +7,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-10b981?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-68%20passing-10b981?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-95%20passing-10b981?style=flat-square" />
   <a href="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
@@ -51,12 +51,12 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 |---|---|
 | **الخصوصية والتمويه** | تمويه معاينات القائمة، الأسماء، الصور، الرسائل والوسائط عبر `body[data-madarwa-*]` وحقن CSS. إظهار عند المرور فقط. إخفاء مؤشرات الاتصال والكتابة. إيقاف إيصالات القراءة و«آخر ظهور/متصل» عبر `WPP.privacy` الحقيقي، مع حفظ القيمة الأصلية لاستعادتها عند الإيقاف. |
 | **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
-| **خزنة الرسائل المحذوفة** | التقاط كل رسالة جديدة وتخزينها بمفتاح `id`، ثم عند `chat.msg_revoke` استرجاع النص والمرسل والوقت من الذاكرة/التخزين. خزنة قابلة للبحث، فتح المحادثة، نسخ النص، تنبيه داخلي، إشعار سطح مكتب وعدّاد شارة. |
+| **خزنة الرسائل المحذوفة** | فهرسة مسبقة لآخر رسائل `MsgStore`، ومراقبة `add` و`change:type` و`chat.msg_revoke`، مع حل متسلسل لمفتاح الرسالة الأصلي. تُعاد الرسالة المحذوفة **داخل فقاعة واتساب نفسها** بالنص/الصورة والمرسل والوقت، إضافةً إلى خزنة قابلة للبحث وتنبيه وشارة. |
 | **الإرسال الجماعي الذكي** | لصق أرقام أو رفع CSV/XLSX. تطبيع دولي (حذف `+` والمسافات والأصفار البادئة ودعم الأرقام العربية)، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي، دفعات وراحة، إيقاف/استئناف/إيقاف نهائي، سجل مباشر وتقرير CSV. |
 | **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. قوالب رد سريع للإرسال أو الإدراج في حقل الكتابة. |
 | **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
 | **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، اختبار اتصال وسجل تسليم. |
-| 🧭 **واجهة موحّدة** | 6 تبويبات، تبديل عربي/إنجليزي فوري، اتجاه RTL/LTR تلقائي، ثيم داكن/فاتح يتبع واتساب، زر عائم احتياطي إذا تغيّر DOM، ونافذة Popup سريعة. |
+| **واجهة موحّدة** | 6 أقسام في شريط تنقل عمودي، رأس 40px، تبديل AR/EN فوري، RTL/LTR تلقائي، ثيم داكن/فاتح مبني على رموز واتساب الأصلية، زر 40px داخل رأس القائمة أو لانشر عائم قابل للسحب كبديل، ونافذة Popup سريعة. |
 
 ### المعمارية
 
@@ -154,16 +154,16 @@ npm run verify
 | `npm install` | تثبيت الاعتماديات |
 | `npm run dev` | مراقبة `src/`, `public/`, `icons/`, `popup.html` وإعادة بناء `dist/` (بدون HMR؛ أعد تحميل الإضافة/الصفحة) |
 | `npm run typecheck` | `tsc --noEmit` — صفر أخطاء |
-| `npm test` | 68 اختبار Vitest |
+| `npm test` | 95 اختبار Vitest |
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
-| `npm run verify` | 65 فحصاً هيكلياً على `dist/` |
+| `npm run verify` | 70 فحصاً هيكلياً على `dist/` |
 | `npm run icons` | إعادة توليد أيقونات PNG 16/32/48/128 |
 | `npm run clean` | حذف `dist/` |
 
 ### الاختبارات والتحقق
 
-**68 اختباراً** في 9 ملفات:
+**95 اختباراً** في 14 ملفاً:
 
 | الاختبار | العدد | التغطية |
 |---|---:|---|
@@ -175,6 +175,11 @@ npm run verify
 | `queue.test.ts` | 6 | Jitter، الدفعات، Pause/Resume، Stop، الأخطاء، طابور فارغ |
 | `defaults-i18n.test.ts` | 6 | تطهير الإعدادات، تطابق مفاتيح ar/en، القيم الافتراضية |
 | `pin.test.ts` | 6 | PBKDF2، ملح فريد، رفض الرمز الخاطئ، صيغة الرمز |
+| `revoke.test.ts` | 6 | حل مفاتيح الإلغاء المتسلسل وfallback للـstanza |
+| `inline-restore.test.tsx` | 7 | حقن الرسالة المستعادة داخل فقاعة DOM في RTL/LTR والوسائط والتعطيل |
+| `exporter.test.ts` | 5 | أسماء المجموعات العربية، LID←PN، صيغة +Phone |
+| `autoreply.test.ts` | 3 | منع الرد على رسائل النفس، الوسائط، التهدئة |
+| `wpp-message.test.ts` | 6 | استخراج النص/التسمية ومعاينات الوسائط |
 | `ui-smoke.test.tsx` | 1 | تركيب اللوحة وعرض التبويبات الستة بالعربية والإنجليزية |
 
 `node scripts/verify-build.mjs` يتحقق من:
@@ -187,9 +192,9 @@ npm run verify
 - احتواء الحزم على نقاط التكامل الحقيقية: `chat.new_message`، `chat.msg_revoke`، `sendTextMessage`، Webhook، إلخ.
 - عدم وجود `node_modules` داخل `dist/`.
 
-**نتيجة البوابة الحالية:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**نتيجة البوابة الحالية:** `typecheck` ✅ · `95/95 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
-**تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 156 على صفحة تسجيل الدخول في واتساب ويب. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2` (`WPP.loader.isReady`)، واتصال محرك MAIN، ونجاح `engine.ping` عبر الجسر، وتركيب لوحة Shadow DOM، وتأثير مفتاح تمويه واحد على `body[data-madarwa-blur-preview]`، وتبديل AR/EN مع انعكاس `dir`. مسارات الإرسال والحذف التي تتطلب حساباً مسجلاً تحتاج اختباراً من حسابك.
+**تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 156. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2` (`WPP.loader.isReady`)، واتصال محرك MAIN، ونجاح `engine.ping`، وتركيب رأس 40px وشريط التنقل الأصليين، واختبار العربية RTL والإنجليزية LTR والثيمين الداكن والفاتح. كما أُرسل حدث إلغاء تجريبي عبر `WPP.emit` مع صف `#main [data-id]` وهمي: ظهر النص الأصلي والمرسل والوقت **داخل فقاعة واتساب**، وأُضيف السجل إلى الخزنة (العدد 1). عمليات الإرسال/الحملات الحقيقية تحتاج حساباً مسجلاً وتُختبر من حسابك.
 
 ### الخصوصية والأمان
 
@@ -284,7 +289,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 68 Vitest tests
+├── tests/                        # 95 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
@@ -333,12 +338,12 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 |---|---|
 | **Privacy & stealth** | Blur chat-list previews, names, avatars, messages and media using `body[data-madarwa-*]` CSS. Hover to reveal. Hide presence and typing indicators. Toggle real WhatsApp account privacy for read receipts and online visibility through `WPP.privacy`, restoring the captured original value when disabled. |
 | **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
-| **Anti-delete vault** | Caches every new message by ID, then on `chat.msg_revoke` recovers text, sender and timestamp from memory/storage. Searchable vault, open chat, copy text, in-chat toast, optional desktop notification and badge. |
+| **Anti-delete vault** | Pre-indexes the latest `MsgStore` messages, listens to `add`, `change:type` and `chat.msg_revoke`, and resolves the original key through a cascading fallback. The deleted text/media, sender and timestamp are restored **inside the WhatsApp bubble itself**, in addition to a searchable vault, toast and badge. |
 | **Smart broadcaster** | Paste numbers or upload CSV/XLSX. International sanitizer (strips `+`, spaces, trunk zeros, supports Arabic-Indic digits), pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter, batch cooldowns, start/pause/resume/stop, live logs and CSV report. |
 | **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Quick templates can be sent to the active chat or inserted into the composer. |
 | **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
 | **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations to a webhook from the service worker with `X-MadarWA-Token`, test delivery and inspect a delivery log. |
-| 🧭 **Unified UI** | Six tabs, instant AR/EN switch, automatic RTL/LTR, dark/light theme following WhatsApp, floating fallback launcher if the header DOM changes, and a quick popup. |
+| **Unified UI** | Six-section vertical rail, 40px header, instant AR/EN switch, automatic RTL/LTR, dark/light theme built from WhatsApp's own tokens, a 40px native launcher in the chat-list header (draggable fallback), and a quick popup. |
 
 ### Architecture
 
@@ -434,16 +439,16 @@ npm run verify
 | `npm install` | Install dependencies |
 | `npm run dev` | Watch `src/`, `public/`, `icons/`, `popup.html` and rebuild `dist/` (no HMR; reload extension/page) |
 | `npm run typecheck` | `tsc --noEmit` — zero errors |
-| `npm test` | 68 Vitest tests |
+| `npm test` | 95 Vitest tests |
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
-| `npm run verify` | 65 structural assertions on `dist/` |
+| `npm run verify` | 70 structural assertions on `dist/` |
 | `npm run icons` | Regenerate 16/32/48/128 PNG icons |
 | `npm run clean` | Remove `dist/` |
 
 ### Tests & verification
 
-**68 tests** across 9 files:
+**95 tests** across 14 files:
 
 | Suite | Count | Coverage |
 |---|---:|---|
@@ -455,6 +460,11 @@ npm run verify
 | `queue.test.ts` | 6 | Jitter, batches, pause/resume, stop, failures, empty queue |
 | `defaults-i18n.test.ts` | 6 | Settings sanitization, ar/en key parity, defaults |
 | `pin.test.ts` | 6 | PBKDF2, unique salt, wrong PIN, format validation |
+| `revoke.test.ts` | 6 | Cascading revoke-key resolver and stanza fallback |
+| `inline-restore.test.tsx` | 7 | Inline DOM restoration in RTL/LTR, media, disable and idempotency |
+| `exporter.test.ts` | 5 | Arabic group names, LID→PN resolution and +phone formatting |
+| `autoreply.test.ts` | 3 | Self-send guard, media caption, cooldown |
+| `wpp-message.test.ts` | 6 | Body/caption extraction and media previews |
 | `ui-smoke.test.tsx` | 1 | Mounts the dashboard and renders all six tabs in Arabic and English |
 
 `node scripts/verify-build.mjs` asserts:
@@ -467,9 +477,9 @@ npm run verify
 - Bundles contain the real integration points (`chat.new_message`, `chat.msg_revoke`, `sendTextMessage`, webhooks, etc.).
 - No `node_modules` inside `dist/`.
 
-**Current gate:** `typecheck` ✅ · `68/68 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**Current gate:** `typecheck` ✅ · `95/95 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
-**Real browser smoke test:** `dist/` was loaded as an unpacked extension in Chromium 156 against the WhatsApp Web login page. Verified: local `@wppconnect/wa-js 4.7.2` loads (`WPP.loader.isReady`), the MAIN engine attaches, `engine.ping` succeeds over the bridge, the Shadow DOM dashboard mounts, a privacy switch applies `body[data-madarwa-blur-preview]`, and the AR/EN switch flips `dir`. Signed-in send/revoke flows still require testing with your own account.
+**Real browser smoke test:** `dist/` was loaded as an unpacked extension in Chromium 156. Verified: local `@wppconnect/wa-js 4.7.2` loads (`WPP.loader.isReady`), the MAIN engine attaches, `engine.ping` succeeds, the 40px header and native rail mount, Arabic RTL and English LTR both render, and dark/light tokens switch correctly. A mock `#main [data-id]` row plus a synthetic `WPP.emit('chat.msg_revoke')` produced the exact original text, sender and timestamp **inside the WhatsApp bubble** and a matching vault entry (count 1). Real sends/campaigns still require a signed-in account and must be tested with your own number.
 
 ### Privacy & security
 
@@ -564,7 +574,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 68 Vitest tests
+├── tests/                        # 95 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json

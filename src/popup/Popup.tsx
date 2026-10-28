@@ -163,7 +163,7 @@ export function Popup() {
           : t("status.disconnected");
 
   return (
-    <div className={`min-h-[398px] ${!loaded ? "opacity-90" : ""}`} dir={dir} lang={settings.language}>
+    <div className={`min-h-[280px] ${!loaded ? "opacity-90" : ""}`} dir={dir} lang={settings.language}>
       <header className="flex h-12 items-center gap-2 px-4">
         <span className="flex h-6 w-6 items-center justify-center text-wa-brand">
           <OrbitMark className="h-[18px] w-[18px]" />

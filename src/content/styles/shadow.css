@@ -74,6 +74,7 @@
 }
 
 /* Flat surfaces. Separation is tone + hairline, never a resting shadow. */
+@layer components {
 .mw-card {
   background: rgb(var(--wa-surface));
   border: 1px solid var(--wa-line);
@@ -354,6 +355,7 @@ textarea.mw-input {
 .mw-icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
 }
 
 .mw-toggle {
