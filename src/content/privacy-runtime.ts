@@ -4,12 +4,24 @@ import type { ThemeName } from "./store";
 const ATTRS = {
   blurPreview: "data-madarwa-blur-preview",
   blurNames: "data-madarwa-blur-names",
+  blurPhoneNumbers: "data-madarwa-blur-phones",
   blurAvatars: "data-madarwa-blur-avatars",
   blurMessages: "data-madarwa-blur-messages",
   blurMedia: "data-madarwa-blur-media",
   hidePresence: "data-madarwa-hide-presence",
   hideTyping: "data-madarwa-hide-typing",
 } as const;
+
+export function hasAnyBlur(settings: PrivacySettings): boolean {
+  return Boolean(
+    settings.blurPreview ||
+      settings.blurNames ||
+      settings.blurPhoneNumbers ||
+      settings.blurAvatars ||
+      settings.blurMessages ||
+      settings.blurMedia,
+  );
+}
 
 const PRESENCE_HIDDEN = "data-madarwa-hidden-presence";
 
