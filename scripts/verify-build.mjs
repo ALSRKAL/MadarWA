@@ -164,6 +164,11 @@ const contentJs = await readText("content.js");
 assert(contentJs.includes("madarwa-shadow-host"), "content.js mounts the Shadow DOM host");
 assert(contentJs.includes("MADARWA_CMD_REQUEST") && contentJs.includes("MADARWA_CMD_RESPONSE"), "content.js includes the bridge protocol");
 assert(contentJs.includes("madarwa:settings"), "content.js includes persisted settings keys");
+assert(contentJs.includes("madarwa_media_vault"), "content.js opens the shared IndexedDB media vault");
+assert(contentJs.includes("data-madarwa-el"), "content.js tags semantic WhatsApp elements for surgical blurring");
+assert(contentJs.includes("data-madarwa-media-kind"), "content.js renders media-kind aware inline bubbles");
+assert(contentJs.includes("Show Deleted Message") && contentJs.includes("Hide Content"), "content.js ships bilingual reveal pills");
+assert(contentJs.includes("madarwa-lightbox"), "content.js implements the full-screen media lightbox");
 
 const injectedJs = await readText("injected.js");
 assert(injectedJs.includes("chat.new_message") && injectedJs.includes("chat.msg_revoke"), "injected.js subscribes to WA message events");
@@ -171,8 +176,12 @@ assert(injectedJs.includes("sendTextMessage") && injectedJs.includes("sendFileMe
 assert(injectedJs.includes("MADARWA_CMD_REQUEST"), "injected.js includes the bridge listener");
 assert(injectedJs.includes("MsgStore") && injectedJs.includes("protocolMessageKey"), "injected.js pre-indexes MsgStore and resolves protocol keys");
 assert(injectedJs.includes("antidelete.preindex"), "injected.js exposes the store pre-index command");
+assert(injectedJs.includes("antidelete.revokedIndex"), "injected.js exposes the revoked-row index command");
+assert(injectedJs.includes("downloadMedia"), "injected.js proactively downloads decrypted media before revocation");
+assert(injectedJs.includes("madarwa_media_vault"), "injected.js writes captured media to the shared vault");
 assert(contentJs.includes("madarwa-inline-restore"), "content.js injects the inline restored bubble");
 assert(contentJs.includes("antidelete.preindex"), "content.js requests the store pre-index");
+assert(contentJs.includes("antidelete.revokedIndex"), "content.js reconnects old vault entries to on-screen revoked rows");
 
 const backgroundJs = await readText("background.js");
 assert(backgroundJs.includes("MADARWA_WEBHOOK_DELIVER"), "background.js handles webhook delivery");
@@ -183,6 +192,13 @@ const privacyCss = await readText("privacy.css");
 assert(privacyCss.includes("data-madarwa-blur-preview"), "privacy.css gates blurring by body dataset");
 assert(privacyCss.includes("data-madarwa-hidden-presence"), "privacy.css supports presence hiding");
 assert(privacyCss.includes("madarwa-inline-restore"), "privacy.css styles the inline restored bubble");
+assert(privacyCss.includes('data-madarwa-el="contact-name"'), "privacy.css blurs tagged contact names");
+assert(privacyCss.includes('data-madarwa-el="phone-number"'), "privacy.css blurs tagged phone numbers");
+assert(privacyCss.includes('data-madarwa-el="message-text"'), "privacy.css blurs tagged message text");
+assert(privacyCss.includes('data-madarwa-el="media-box"'), "privacy.css blurs tagged media boxes");
+assert(privacyCss.includes("data-madarwa-blur-phones"), "privacy.css supports the phone-number toggle");
+assert(privacyCss.includes("filter: blur(0px) !important"), "privacy.css reveals only the hovered element");
+assert(privacyCss.includes("madarwa-lightbox"), "privacy.css styles the media lightbox");
 
 const popupHtml = await readText("popup.html");
 const scriptSources = [...popupHtml.matchAll(/<script[^>]*\ssrc=["']([^"']+)["']/gi)].map((match) => match[1]);
