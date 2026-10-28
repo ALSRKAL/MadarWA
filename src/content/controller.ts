@@ -474,6 +474,11 @@ export class ContentController {
         sendResponse({ ok: true });
         return false;
       }
+      if (type === RUNTIME_MESSAGES.status) {
+        const state = useAppStore.getState();
+        sendResponse({ ok: true, bridgeConnected: state.bridgeConnected, engine: state.engine });
+        return false;
+      }
       return false;
     };
     chrome.runtime.onMessage.addListener(handler);

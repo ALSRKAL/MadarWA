@@ -1,0 +1,109 @@
+/*
+ * MadarWA privacy layer.
+ * Injected by the manifest into WhatsApp Web. Every rule is gated by a body
+ * data-attribute that the ISOLATED content script toggles, so enabling or
+ * disabling a blur takes effect instantly without touching WhatsApp's React
+ * tree. Hover reveals the hovered element only.
+ */
+
+:root {
+  --madarwa-blur: 5px;
+}
+
+body[data-madarwa-blur-preview="1"] #pane-side [data-testid="cell-frame-secondary"],
+body[data-madarwa-blur-preview="1"] #pane-side [data-testid="cell-frame-secondary"] *,
+body[data-madarwa-blur-preview="1"] #pane-side [role="listitem"] > div > div:last-child span[dir="auto"] {
+  filter: blur(4px);
+  transition: filter 160ms ease;
+}
+
+body[data-madarwa-blur-preview="1"] #pane-side [role="listitem"]:hover [data-testid="cell-frame-secondary"],
+body[data-madarwa-blur-preview="1"] #pane-side [role="listitem"]:hover [data-testid="cell-frame-secondary"] *,
+body[data-madarwa-blur-preview="1"] #pane-side [role="listitem"]:hover > div > div:last-child span[dir="auto"] {
+  filter: none;
+}
+
+body[data-madarwa-blur-names="1"] #pane-side [data-testid="cell-frame-title"],
+body[data-madarwa-blur-names="1"] #pane-side [data-testid="cell-frame-title"] *,
+body[data-madarwa-blur-names="1"] #main header [data-testid="conversation-info-header-chat-title"],
+body[data-madarwa-blur-names="1"] #main header span[title],
+body[data-madarwa-blur-names="1"] #main header span[dir="auto"] {
+  filter: blur(4px);
+  transition: filter 160ms ease;
+}
+
+body[data-madarwa-blur-names="1"] #pane-side [role="listitem"]:hover [data-testid="cell-frame-title"],
+body[data-madarwa-blur-names="1"] #pane-side [role="listitem"]:hover [data-testid="cell-frame-title"] *,
+body[data-madarwa-blur-names="1"] #main header:hover span[title],
+body[data-madarwa-blur-names="1"] #main header:hover span[dir="auto"] {
+  filter: none;
+}
+
+body[data-madarwa-blur-avatars="1"] #pane-side img,
+body[data-madarwa-blur-avatars="1"] #pane-side [data-testid="avatar"],
+body[data-madarwa-blur-avatars="1"] #pane-side [data-testid="avatar"] img,
+body[data-madarwa-blur-avatars="1"] #pane-side [role="img"],
+body[data-madarwa-blur-avatars="1"] #pane-side div[style*="background-image"],
+body[data-madarwa-blur-avatars="1"] #main header img,
+body[data-madarwa-blur-avatars="1"] #main header [data-testid="avatar"],
+body[data-madarwa-blur-avatars="1"] #main header div[style*="background-image"] {
+  filter: blur(5px);
+  transition: filter 160ms ease;
+}
+
+body[data-madarwa-blur-avatars="1"] #pane-side [role="listitem"]:hover img,
+body[data-madarwa-blur-avatars="1"] #pane-side [role="listitem"]:hover [data-testid="avatar"],
+body[data-madarwa-blur-avatars="1"] #pane-side [role="listitem"]:hover div[style*="background-image"],
+body[data-madarwa-blur-avatars="1"] #main header:hover img,
+body[data-madarwa-blur-avatars="1"] #main header:hover [data-testid="avatar"],
+body[data-madarwa-blur-avatars="1"] #main header:hover div[style*="background-image"] {
+  filter: none;
+}
+
+body[data-madarwa-blur-messages="1"] #main [data-testid="conversation-panel-messages"] [data-testid="msg-container"],
+body[data-madarwa-blur-messages="1"] #main div.message-in,
+body[data-madarwa-blur-messages="1"] #main div.message-out,
+body[data-madarwa-blur-messages="1"] #main [data-testid="msg-container"] {
+  filter: blur(var(--madarwa-blur));
+  transition: filter 160ms ease;
+}
+
+body[data-madarwa-blur-messages="1"] #main [data-testid="conversation-panel-messages"] [data-testid="msg-container"]:hover,
+body[data-madarwa-blur-messages="1"] #main div.message-in:hover,
+body[data-madarwa-blur-messages="1"] #main div.message-out:hover,
+body[data-madarwa-blur-messages="1"] #main [data-testid="msg-container"]:hover {
+  filter: none;
+}
+
+body[data-madarwa-blur-media="1"] #main [data-testid="conversation-panel-messages"] img,
+body[data-madarwa-blur-media="1"] #main [data-testid="conversation-panel-messages"] video,
+body[data-madarwa-blur-media="1"] #main [data-testid="media-url"],
+body[data-madarwa-blur-media="1"] #main [data-testid="sticker"],
+body[data-madarwa-blur-media="1"] #main canvas {
+  filter: blur(7px);
+  transition: filter 160ms ease;
+}
+
+body[data-madarwa-blur-media="1"] #main [data-testid="conversation-panel-messages"] img:hover,
+body[data-madarwa-blur-media="1"] #main [data-testid="conversation-panel-messages"] video:hover,
+body[data-madarwa-blur-media="1"] #main [data-testid="media-url"]:hover,
+body[data-madarwa-blur-media="1"] #main [data-testid="sticker"]:hover {
+  filter: none;
+}
+
+body[data-madarwa-hide-presence="1"] [data-madarwa-hidden-presence="1"],
+body[data-madarwa-hide-typing="1"] [data-madarwa-hidden-presence="1"] {
+  visibility: hidden !important;
+}
+
+/* The extension UI lives in a Shadow DOM; these rules can never reach it. */
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-madarwa-blur-preview="1"] *,
+  body[data-madarwa-blur-names="1"] *,
+  body[data-madarwa-blur-avatars="1"] *,
+  body[data-madarwa-blur-messages="1"] *,
+  body[data-madarwa-blur-media="1"] * {
+    transition: none !important;
+  }
+}

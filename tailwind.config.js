@@ -1,7 +1,6 @@
-import type { Config } from "tailwindcss";
-
-const config: Config = {
-  content: ["./src/content/**/*.{ts,tsx}", "./src/popup/**/*.{ts,tsx}", "./index.html"],
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./src/content/**/*.{ts,tsx}", "./src/popup/**/*.{ts,tsx}", "./popup.html"],
   darkMode: ["class", '[data-madarwa-theme="dark"]'],
   theme: {
     extend: {
@@ -21,15 +20,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: [
-          "Cairo",
-          "Tajawal",
-          "IBM Plex Sans Arabic",
-          "Segoe UI",
-          "Tahoma",
-          "system-ui",
-          "sans-serif",
-        ],
+        sans: ["Cairo", "Tajawal", "IBM Plex Sans Arabic", "Segoe UI", "Tahoma", "system-ui", "sans-serif"],
       },
       boxShadow: {
         panel: "0 24px 70px -20px rgba(2, 44, 34, 0.55)",
@@ -64,5 +55,3 @@ const config: Config = {
   },
   plugins: [],
 };
-
-export default config;

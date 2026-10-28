@@ -1,0 +1,44 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const outDir = resolve(root, "icons");
+
+const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="22%" r="55%">
+      <stop offset="0" stop-color="#d1fae5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#d1fae5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="3" y="3" width="122" height="122" rx="31" fill="url(#g)"/>
+  <rect x="3" y="3" width="122" height="122" rx="31" fill="url(#glow)"/>
+  <rect x="3" y="3" width="122" height="122" rx="31" fill="none" stroke="#a7f3d0" stroke-opacity="0.35" stroke-width="2"/>
+  <ellipse cx="64" cy="64" rx="43" ry="19" fill="none" stroke="#ffffff" stroke-width="7" stroke-opacity="0.94" transform="rotate(-28 64 64)"/>
+  <circle cx="64" cy="64" r="14" fill="#ffffff"/>
+  <circle cx="101" cy="39" r="8" fill="#a7f3d0"/>
+</svg>`;
+
+const sizes = [16, 32, 48, 128];
+
+await mkdir(outDir, { recursive: true });
+
+for (const size of sizes) {
+  const file = resolve(outDir, `icon-${size}.png`);
+  await sharp(Buffer.from(svg)).resize(size, size, { fit: "cover" }).png().toFile(file);
+  const meta = await sharp(file).metadata();
+  if (meta.width !== size || meta.height !== size) {
+    throw new Error(`Icon ${size} rendered as ${meta.width}x${meta.height}`);
+  }
+  console.log(`icon-${size}.png  ${meta.width}x${meta.height}`);
+}
+
+await writeFile(resolve(outDir, "icon.svg"), svg.trim(), "utf8");
+console.log("Icons generated.");

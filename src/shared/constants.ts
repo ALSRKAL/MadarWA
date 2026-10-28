@@ -20,6 +20,7 @@ export const RUNTIME_MESSAGES = {
   ping: "MADARWA_PING",
   openPanel: "MADARWA_OPEN_PANEL",
   lockPanel: "MADARWA_LOCK_PANEL",
+  status: "MADARWA_STATUS",
 } as const;
 
 export const BRIDGE = {
