@@ -90,9 +90,10 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
 
 ## Best-effort boundaries
 
-- Delivery-receipt suppression patches WhatsApp Web's own native receipt jobs. It cannot control the
-  linked phone, so the UI labels the option “best effort” and states that the phone must also be
-  offline for a guaranteed single tick.
+- One-tick suppression patches every WhatsApp Web receipt path (delivery, read, read-self,
+  inactive, played, sender and the high-level/played jobs) while keeping local unread state
+  updates. It cannot control the linked phone, so the UI labels the option “best effort” and states
+  that the phone must also be offline for a guaranteed single tick.
 
 ## Slop audit (self-check)
 
