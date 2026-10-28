@@ -7,7 +7,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-10b981?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-124%20passing-10b981?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-128%20passing-10b981?style=flat-square" />
   <a href="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
@@ -49,7 +49,7 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 
 | الوحدة | ما تفعله فعلياً |
 |---|---|
-| **الخصوصية والتمويه** | تمويه دقيق لكل عنصر على حدة: أسماء، أرقام هواتف، معاينات، صور شخصية، نص الرسالة، ووسائط. موسوم عبر `data-madarwa-el` من `privacyTagger` ثم يُكشف **العنصر الذي يمر عليه المؤشر فقط** خلال 160ms. إخفاء الحالة والكتابة، وإيقاف إيصالات القراءة والاستماع عبر `WPP.privacy` الحقيقي. |
+| **الخصوصية والتمويه** | تمويه دقيق لكل عنصر على حدة: أسماء، أرقام هواتف، معاينات، صور شخصية، نص الرسالة، ووسائط. موسوم عبر `data-madarwa-el` من `privacyTagger` ثم يُكشف **العنصر الذي يمر عليه المؤشر فقط** خلال 160ms. إخفاء الحالة والكتابة، وإيقاف إيصالات القراءة والاستماع عبر `WPP.privacy` الحقيقي، وخيار «صح واحد» يحجب إيصالات التسليم التي يرسلها واتساب ويب (أفضل جهد). |
 | **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
 | **خزنة الرسائل المحذوفة** | فهرسة مسبقة لآخر رسائل `MsgStore`، ومراقبة `add` و`change:type` و`chat.msg_revoke`، مع حل متسلسل لمفتاح الرسالة الأصلي. تنزيل استباقي للوسائط المفكوكة عبر `WPP.chat.downloadMedia` قبل الحذف (≤25MB) وتخزينها في IndexedDB (`madarwa_media_vault`) بحد LRU 150. تُعاد الرسالة المحذوفة **داخل فقاعة واتساب** كزر تفاعلي: نص + نسخ + أوقات، صورة مع Lightbox وتنزيل، فيديو/صوت قابل للتشغيل، ومستند بتنزيله. |
 | **الإرسال الجماعي الذكي** | مسار من 3 خطوات (أرقام ← رسالة ← إرسال). لصق أرقام أو رفع CSV/XLSX. تطبيع دولي، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي ودفعات وراحة، إيقاف/استئناف/إيقاف نهائي، سجل مباشر وتقرير CSV. |
@@ -158,16 +158,16 @@ npm run verify
 | `npm install` | تثبيت الاعتماديات |
 | `npm run dev` | مراقبة `src/`, `public/`, `icons/`, `popup.html` وإعادة بناء `dist/` (بدون HMR؛ أعد تحميل الإضافة/الصفحة) |
 | `npm run typecheck` | `tsc --noEmit` — صفر أخطاء |
-| `npm test` | 124 اختبار Vitest |
+| `npm test` | 128 اختبار Vitest |
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
-| `npm run verify` | 86 فحصاً هيكلياً على `dist/` |
+| `npm run verify` | 91 فحصاً هيكلياً على `dist/` |
 | `npm run icons` | إعادة توليد أيقونات PNG 16/32/48/128 |
 | `npm run clean` | حذف `dist/` |
 
 ### الاختبارات والتحقق
 
-**124 اختباراً** في 16 ملفاً:
+**128 اختباراً** في 17 ملفاً:
 
 | الاختبار | العدد | التغطية |
 |---|---:|---|
@@ -187,6 +187,7 @@ npm run verify
 | `ui-smoke.test.tsx` | 2 | تركيب اللوحة وعرض التبويبات الستة، والكشف التدريجي في كل تبويب |
 | `media-vault.test.ts` | 10 | حفظ/استرجاع الصورة والفيديو والصوت بالمفتاحين، LRU حسب آخر وصول، تطبيع base64 الخام |
 | `privacy-tagger.test.ts` | 9 | وسم الأسماء/الأرقام/المعاينات/الصور/الرسائل/الوسائط، كشف التمرير، حارس النقر، قواعد CSS |
+| `receipts.test.ts` | 4 | حجب إيصالات التسليم الأصلية، تمرير إيصالات القراءة، الاستعادة عند الإيقاف، تكامل إعدادات الخصوصية |
 
 `node scripts/verify-build.mjs` يتحقق من:
 
@@ -198,7 +199,7 @@ npm run verify
 - احتواء الحزم على نقاط التكامل الحقيقية: `chat.new_message`، `chat.msg_revoke`، `sendTextMessage`، Webhook، إلخ.
 - عدم وجود `node_modules` داخل `dist/`.
 
-**نتيجة البوابة الحالية:** `typecheck` ✅ · `124/124 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**نتيجة البوابة الحالية:** `typecheck` ✅ · `128/128 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 153 على حساب واتساب مسجّل. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2`، واتصال محرك MAIN والجسر (`live`)، وتركيب الواجهة. أُرسلت أربع رسائل تجريبية عبر `WPP.emit` (نص، صورة، فيديو WebM، صورة بمعاينة فقط) ثم أُلغيت: ظهرت أربع فقاعات مستعادة بجانب «تم حذف هذه الرسالة»، والتوسيع أظهر النص والأوقات وزر النسخ؛ صورة PNG كاملة مع Lightbox وتكبير وتنزيل؛ فيديو WebM قابل للتشغيل مع تنزيل؛ ومعاينة `data:image/jpeg;base64,...` مع ملاحظة «معاينة فقط». اختُبرت الخزنة الحقيقية: 5 مرشحات (الكل/نصوص/صور/فيديو/صوتيات) وتنزيل `deleted-photo.png` من معاينة الوسائط. عند تفعيل «وضع الخصوصية الكامل» وُسمت عناصر واتساب الحقيقية (اسم/رقم/معاينة/صورة/نص/وسائط)، وتمرير المؤشر على اسم أزال التمويه عنه فقط (`blur(0px)`) بينما بقي الاسم الآخر `blur(4px)` والرسالة `blur(5px)`. كما اختُبر مسار الإلغاء الحقيقي `MsgStore change:type`: صف واتساب الذي يحمل `data-id` مجرّداً (32 حرفاً) استقبل الفقاعة والنص المستعاد، واختُبر ربط سجل خزنة قديم بصف إلغاء ظاهر بعد إعادة التحميل عبر `antidelete.revokedIndex`. الرسائل التي حُذفت قبل التقاطها لا يمكن إعادة بنائها لأن واتساب لا يحتفظ بنصها الأصلي.
 
@@ -244,6 +245,7 @@ npm run verify
 - الخزنة تحفظ حتى 1000 رسالة محذوفة (قابل للتغيير في الكود)، وكاش الرسائل حتى 3000.
 - الوسائط: سقف 25MB لكل ملف، والتقاط تلقائي لأحدث 12 وسيطاً خلال 24 ساعة عند تحميل الصفحة، مع LRU لأحدث 150 ملفاً في IndexedDB. الوسائط الأقدم تبقى كمعاينة فقط.
 - الاستعادة داخل الفقاعة تعمل للرسائل التي التُقطت أثناء تشغيل الإضافة أو ضمن آخر 500 رسالة عند التحميل. الرسائل المحذوفة قبل التثبيت أو قبل التقاطها لا يمكن استرجاع نصها.
+- «صح واحد» يحجب إيصالات التسليم التي يرسلها **واتساب ويب** فقط. إذا كان هاتفك متصلاً بالإنترنت فسيُرسل هاتفك إيصال التسليم أيضاً وقد يظهر صحّان. لضمان صح واحد، أوقف بيانات الهاتف أو أغلق واتساب عليه أثناء الاستخدام. الميزة أفضل جهد وقد يعيد واتساب المحاولة أو تختلف حسب إصداره.
 - مزامنة LID → رقم هاتف تعتمد على واجهة wa-js وقد تفشل لبعض الحسابات.
 - الإرسال الجماعي قد يعرّض الحساب لقيود واتساب؛ استخدم أرقام اختبار، تأخيرات عالية، ورسائل غير مزعجة.
 - لا يمكن ضمان عمل الإضافة على إصدارات واتساب المستقبلية أو المتصفحات غير Chromium.
@@ -300,7 +302,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 124 Vitest tests
+├── tests/                        # 128 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
@@ -347,7 +349,7 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 
 | Module | What it actually does |
 |---|---|
-| **Privacy & stealth** | Surgical per-element blurring for names, phone numbers, previews, avatars, message text and media. `data-madarwa-el` tags from `privacyTagger` let CSS reveal **only the hovered item** in 160ms. Presence/typing hiding and real read/played-receipt controls through `WPP.privacy`. |
+| **Privacy & stealth** | Surgical per-element blurring for names, phone numbers, previews, avatars, message text and media. `data-madarwa-el` tags from `privacyTagger` let CSS reveal **only the hovered item** in 160ms. Presence/typing hiding, real read/played-receipt controls through `WPP.privacy`, and a best-effort “one tick” option that patches WhatsApp Web's native delivery-receipt jobs. |
 | **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
 | **Anti-delete vault** | Pre-indexes the latest `MsgStore` messages, listens to `add`, `change:type` and `chat.msg_revoke`, and resolves the original key through cascading fallbacks. Proactively downloads decrypted media with `WPP.chat.downloadMedia` before deletion (≤25MB) into IndexedDB (`madarwa_media_vault`, LRU 150). Restores an **interactive pill inside the WhatsApp bubble**: text + copy + timestamps, photo with lightbox/download, playable video/voice note, and document download. |
 | **Smart broadcaster** | Three-step flow (numbers → message → send). Paste numbers or upload CSV/XLSX. International sanitizer, pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter and batch cooldowns, start/pause/resume/stop, live logs and CSV report. |
@@ -454,16 +456,16 @@ npm run verify
 | `npm install` | Install dependencies |
 | `npm run dev` | Watch `src/`, `public/`, `icons/`, `popup.html` and rebuild `dist/` (no HMR; reload extension/page) |
 | `npm run typecheck` | `tsc --noEmit` — zero errors |
-| `npm test` | 124 Vitest tests |
+| `npm test` | 128 Vitest tests |
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
-| `npm run verify` | 86 structural assertions on `dist/` |
+| `npm run verify` | 91 structural assertions on `dist/` |
 | `npm run icons` | Regenerate 16/32/48/128 PNG icons |
 | `npm run clean` | Remove `dist/` |
 
 ### Tests & verification
 
-**124 tests** across 16 files:
+**128 tests** across 17 files:
 
 | Suite | Count | Coverage |
 |---|---:|---|
@@ -483,6 +485,7 @@ npm run verify
 | `ui-smoke.test.tsx` | 2 | Mounts all six tabs and verifies progressive disclosure in every tab |
 | `media-vault.test.ts` | 10 | Save/retrieve image, video and voice blobs by both keys, access-based LRU, raw base64 normalization |
 | `privacy-tagger.test.ts` | 9 | Tags names/phones/previews/avatars/messages/media, hover reveal, click guard, CSS selectors |
+| `receipts.test.ts` | 4 | Blocks native delivery receipts, passes read receipts through, restores originals, privacy-settings integration |
 
 `node scripts/verify-build.mjs` asserts:
 
@@ -494,7 +497,7 @@ npm run verify
 - Bundles contain the real integration points (`chat.new_message`, `chat.msg_revoke`, `sendTextMessage`, webhooks, etc.).
 - No `node_modules` inside `dist/`.
 
-**Current gate:** `typecheck` ✅ · `124/124 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**Current gate:** `typecheck` ✅ · `128/128 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **Real browser verification:** `dist/` was loaded as an unpacked extension in Chromium 153 against a signed-in WhatsApp account. Confirmed: local `@wppconnect/wa-js 4.7.2`, MAIN engine + bridge (`live`), and the Shadow DOM UI. Four synthetic messages were emitted through `WPP.emit` (text, photo, WebM video, preview-only photo) and then revoked: four restored pills appeared next to “This message was deleted”; expanding showed the text, timestamps and copy button; the full PNG opened a lightbox with zoom/download; the WebM played inline with a download; the preview-only photo rendered a normalized `data:image/jpeg;base64,...` with the preview-only note. The real vault was checked with five filters (all/text/photos/videos/audio) and `deleted-photo.png` downloaded from the media preview. With **Full Stealth Mode**, real WhatsApp elements were tagged (name/phone/preview/avatar/message/media); hovering one name removed its blur only (`blur(0px)`) while the other name stayed `blur(4px)` and the message `blur(5px)`. The real `MsgStore change:type` revoke path was also exercised: a WhatsApp row whose `data-id` is the bare 32-char revoke stanza received the pill and restored text, and an old vault entry was reconnected to an on-screen revoked row after reload through `antidelete.revokedIndex`. Messages deleted before they were captured cannot be reconstructed because WhatsApp does not retain their original text.
 
@@ -594,7 +597,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 124 Vitest tests
+├── tests/                        # 128 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json

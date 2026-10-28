@@ -88,6 +88,12 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
    the screen.
 3. **Native launcher** with live/unread state that belongs in WhatsApp's own header.
 
+## Best-effort boundaries
+
+- Delivery-receipt suppression patches WhatsApp Web's own native receipt jobs. It cannot control the
+  linked phone, so the UI labels the option “best effort” and states that the phone must also be
+  offline for a guaranteed single tick.
+
 ## Slop audit (self-check)
 
 - No emoji in UI; all iconography is Lucide with a single stroke.
