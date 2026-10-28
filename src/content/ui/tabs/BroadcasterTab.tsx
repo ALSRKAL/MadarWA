@@ -456,10 +456,10 @@ export function BroadcasterTab() {
         </div>
         <div className="mt-1">
           <Toggle
-            checked={settings.broadcaster.validateNumbers}
-            onChange={(value) => patchBroadcaster({ validateNumbers: value })}
-            label={t("broadcaster.validateNumbers")}
-            hint={t("broadcaster.validateNumbersHint")}
+            checked={!settings.broadcaster.validateNumbers}
+            onChange={(value) => patchBroadcaster({ validateNumbers: !value })}
+            label={t("broadcaster.directSend")}
+            hint={t("broadcaster.directSendHint")}
             disabled={busy}
           />
         </div>

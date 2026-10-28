@@ -1,5 +1,5 @@
 import type { ContactRow, GroupParticipantRow, GroupSummary } from "../../shared/types";
-import { phoneFromChatId, isGroupChatId, isUserChatId } from "../../shared/utils/phone";
+import { formatPhone, isGroupChatId, isUserChatId, phoneFromChatId } from "../../shared/utils/phone";
 import {
   chatDisplayName,
   groupParticipantsCount,
@@ -13,7 +13,22 @@ import {
 
 function contactName(contact: WppContact | undefined): string {
   if (!contact) return "";
-  return String(contact.name ?? contact.pushname ?? contact.shortName ?? contact.formattedName ?? "");
+  return String(contact.name ?? contact.pushname ?? contact.shortName ?? contact.formattedName ?? "").trim();
+}
+
+/**
+ * LID accounts only expose a numeric LID unless wa-js can resolve the PN.
+ * Never present that LID as an international phone number.
+ */
+async function resolveDisplayPhone(wpp: WppApi, id: string): Promise<string> {
+  const raw = phoneFromChatId(id);
+  if (!id.endsWith("@lid")) return raw;
+  const resolved = await resolvePhone(wpp, id);
+  return resolved && resolved !== raw ? resolved : "";
+}
+
+function displayName(contact: WppContact | undefined, phone: string, id: string): string {
+  return contactName(contact) || (phone ? formatPhone(phone) : "") || id;
 }
 
 export async function listGroups(wpp: WppApi): Promise<GroupSummary[]> {
@@ -24,7 +39,7 @@ export async function listGroups(wpp: WppApi): Promise<GroupSummary[]> {
       const id = widToId(chat.id);
       return {
         id,
-        name: chat.name || chat.formattedTitle || chat.groupMetadata?.subject || id,
+        name: chat.name || chat.formattedTitle || chat.subject || chat.contact?.name || chat.groupMetadata?.subject || id,
         participantsCount: groupParticipantsCount(chat),
       };
     })
@@ -45,11 +60,12 @@ export async function listGroupParticipants(wpp: WppApi, groupId: string): Promi
     } catch {
       contact = undefined;
     }
-    const phone = await resolvePhone(wpp, id);
+    const phone = await resolveDisplayPhone(wpp, id);
     const row: GroupParticipantRow = {
       id,
-      phone: phone || phoneFromChatId(id),
-      name: contactName(contact),
+      phone,
+      formattedPhone: phone ? formatPhone(phone) : "",
+      name: displayName(contact, phone, id),
       isMyContact: Boolean(contact?.isMyContact),
       isAdmin: Boolean(participant.isAdmin || participant.isSuperAdmin),
       isSuperAdmin: Boolean(participant.isSuperAdmin),
@@ -70,13 +86,13 @@ export async function listContacts(wpp: WppApi, onlyMyContacts: boolean): Promis
   for (const contact of contacts) {
     const id = widToId(contact.id);
     if (!id || !isUserChatId(id) || seen.has(id)) continue;
-    const phone = id.endsWith("@lid") ? await resolvePhone(wpp, id) : phoneFromChatId(id) || (await resolvePhone(wpp, id));
-    if (!phone) continue;
+    const phone = await resolveDisplayPhone(wpp, id);
     seen.add(id);
     rows.push({
       id,
       phone,
-      name: contactName(contact),
+      formattedPhone: phone ? formatPhone(phone) : "",
+      name: displayName(contact, phone, id),
       isMyContact: Boolean(contact.isMyContact ?? onlyMyContacts),
     });
   }
@@ -93,14 +109,14 @@ export async function listChats(wpp: WppApi): Promise<ContactRow[]> {
     const id = widToId(chat.id);
     if (!id || !isUserChatId(id) || isGroupChatId(id) || seen.has(id)) continue;
     seen.add(id);
-    let phone = id.endsWith("@lid") ? "" : phoneFromChatId(id);
-    if (!phone) phone = await resolvePhone(wpp, id);
-    if (!phone) continue;
+    const phone = await resolveDisplayPhone(wpp, id);
+    const name = String(chat.name || chat.formattedTitle || chat.contact?.name || "").trim();
     rows.push({
       id,
       phone,
-      name: chat.name || chat.formattedTitle || "",
-      isMyContact: false,
+      formattedPhone: phone ? formatPhone(phone) : "",
+      name: name || (phone ? formatPhone(phone) : id),
+      isMyContact: Boolean(chat.contact?.name),
     });
   }
 

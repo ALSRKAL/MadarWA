@@ -10,6 +10,7 @@ export interface AutoReplyInput {
   text: string;
   isGroup: boolean;
   phone: string;
+  fromMe?: boolean;
 }
 
 export interface AutoReplyOutcome {
@@ -48,6 +49,7 @@ export class AutoReplyController {
 
   async maybeReply(wpp: WppApi, input: AutoReplyInput): Promise<AutoReplyOutcome | null> {
     if (!this.config.enabled) return null;
+    if (input.fromMe) return null;
     const text = String(input.text ?? "").trim();
     if (!text || text.length > 4096) return null;
 

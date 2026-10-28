@@ -137,6 +137,7 @@ export interface GroupSummary {
 export interface ContactRow {
   id: string;
   phone: string;
+  formattedPhone: string;
   name: string;
   isMyContact: boolean;
 }

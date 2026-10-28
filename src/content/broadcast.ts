@@ -6,7 +6,7 @@ import type {
   CampaignRecipient,
   RecipientStatus,
 } from "../shared/types";
-import { sanitizePhone } from "../shared/utils/phone";
+import { normalizeRecipientTarget } from "../shared/utils/phone";
 import { BroadcastQueue, type QueueItemResult } from "../shared/utils/queue";
 import { personalizeMessage } from "../shared/utils/template";
 import { emptyCampaign, useAppStore } from "./store";
@@ -57,16 +57,16 @@ export function parseManualRecipients(text: string, defaultCountryCode = ""): {
     const name = (parts[1] ?? "").trim();
     const custom1 = (parts[2] ?? "").trim();
     const custom2 = (parts[3] ?? "").trim();
-    const sanitized = sanitizePhone(phoneRaw, defaultCountryCode);
+    const sanitized = normalizeRecipientTarget(phoneRaw, defaultCountryCode);
     if (!sanitized.valid) {
       invalid += 1;
       continue;
     }
-    if (seen.has(sanitized.digits)) {
+    if (seen.has(sanitized.chatId)) {
       duplicates += 1;
       continue;
     }
-    seen.add(sanitized.digits);
+    seen.add(sanitized.chatId);
     recipients.push({
       phone: sanitized.digits,
       chatId: sanitized.chatId,

@@ -1,4 +1,4 @@
-import { sanitizePhone } from "./phone";
+import { normalizeRecipientTarget } from "./phone";
 
 export interface ParsedCsv {
   headers: string[];
@@ -165,13 +165,13 @@ export function recipientsFromRows(
   rows.slice(step).forEach((row) => {
     const raw = (row[phoneColumn] ?? "").trim();
     if (!raw) return;
-    const sanitized = sanitizePhone(raw, defaultCountryCode);
+    const sanitized = normalizeRecipientTarget(raw, defaultCountryCode);
     if (!sanitized.valid) {
       invalid.push({ value: raw, reason: sanitized.reason });
       return;
     }
-    if (seen.has(sanitized.digits)) return;
-    seen.add(sanitized.digits);
+    if (seen.has(sanitized.chatId)) return;
+    seen.add(sanitized.chatId);
 
     recipients.push({
       phone: sanitized.digits,

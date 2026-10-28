@@ -295,6 +295,7 @@ class MadarEngine {
           text: snapshot.text,
           isGroup: snapshot.isGroup,
           phone: snapshot.sender,
+          fromMe: snapshot.fromMe,
         })
         .then((outcome) => {
           if (outcome) this.bridge.emit("autoreply.sent", outcome);
@@ -484,6 +485,7 @@ class MadarEngine {
           caption,
           filename,
           mimetype,
+          createChat: true,
         });
         return serializeSend(result);
       }

@@ -42,9 +42,11 @@ export interface WppChat {
   id?: WppWid;
   name?: string;
   formattedTitle?: string;
+  subject?: string;
   isGroup?: boolean;
   isUser?: boolean;
   unreadCount?: number;
+  contact?: { name?: string; pushname?: string };
   groupMetadata?: {
     subject?: string;
     participants?: { length?: number } | unknown[];
@@ -102,6 +104,7 @@ export interface WppFileOptions {
   isViewOnce?: boolean;
   isPtt?: boolean;
   isGif?: boolean;
+  createChat?: boolean;
 }
 
 export interface WppApi {
@@ -326,7 +329,7 @@ export function engineInfo(wpp: WppApi | null): EngineInfo {
 export function chatDisplayName(wpp: WppApi, chatId: string): string {
   try {
     const chat = wpp.chat.get(chatId);
-    return chat?.name || chat?.formattedTitle || chat?.groupMetadata?.subject || chatId;
+    return chat?.name || chat?.formattedTitle || chat?.subject || chat?.groupMetadata?.subject || chat?.contact?.name || chatId;
   } catch {
     return chatId;
   }

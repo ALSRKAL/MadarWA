@@ -149,12 +149,12 @@ export function ExporterTab() {
     }
     const withGroup = source === "groupMembers";
     const headers = withGroup
-      ? ["phone", "name", "group", "is_admin", "is_super_admin", "is_my_contact", "chat_id"]
-      : ["phone", "name", "is_my_contact", "chat_id"];
+      ? ["phone", "formatted_phone", "name", "group", "is_admin", "is_super_admin", "is_my_contact", "chat_id"]
+      : ["phone", "formatted_phone", "name", "is_my_contact", "chat_id"];
     const data = filtered.map((row) =>
       withGroup && isParticipant(row)
-        ? [row.phone, row.name, row.groupName, row.isAdmin ? "yes" : "no", row.isSuperAdmin ? "yes" : "no", row.isMyContact ? "yes" : "no", row.id]
-        : [row.phone, row.name, row.isMyContact ? "yes" : "no", row.id],
+        ? [row.phone, row.formattedPhone, row.name, row.groupName, row.isAdmin ? "yes" : "no", row.isSuperAdmin ? "yes" : "no", row.isMyContact ? "yes" : "no", row.id]
+        : [row.phone, row.formattedPhone, row.name, row.isMyContact ? "yes" : "no", row.id],
     );
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
     downloadText(`madarwa-${source}-${stamp}.csv`, toCsv(headers, data), "text/csv;charset=utf-8");
@@ -328,7 +328,7 @@ export function ExporterTab() {
                 >
                   <div className="min-w-0">
                     <p className="mw-code truncate text-[11px] font-semibold" dir="ltr">
-                      {row.phone}
+                      {row.formattedPhone || row.phone || row.id}
                     </p>
                     <p className="truncate text-[10px] text-wa-muted">
                       {row.name || t("common.unnamed")}

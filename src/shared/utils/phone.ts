@@ -101,6 +101,32 @@ export function normalizeChatId(raw: string, defaultCountryCode = ""): string {
   return toChatId(text, defaultCountryCode);
 }
 
+export interface RecipientTarget {
+  valid: boolean;
+  digits: string;
+  chatId: string;
+  reason: string;
+}
+
+/**
+ * Like sanitizePhone, but preserves a modern `@lid` identifier instead of
+ * flattening it into a phone-shaped `@c.us` JID.
+ */
+export function normalizeRecipientTarget(raw: string, defaultCountryCode = ""): RecipientTarget {
+  const text = String(raw ?? "").trim();
+  const lid = text.match(/^(\d{5,20})@lid$/i);
+  if (lid?.[1]) {
+    return { valid: true, digits: lid[1], chatId: `${lid[1]}@lid`, reason: "" };
+  }
+  const sanitized = sanitizePhone(text, defaultCountryCode);
+  return {
+    valid: sanitized.valid,
+    digits: sanitized.digits,
+    chatId: sanitized.chatId,
+    reason: sanitized.reason,
+  };
+}
+
 export function formatPhone(digits: string): string {
   const clean = String(digits ?? "").replace(/\D/g, "");
   if (!clean) return "";
