@@ -28,6 +28,7 @@ import type {
   MessageSnapshot,
   PrivacyGuardStatus,
   RevokedMessageEvent,
+  RevokedRowIndexEntry,
   WebhookLogEntry,
 } from "../shared/types";
 import { truncate, uid } from "../shared/format";
@@ -37,6 +38,7 @@ import { BroadcastManager } from "./broadcast";
 import { InlineRestorer } from "./inline-restore";
 import { LauncherManager } from "./launcher";
 import { applyPrivacyAttributes, detectTheme, PresenceScrubber, watchTheme } from "./privacy-runtime";
+import { PrivacyTagger } from "./privacyTagger";
 import { emptyCampaign, useAppStore } from "./store";
 
 function signature(settings: AppSettings): string {
@@ -88,9 +90,11 @@ export class ContentController {
   readonly bridge = new BridgeClient();
   readonly broadcast = new BroadcastManager(this.bridge);
   readonly scrubber = new PresenceScrubber();
+  readonly privacyTagger = new PrivacyTagger();
   readonly launcher = new LauncherManager();
   readonly inlineRestorer = new InlineRestorer({
     getLanguage: () => useAppStore.getState().settings.language,
+    getMode: () => useAppStore.getState().settings.antiDelete.inlineMode,
     onOpenVault: () => useAppStore.getState().openPanel("vault"),
   });
 
@@ -111,6 +115,7 @@ export class ContentController {
   private lastAutoReplyErrorAt = 0;
   private engineReady = false;
   private preindexRequested = false;
+  private revokedIndexBusy = false;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -125,6 +130,7 @@ export class ContentController {
     document.body?.setAttribute("data-madarwa-theme", initialTheme);
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
+    this.privacyTagger.setActive(settings.privacy);
 
     const [vault, webhookLog, rawCache, rawReport] = await Promise.all([
       loadVault(),
@@ -138,6 +144,7 @@ export class ContentController {
     this.trimCache(settings.antiDelete.maxCache);
     this.updateBadge(vault.length);
     this.inlineRestorer.setLanguage(settings.language);
+    this.inlineRestorer.setMode(settings.antiDelete.inlineMode);
     this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
     this.inlineRestorer.setRecords(vault);
 
@@ -223,7 +230,12 @@ export class ContentController {
       .catch(() => undefined);
 
     this.pingTimer = window.setInterval(() => {
-      if (this.bridge.isConnected()) void this.refreshEngineInfo(false);
+      if (this.bridge.isConnected()) {
+        void this.refreshEngineInfo(false);
+        // A chat can load new store models after the initial scan; refreshing
+        // the revoke index keeps already-visible deleted rows restorable.
+        void this.requestRevokedIndex();
+      }
     }, 6000);
   }
 
@@ -252,6 +264,7 @@ export class ContentController {
           this.resetPushSignatures();
           void this.pushConfig();
           void this.requestPreindex();
+          void this.requestRevokedIndex();
         }
         break;
       }
@@ -274,6 +287,7 @@ export class ContentController {
         this.resetPushSignatures();
         void this.pushConfig();
         void this.requestPreindex();
+        void this.requestRevokedIndex();
       }
     } catch {
       // Connection listeners handle availability; avoid noisy toasts.
@@ -290,7 +304,9 @@ export class ContentController {
     initI18n(settings.language);
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
+    this.privacyTagger.setActive(settings.privacy);
     this.inlineRestorer.setLanguage(settings.language);
+    this.inlineRestorer.setMode(settings.antiDelete.inlineMode);
     this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
     if (settings.antiDelete.enabled) void this.requestPreindex();
     if (!settings.pin.enabled) useAppStore.getState().setLocked(false);
@@ -383,6 +399,15 @@ export class ContentController {
       timestamp: event.timestamp,
       isGroup: event.isGroup,
       previewDataUrl: event.previewDataUrl,
+      caption: event.caption,
+      hasFullMedia: event.hasFullMedia,
+      mediaType: event.mediaType,
+      mimetype: event.mimetype,
+      filename: event.filename,
+      fileSize: event.fileSize,
+      duration: event.duration,
+      width: event.width,
+      height: event.height,
     };
     this.messageCache.set(event.id, cached);
     this.trimCache(settings.antiDelete.maxCache);
@@ -452,6 +477,15 @@ export class ContentController {
           timestamp: snapshot.timestamp,
           isGroup: snapshot.isGroup,
           previewDataUrl: snapshot.previewDataUrl,
+          caption: snapshot.caption,
+          hasFullMedia: snapshot.hasFullMedia,
+          mediaType: snapshot.mediaType,
+          mimetype: snapshot.mimetype,
+          filename: snapshot.filename,
+          fileSize: snapshot.fileSize,
+          duration: snapshot.duration,
+          width: snapshot.width,
+          height: snapshot.height,
         });
         changed = true;
       }
@@ -459,8 +493,26 @@ export class ContentController {
         this.trimCache(settings.antiDelete.maxCache);
         this.scheduleCacheFlush();
       }
+      void this.requestRevokedIndex();
     } catch {
       this.preindexRequested = false;
+    }
+  }
+
+  private async requestRevokedIndex(): Promise<void> {
+    if (this.revokedIndexBusy || !this.engineReady || !this.bridge.isConnected()) return;
+    this.revokedIndexBusy = true;
+    try {
+      const result = await this.bridge.request<{ rows?: RevokedRowIndexEntry[] }>(
+        BRIDGE_COMMANDS.revokedIndex,
+        {},
+        20_000,
+      );
+      this.inlineRestorer.setRevokeIndex(result.rows ?? []);
+    } catch {
+      // WhatsApp may be re-rendering; the next interval pass retries.
+    } finally {
+      this.revokedIndexBusy = false;
     }
   }
 
@@ -485,15 +537,26 @@ export class ContentController {
       chatName: original?.chatName || cached?.chatName || event.chatName,
       sender: original?.sender || event.originalSenderPhone || cached?.sender || event.author,
       senderName: original?.senderName || cached?.senderName || event.originalSenderName || event.senderName || "",
-      text: original?.text || cached?.text || "",
-      messageType: original?.messageType || cached?.messageType || "",
-      previewDataUrl: original?.previewDataUrl || cached?.previewDataUrl,
+      text: original?.text || cached?.text || event.originalText || "",
+      messageType: original?.messageType || cached?.messageType || event.mediaType || "",
+      previewDataUrl:
+        event.previewDataUrl || original?.previewDataUrl || cached?.previewDataUrl || "",
+      caption: event.caption || original?.caption || cached?.caption,
+      hasFullMedia: event.hasFullMedia ?? original?.hasFullMedia ?? cached?.hasFullMedia,
+      mediaType: event.mediaType || original?.mediaType || cached?.mediaType,
+      mimetype: event.mimetype || original?.mimetype || cached?.mimetype,
+      filename: event.filename || original?.filename || cached?.filename,
+      fileSize: event.fileSize || original?.fileSize || cached?.fileSize,
+      duration: event.duration || original?.duration || cached?.duration,
+      width: event.width || original?.width || cached?.width,
+      height: event.height || original?.height || cached?.height,
       timestamp: original?.timestamp || cached?.timestamp || event.timestamp,
       isGroup: original?.isGroup ?? cached?.isGroup ?? event.isGroup,
       revokedAt: Date.now(),
       revokedBy: event.revokedBy,
       revokeType: event.revokeType,
       recoveredFromCache: Boolean(original || cached),
+      revokeMessageId: event.revokeMessageId,
     };
 
     this.messageCache.delete(event.refId);
@@ -756,6 +819,7 @@ export class ContentController {
     if (this.cacheFlushTimer) window.clearTimeout(this.cacheFlushTimer);
     if (this.campaignPersistTimer) window.clearTimeout(this.campaignPersistTimer);
     this.launcher.stop();
+    this.privacyTagger.stop();
     this.inlineRestorer.dispose();
     this.bridge.dispose();
     for (const cleanup of this.cleanups.splice(0)) {
