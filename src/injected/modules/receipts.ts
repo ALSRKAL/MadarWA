@@ -22,10 +22,22 @@ const DELIVERY_FUNCTIONS: ReadonlyArray<readonly [string, string]> = [
 
 const COMMON_MODULE = "WAWebSendReceiptJobCommon";
 
+const SAFE_RECEIPT_TYPES = new Set(["history-sync-completion", "server-error"]);
+
+const OPTIONAL_RECEIPT_MODULES: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ["WAWebSendPlayedReceiptJob", ["default"]],
+  ["WAWebSendReceiptJob", ["default", "sendReceipt", "sendReceipts"]],
+  ["WAWebHandleMsgSendReceipt", ["sendReceipt"]],
+];
+
 function asModule(value: unknown): ModuleExports | null {
   return value && (typeof value === "object" || typeof value === "function")
     ? (value as ModuleExports)
     : null;
+}
+
+function normalizeReceiptType(value: string): string {
+  return value.trim().toLowerCase().replace(/_/g, "-");
 }
 
 function receiptTypeOf(value: unknown, depth = 0): string {
@@ -41,7 +53,7 @@ function receiptTypeOf(value: unknown, depth = 0): string {
   const record = value as Record<string, unknown>;
   for (const key of ["receiptType", "type"]) {
     const raw = record[key];
-    if (typeof raw === "string" && raw) return raw.toLowerCase();
+    if (typeof raw === "string" && raw) return normalizeReceiptType(raw);
   }
   for (const key of ["receipt", "receipts", "messages", "items", "participant"]) {
     const type = receiptTypeOf(record[key], depth + 1);
@@ -50,8 +62,11 @@ function receiptTypeOf(value: unknown, depth = 0): string {
   return "";
 }
 
-function isDeliveryPayload(value: unknown, deliveryType: string): boolean {
-  return receiptTypeOf(value) === deliveryType;
+function shouldBlockAggregateReceipt(value: unknown): boolean {
+  const type = receiptTypeOf(value);
+  // Unknown payload shapes are blocked too: an unclassified receipt must not
+  // leak delivery/read state while single-tick mode is on.
+  return !type || !SAFE_RECEIPT_TYPES.has(type);
 }
 
 /**
@@ -106,17 +121,13 @@ export class DeliveryReceiptGuard {
     }
 
     const common = this.load(loadModule, COMMON_MODULE);
-    const receiptTypes = common && typeof common.RECEIPT_TYPE === "object"
-      ? (common.RECEIPT_TYPE as Record<string, unknown>)
-      : null;
-    const deliveryType = String(receiptTypes?.DELIVERY ?? "delivery").toLowerCase();
     if (common && typeof common.sendAggregateReceipts === "function") {
       const original = common.sendAggregateReceipts as AnyFunction;
       const filtered: AnyFunction = function (this: unknown, ...args: unknown[]) {
-        if (isDeliveryPayload(args[0], deliveryType)) return undefined;
+        if (shouldBlockAggregateReceipt(args[0])) return undefined;
         return original.apply(this, args);
       };
-      (filtered as AnyFunction & { __madarwa?: string }).__madarwa = "delivery-filter";
+      (filtered as AnyFunction & { __madarwa?: string }).__madarwa = "receipt-filter";
       if (this.patch(common, "sendAggregateReceipts", filtered)) {
         patched += 1;
         modules.push(`${COMMON_MODULE}.sendAggregateReceipts`);
@@ -125,6 +136,20 @@ export class DeliveryReceiptGuard {
       }
     } else {
       unsupported += 1;
+    }
+
+    // Optional jobs vary across WhatsApp builds. Patch every known send entry
+    // that exists; a missing optional module is not a failure.
+    for (const [moduleName, keys] of OPTIONAL_RECEIPT_MODULES) {
+      const module = this.load(loadModule, moduleName);
+      if (!module) continue;
+      for (const key of keys) {
+        if (typeof module[key] !== "function") continue;
+        if (this.patch(module, key, this.noop())) {
+          patched += 1;
+          modules.push(`${moduleName}.${key}`);
+        }
+      }
     }
 
     this.signature = signature;

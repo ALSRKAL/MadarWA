@@ -60,10 +60,9 @@ class ReceiptGuard {
       attempt(wpp.whatsapp?.functions, "markPlayed", async () => undefined);
     }
     if (flags.read) {
-      attempt(wpp.chat as unknown as Record<string, unknown>, "markIsRead", async (chatId) => ({
-        wid: chatId,
-        unreadCount: 0,
-      }));
+      attempt(wpp.chat as unknown as Record<string, unknown>, "markIsRead", async (chatId) =>
+        this.clearLocalUnread(wpp, String(chatId)),
+      );
       attempt(wpp.chat as unknown as Record<string, unknown>, "markMessageAsRead", async () => undefined);
       attempt(wpp.whatsapp?.functions, "markChatRead", async () => undefined);
     }
@@ -71,6 +70,23 @@ class ReceiptGuard {
     this.signature = signature;
     this.lastResult = { active: patched > 0, patched, unsupported };
     return this.lastResult;
+  }
+
+  /**
+   * Clears the browser's unread counter without calling WhatsApp's read
+   * receipt sender. The network receipt remains blocked by the guard.
+   */
+  private clearLocalUnread(wpp: WppApi, chatId: string): { wid: string; unreadCount: number } {
+    try {
+      const chat = wpp.chat.get(chatId);
+      const update = wpp.whatsapp?.functions?.updateUnreadCountMD;
+      if (chat && typeof update === "function") {
+        (update as (...args: unknown[]) => unknown)(chat, 0, false);
+      }
+    } catch {
+      // Local unread clearing is best effort; the network receipt stays blocked.
+    }
+    return { wid: chatId, unreadCount: 0 };
   }
 
   private patch(owner: Record<string, unknown>, key: string, replacement: (...args: unknown[]) => Promise<unknown>): boolean {

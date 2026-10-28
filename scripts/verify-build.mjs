@@ -183,7 +183,10 @@ assert(injectedJs.includes("downloadMedia"), "injected.js proactively downloads 
 assert(injectedJs.includes("madarwa_media_vault"), "injected.js writes captured media to the shared vault");
 assert(injectedJs.includes("WAWebSendDeliveryReceiptJob"), "injected.js locates the native delivery-receipt job");
 assert(injectedJs.includes("sendDeliveryReceiptsAfterDecryption"), "injected.js suppresses native delivery receipts");
-assert(injectedJs.includes("WAWebSendReceiptJobCommon"), "injected.js filters aggregate delivery receipts");
+assert(injectedJs.includes("WAWebSendReceiptJobCommon"), "injected.js filters aggregate receipts");
+assert(injectedJs.includes("receipt-filter") && injectedJs.includes("delivery-noop"), "injected.js marks every receipt patch");
+assert(injectedJs.includes("WAWebSendPlayedReceiptJob"), "injected.js suppresses played receipt jobs");
+assert(injectedJs.includes("updateUnreadCountMD"), "injected.js clears local unread state without a receipt");
 assert(contentJs.includes("madarwa-inline-restore"), "content.js injects the inline restored bubble");
 assert(contentJs.includes("antidelete.preindex"), "content.js requests the store pre-index");
 assert(contentJs.includes("antidelete.revokedIndex"), "content.js reconnects old vault entries to on-screen revoked rows");

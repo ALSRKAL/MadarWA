@@ -5,7 +5,14 @@ import type { WppApi } from "../src/injected/wpp";
 import { createDefaultSettings } from "../src/shared/defaults";
 
 function makeModules() {
-  const calls = { delivery: 0, offline: 0, aggregateDelivery: 0, aggregate: [] as unknown[] };
+  const calls = {
+    delivery: 0,
+    offline: 0,
+    aggregateDelivery: 0,
+    aggregate: [] as unknown[],
+    played: 0,
+    handle: 0,
+  };
   const delivery = {
     sendDeliveryReceiptsAfterDecryption: (_payload?: unknown) => {
       calls.delivery += 1;
@@ -57,17 +64,55 @@ describe("delivery receipt guard", () => {
     expect(calls.offline).toBe(0);
     expect(calls.aggregateDelivery).toBe(0);
 
-    common.sendAggregateReceipts({ receiptType: "delivery" });
-    common.sendAggregateReceipts({ type: "delivery" });
-    common.sendAggregateReceipts({ receipts: [{ type: "delivery" }] });
+    for (const type of ["delivery", "read", "read-self", "read_self", "inactive", "played", "played-self", "sender"]) {
+      common.sendAggregateReceipts({ receiptType: type });
+      common.sendAggregateReceipts({ type });
+      common.sendAggregateReceipts({ receipts: [{ type }] });
+    }
+    common.sendAggregateReceipts({});
     expect(calls.aggregate).toHaveLength(0);
 
-    common.sendAggregateReceipts({ receiptType: "read" });
-    expect(calls.aggregate).toHaveLength(1);
+    common.sendAggregateReceipts({ receiptType: "history-sync-completion" });
+    common.sendAggregateReceipts({ receiptType: "server-error" });
+    expect(calls.aggregate).toHaveLength(2);
     expect((delivery.sendDeliveryReceiptsAfterDecryption as unknown as { __madarwa?: string }).__madarwa).toBe(
       "delivery-noop",
     );
-    expect((common.sendAggregateReceipts as unknown as { __madarwa?: string }).__madarwa).toBe("delivery-filter");
+    expect((common.sendAggregateReceipts as unknown as { __madarwa?: string }).__madarwa).toBe("receipt-filter");
+  });
+
+  it("blocks played and high-level receipt jobs when present", () => {
+    const { modules, calls, delivery } = makeModules();
+    const played = {
+      default: (_payload?: unknown) => {
+        calls.played += 1;
+      },
+    };
+    const handle = {
+      sendReceipt: (_a?: unknown, _b?: unknown, _c?: unknown, _d?: unknown) => {
+        calls.handle += 1;
+      },
+    };
+    modules.WAWebSendPlayedReceiptJob = played;
+    modules.WAWebHandleMsgSendReceipt = handle;
+    const guard = new DeliveryReceiptGuard();
+    const result = guard.sync(loadFrom(modules), true);
+
+    expect(result.patched).toBe(6);
+    expect(result.modules).toContain("WAWebSendPlayedReceiptJob.default");
+    expect(result.modules).toContain("WAWebHandleMsgSendReceipt.sendReceipt");
+
+    played.default({});
+    handle.sendReceipt({}, {}, {}, {});
+    expect(calls.played).toBe(0);
+    expect(calls.handle).toBe(0);
+
+    guard.sync(loadFrom(modules), false);
+    played.default({});
+    handle.sendReceipt({}, {}, {}, {});
+    expect(calls.played).toBe(1);
+    expect(calls.handle).toBe(1);
+    expect(delivery).toBeTruthy();
   });
 
   it("restores the original WhatsApp functions when disabled", () => {
@@ -108,6 +153,8 @@ describe("privacy controller stealth integration", () => {
   it("enables read-receipt privacy and the delivery guard together", async () => {
     const { modules, calls } = makeModules();
     const privacyCalls: string[] = [];
+    let localClears = 0;
+    let networkReads = 0;
     const wpp = {
       loader: { loadModule: loadFrom(modules) },
       privacy: {
@@ -122,14 +169,25 @@ describe("privacy controller stealth integration", () => {
         },
       },
       chat: {
-        markIsRead: async () => undefined,
-        markMessageAsRead: async () => undefined,
+        get: (chatId: string) => ({ id: chatId }),
+        markIsRead: async () => {
+          networkReads += 1;
+          return { wid: "", unreadCount: 0 };
+        },
+        markMessageAsRead: async () => {
+          networkReads += 1;
+        },
         markPlayed: async () => undefined,
       },
       whatsapp: {
         functions: {
-          markChatRead: async () => undefined,
+          markChatRead: async () => {
+            networkReads += 1;
+          },
           markPlayed: async () => undefined,
+          updateUnreadCountMD: () => {
+            localClears += 1;
+          },
         },
       },
     } as unknown as WppApi;
@@ -145,6 +203,10 @@ describe("privacy controller stealth integration", () => {
     expect(privacyCalls).toContain("read:none");
     expect(on.guard.deliveryActive).toBe(true);
     expect(on.guard.deliveryPatched).toBe(4);
+
+    await (wpp.chat.markIsRead as unknown as (id: string) => Promise<unknown>)("chat-1");
+    expect(localClears).toBe(1);
+    expect(networkReads).toBe(0);
 
     const off = await controller.apply(wpp, { ...settings });
     expect(privacyCalls).toContain("read:all");
