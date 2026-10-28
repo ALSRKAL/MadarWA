@@ -46,6 +46,7 @@ export const BRIDGE_COMMANDS = {
   openChat: "chat.open",
   setTyping: "chat.setTyping",
   setInput: "chat.setInput",
+  activeChat: "chat.active",
   listGroups: "exporter.groups",
   groupParticipants: "exporter.groupParticipants",
   listContacts: "exporter.contacts",

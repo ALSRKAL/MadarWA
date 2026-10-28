@@ -164,9 +164,8 @@ export function validateWebhookUrl(raw: string): UrlValidation {
   if (ipv4) {
     if (isPrivateIpv4(ipv4)) return fail("private-ip", "Private or reserved IPv4 addresses are blocked");
   } else if (host.includes(":") || bareHost.includes(":")) {
-    const bytes = expandIpv6(bareHost);
-    if (!bytes) return fail("private-ip", "Invalid IPv6 address");
-    if (isPrivateIpv6(bareHost) || isPrivateIpv4Mapped(bytes)) {
+    if (!expandIpv6(bareHost)) return fail("private-ip", "Invalid IPv6 address");
+    if (isPrivateIpv6(bareHost)) {
       return fail("private-ip", "Private, loopback or reserved IPv6 addresses are blocked");
     }
   } else if (/^\d+$/.test(host)) {

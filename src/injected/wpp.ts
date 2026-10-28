@@ -118,6 +118,7 @@ export interface WppApi {
     markIsComposing: (chatId: string, duration?: number) => Promise<void>;
     setInputText: (text: string, chatId?: string) => Promise<unknown>;
     get: (chatId: string) => WppChat | undefined;
+    getActiveChat: () => WppChat | undefined;
     list: (options?: Record<string, unknown>) => Promise<WppChat[]>;
     markPlayed?: (messageId: unknown) => Promise<unknown>;
     markIsRead?: (chatId: unknown) => Promise<unknown>;
@@ -156,6 +157,7 @@ declare global {
   interface Window {
     WPP?: WppApi;
     __MADARWA_ENGINE__?: { version: string; ready: boolean };
+    __MADARWA_DIAGNOSTICS__?: { ready: boolean; me: string; eventsAttached: boolean };
   }
 }
 

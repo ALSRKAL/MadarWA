@@ -1,0 +1,298 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:host {
+  display: block;
+}
+
+#madarwa-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: Cairo, Tajawal, "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.mw-app {
+  --mw-bg: #070d18;
+  --mw-panel: rgba(9, 15, 28, 0.98);
+  --mw-card: rgba(30, 41, 59, 0.46);
+  --mw-card-strong: rgba(30, 41, 59, 0.72);
+  --mw-border: rgba(148, 163, 184, 0.16);
+  --mw-text: #e5edf7;
+  --mw-muted: #94a3b8;
+  --mw-input: rgba(2, 6, 23, 0.48);
+  --mw-hover: rgba(51, 65, 85, 0.38);
+  --mw-shadow: 0 30px 80px -24px rgba(2, 6, 23, 0.9);
+  color-scheme: dark;
+  color: var(--mw-text);
+  font-family: inherit;
+}
+
+.mw-app[data-madarwa-theme="light"] {
+  --mw-bg: #f6f8fb;
+  --mw-panel: rgba(255, 255, 255, 0.985);
+  --mw-card: rgba(255, 255, 255, 0.9);
+  --mw-card-strong: #ffffff;
+  --mw-border: #e2e8f0;
+  --mw-text: #0f172a;
+  --mw-muted: #64748b;
+  --mw-input: #f1f5f9;
+  --mw-hover: rgba(226, 232, 240, 0.8);
+  --mw-shadow: 0 30px 80px -30px rgba(15, 23, 42, 0.35);
+  color-scheme: light;
+}
+
+.mw-drawer {
+  background:
+    radial-gradient(760px 340px at 85% -8%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(540px 300px at -10% 105%, rgba(5, 150, 105, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--mw-panel), var(--mw-bg));
+  box-shadow: var(--mw-shadow);
+}
+
+.mw-card {
+  background: var(--mw-card);
+  border: 1px solid var(--mw-border);
+  border-radius: 16px;
+}
+
+.mw-card-strong {
+  background: var(--mw-card-strong);
+  border: 1px solid var(--mw-border);
+  border-radius: 16px;
+}
+
+.mw-input {
+  width: 100%;
+  border-radius: 11px;
+  border: 1px solid var(--mw-border);
+  background: var(--mw-input);
+  color: var(--mw-text);
+  padding: 0.55rem 0.7rem;
+  font-size: 13px;
+  line-height: 1.5;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.mw-input::placeholder {
+  color: var(--mw-muted);
+  opacity: 0.8;
+}
+
+.mw-input:hover {
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.mw-input:focus {
+  outline: none;
+  border-color: rgba(16, 185, 129, 0.62);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+}
+
+.mw-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+textarea.mw-input {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.mw-muted {
+  color: var(--mw-muted);
+}
+
+.mw-divider {
+  border-color: var(--mw-border);
+}
+
+.mw-hover:hover {
+  background: var(--mw-hover);
+}
+
+.mw-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+.mw-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.38) transparent;
+}
+
+.mw-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.mw-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.mw-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mw-shadow-ring {
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.18),
+    0 18px 50px -24px rgba(16, 185, 129, 0.45);
+}
+
+.mw-toast {
+  pointer-events: auto;
+  background: var(--mw-panel);
+  border: 1px solid var(--mw-border);
+  color: var(--mw-text);
+  box-shadow: 0 18px 50px -18px rgba(2, 6, 23, 0.8);
+}
+
+.mw-toast-deleted {
+  border-color: rgba(244, 63, 94, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.18),
+    0 18px 50px -18px rgba(244, 63, 94, 0.35);
+}
+
+.mw-pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(148, 163, 184, 0.55);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.mw-pin-dot[data-filled="true"] {
+  background: #10b981;
+  border-color: #10b981;
+  transform: scale(1.05);
+}
+
+.mw-keypad-key {
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid var(--mw-border);
+  background: var(--mw-card);
+  color: var(--mw-text);
+  font-size: 20px;
+  font-weight: 600;
+  transition:
+    transform 100ms ease,
+    background 120ms ease;
+}
+
+.mw-keypad-key:hover {
+  background: var(--mw-hover);
+}
+
+.mw-keypad-key:active {
+  transform: scale(0.96);
+}
+
+.mw-shake {
+  animation: mw-shake 340ms ease-in-out;
+}
+
+@keyframes mw-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.mw-fade-enter {
+  animation: madar-slide-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mw-progress-stripe {
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.22) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.22) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 14px 14px;
+  animation: mw-stripes 900ms linear infinite;
+}
+
+@keyframes mw-stripes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 28px 0;
+  }
+}
+
+.mw-checker {
+  background-image:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.12) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+
+.mw-hero-orbit {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(167, 243, 208, 0.6), transparent 45%),
+    linear-gradient(145deg, #10b981, #047857 72%);
+  box-shadow:
+    0 12px 28px -10px rgba(4, 120, 87, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.mw-lang-pill {
+  font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+
+.mw-rule-drag {
+  cursor: grab;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mw-fade-enter,
+  .mw-shake,
+  .mw-progress-stripe,
+  .animate-madar-pulse-ring,
+  .animate-madar-slide-in,
+  .animate-madar-fade-in,
+  .animate-madar-toast-in {
+    animation: none !important;
+  }
+}

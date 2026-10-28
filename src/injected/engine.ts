@@ -100,6 +100,7 @@ class MadarEngine {
       this.wpp = wpp;
       this.attachEvents();
       const info = engineInfo(wpp);
+      window.__MADARWA_ENGINE__ = { version: ENGINE_VERSION, ready: true };
       this.bridge.announceReady({ ready: true, wppVersion: info.wppVersion, me: info.me });
       this.bridge.emit("engine.state", info);
     } catch (error) {
@@ -318,6 +319,13 @@ class MadarEngine {
         const duration = Math.min(30_000, Math.max(0, Number(params.duration ?? 2000)));
         await wpp.chat.markIsComposing(chatId, duration);
         return { ok: true };
+      }
+
+      case BRIDGE_COMMANDS.activeChat: {
+        const wpp = this.requireWpp();
+        const chat = wpp.chat.getActiveChat();
+        const chatId = widToId(chat?.id);
+        return { chatId, name: chat?.name || chat?.formattedTitle || chatId || "" };
       }
 
       case BRIDGE_COMMANDS.setInput: {

@@ -63,6 +63,7 @@ const ar = {
     select: "اختيار",
     selectAll: "تحديد الكل",
     noResults: "لا توجد نتائج مطابقة",
+    unnamed: "بدون اسم",
   },
   status: {
     connected: "متصل",
@@ -71,6 +72,10 @@ const ar = {
     engineReady: "محرك الـ WhatsApp جاهز",
     engineWaiting: "بانتظار تحميل واتساب...",
     locked: "الشاشة مقفلة",
+    running: "قيد التشغيل",
+    completed: "مكتملة",
+    idle: "جاهزة",
+    paused: "متوقفة مؤقتاً",
     online: "متصل الآن",
     offline: "غير متصل",
   },
@@ -247,6 +252,7 @@ const ar = {
     filters: "خيارات التصفية",
     excludeAdmins: "استبعاد المشرفين",
     onlyUnsaved: "الأرقام غير المحفوظة فقط",
+    notSaved: "غير محفوظ",
     countryCode: "تصفية بمفتاح الدولة",
     countryCodeHint: "مثال: 966 (اتركه فارغاً لعدم التصفية).",
     membersCount: "{{count}} عضو",
@@ -339,6 +345,16 @@ const ar = {
     locked: "تم إرسال أمر القفل",
     version: "الإصدار {{version}}",
   },
+  media: {
+    image: "صورة",
+    video: "فيديو",
+    audio: "مقطع صوتي",
+    document: "مستند",
+    sticker: "ملصق",
+    ptt: "رسالة صوتية",
+    text: "نص",
+    other: "وسائط",
+  },
   toast: {
     deletedTitle: "رسالة محذوفة",
     deletedBody: "{{sender}} حذف رسالة في {{chat}}: {{text}}",
@@ -419,6 +435,7 @@ const en: typeof ar = {
     select: "Select",
     selectAll: "Select all",
     noResults: "No matching results",
+    unnamed: "Unnamed",
   },
   status: {
     connected: "Connected",
@@ -427,6 +444,10 @@ const en: typeof ar = {
     engineReady: "WhatsApp engine ready",
     engineWaiting: "Waiting for WhatsApp...",
     locked: "Locked",
+    running: "Running",
+    completed: "Completed",
+    idle: "Idle",
+    paused: "Paused",
     online: "Online now",
     offline: "Offline",
   },
@@ -603,6 +624,7 @@ const en: typeof ar = {
     filters: "Filters",
     excludeAdmins: "Exclude admins",
     onlyUnsaved: "Unsaved numbers only",
+    notSaved: "Unsaved",
     countryCode: "Country code filter",
     countryCodeHint: "e.g. 966 (leave empty for no filter).",
     membersCount: "{{count}} members",
@@ -695,6 +717,16 @@ const en: typeof ar = {
     locked: "Lock command sent",
     version: "Version {{version}}",
   },
+  media: {
+    image: "Image",
+    video: "Video",
+    audio: "Audio",
+    document: "Document",
+    sticker: "Sticker",
+    ptt: "Voice note",
+    text: "Text",
+    other: "Media",
+  },
   toast: {
     deletedTitle: "Deleted message",
     deletedBody: "{{sender}} deleted a message in {{chat}}: {{text}}",
@@ -727,7 +759,7 @@ export function initI18n(language: Language): typeof i18n {
       resources,
       lng: language,
       fallbackLng: "en",
-      initImmediate: false,
+      initAsync: false,
       interpolation: { escapeValue: false },
       returnNull: false,
     });
@@ -738,7 +770,8 @@ export function initI18n(language: Language): typeof i18n {
 }
 
 export function tFor(language: Language): (key: string, variables?: Record<string, unknown>) => string {
-  return i18n.getFixedT(language);
+  const translate = i18n.getFixedT(language);
+  return (key, variables) => String(translate(key, variables as never));
 }
 
 export function dirFor(language: Language): "rtl" | "ltr" {

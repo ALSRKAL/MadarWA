@@ -70,7 +70,7 @@ export async function listContacts(wpp: WppApi, onlyMyContacts: boolean): Promis
   for (const contact of contacts) {
     const id = widToId(contact.id);
     if (!id || !isUserChatId(id) || seen.has(id)) continue;
-    const phone = phoneFromChatId(id) || (await resolvePhone(wpp, id));
+    const phone = id.endsWith("@lid") ? await resolvePhone(wpp, id) : phoneFromChatId(id) || (await resolvePhone(wpp, id));
     if (!phone) continue;
     seen.add(id);
     rows.push({
@@ -93,7 +93,7 @@ export async function listChats(wpp: WppApi): Promise<ContactRow[]> {
     const id = widToId(chat.id);
     if (!id || !isUserChatId(id) || isGroupChatId(id) || seen.has(id)) continue;
     seen.add(id);
-    let phone = phoneFromChatId(id);
+    let phone = id.endsWith("@lid") ? "" : phoneFromChatId(id);
     if (!phone) phone = await resolvePhone(wpp, id);
     if (!phone) continue;
     rows.push({

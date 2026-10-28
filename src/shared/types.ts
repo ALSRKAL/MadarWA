@@ -101,6 +101,7 @@ export interface CachedMessage {
   text: string;
   messageType: string;
   timestamp: number;
+  isGroup?: boolean;
 }
 
 export interface DeletedMessage extends CachedMessage {
@@ -204,6 +205,7 @@ export interface RevokedMessageEvent {
   revokeType: string;
   timestamp: number;
   isGroup: boolean;
+  senderName?: string;
 }
 
 export interface PresenceEvent {

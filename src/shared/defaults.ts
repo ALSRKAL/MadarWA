@@ -124,9 +124,11 @@ export function mergeSettings(input: unknown): AppSettings {
   const webhook = mergeObject(base.webhook as unknown as JsonRecord, input.webhook);
   const pin = mergeObject(base.pin as unknown as JsonRecord, input.pin);
 
-  const rulesRaw = Array.isArray((autoReply as JsonRecord).rules) ? (autoReply as JsonRecord).rules : base.autoReply.rules;
-  const templatesRaw = Array.isArray((autoReply as JsonRecord).templates)
-    ? (autoReply as JsonRecord).templates
+  const rulesRaw: unknown[] = Array.isArray((autoReply as JsonRecord).rules)
+    ? ((autoReply as JsonRecord).rules as unknown[])
+    : base.autoReply.rules;
+  const templatesRaw: unknown[] = Array.isArray((autoReply as JsonRecord).templates)
+    ? ((autoReply as JsonRecord).templates as unknown[])
     : base.autoReply.templates;
 
   return {
