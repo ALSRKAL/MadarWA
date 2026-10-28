@@ -1,6 +1,6 @@
 # MadarWA — Design Contract
 
-Status: locked for the Phase 2 native redesign.
+Status: locked through the Phase 6 interactive UX overhaul.
 Surface type: **Operate** (a high-frequency pro tool panel), not a marketing page.
 Committed direction: **WhatsApp Web native + Linear density**. Flat, quiet, precise; the
 interface should read as if WhatsApp shipped an expert panel, not as a dashboard template.
@@ -67,11 +67,26 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
   draggable; never both at once.
 - Popup: 340px, same tokens, compact status + metrics + one primary action.
 
+## Progressive disclosure
+
+- The primary view of every tab is a short, scannable list of setting rows. Technical inputs never
+  appear at rest.
+- Sub-options live behind a compact `Configure` control (`mw-configure`) that opens an inline
+  `Disclosure`, or stay hidden until the feature's master switch is ON.
+- Privacy opens with two one-click presets: Full Stealth and Disable All.
+- Broadcaster is a three-step flow (numbers → message → send/progress), never three long forms.
+- The vault exposes filter chips (All/Text/Photos/Videos/Audio) and loads media on demand.
+
 ## Signature moves
 
-1. **Inline restored message** inside the real WhatsApp bubble: emerald/restored indicator, original
-   text or media preview, original timestamp, and a quiet "view in vault" action.
-2. **Native launcher** with live/unread state that belongs in WhatsApp's own header.
+1. **Interactive deleted-message pill** inside the real WhatsApp bubble. The native
+   “This message was deleted” notice is never removed; a compact eye/chevron pill expands restored
+   text, timestamps and copy, a photo with a full-screen zoom/download lightbox, an inline video or
+   voice-note player, or a document download. Mode A is click-to-expand; Mode B auto-expands.
+2. **Surgical hover-to-reveal.** `privacyTagger` marks exact leaf elements; only the hovered name,
+   phone number, preview, avatar, message or media unblurs (`blur(0px)`, 160ms), never the rest of
+   the screen.
+3. **Native launcher** with live/unread state that belongs in WhatsApp's own header.
 
 ## Slop audit (self-check)
 
