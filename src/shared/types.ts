@@ -22,6 +22,7 @@ export interface AntiDeleteSettings {
   enabled: boolean;
   inChatToast: boolean;
   desktopNotification: boolean;
+  inlineRestore: boolean;
   maxCache: number;
 }
 
@@ -91,8 +92,24 @@ export interface AppSettings {
   updatedAt: number;
 }
 
+export interface MessageSnapshot {
+  id: string;
+  stanzaId: string;
+  chatId: string;
+  chatName: string;
+  sender: string;
+  senderName: string;
+  text: string;
+  messageType: string;
+  timestamp: number;
+  isGroup: boolean;
+  fromMe: boolean;
+  previewDataUrl: string;
+}
+
 export interface CachedMessage {
   id: string;
+  stanzaId?: string;
   chatId: string;
   chatName: string;
   sender: string;
@@ -101,6 +118,7 @@ export interface CachedMessage {
   messageType: string;
   timestamp: number;
   isGroup?: boolean;
+  previewDataUrl?: string;
 }
 
 export interface DeletedMessage extends CachedMessage {
@@ -190,6 +208,7 @@ export interface EngineInfo {
 
 export interface IncomingMessageEvent {
   id: string;
+  stanzaId?: string;
   chatId: string;
   chatName: string;
   sender: string;
@@ -199,10 +218,13 @@ export interface IncomingMessageEvent {
   timestamp: number;
   isGroup: boolean;
   fromMe: boolean;
+  previewDataUrl?: string;
 }
 
 export interface RevokedMessageEvent {
   refId: string;
+  stanzaId?: string;
+  revokeMessageId?: string;
   chatId: string;
   chatName: string;
   author: string;
@@ -213,6 +235,7 @@ export interface RevokedMessageEvent {
   senderName?: string;
   originalSenderPhone?: string;
   originalSenderName?: string;
+  original?: MessageSnapshot;
 }
 
 export interface PresenceEvent {

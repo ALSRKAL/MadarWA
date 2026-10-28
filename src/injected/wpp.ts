@@ -23,14 +23,19 @@ export interface WppMsg {
   body?: string;
   caption?: string;
   type?: string;
+  subtype?: string | null;
   t?: number;
   notifyName?: string;
+  filename?: string;
   from?: WppWid;
   to?: WppWid;
   author?: WppWid;
   fromMe?: boolean;
   isNewMsg?: boolean;
+  isMedia?: boolean;
   ack?: number;
+  protocolMessageKey?: WppMsgKey;
+  mediaData?: { preview?: unknown };
 }
 
 export interface WppChat {
@@ -74,6 +79,7 @@ export interface WppRevokeEvent {
   to?: WppWid;
   id?: WppMsgKey;
   refId?: WppMsgKey;
+  protocolMessageKey?: WppMsgKey;
   type?: string;
 }
 
@@ -149,6 +155,12 @@ export interface WppApi {
   };
   whatsapp?: {
     functions?: Record<string, unknown>;
+    MsgStore?: {
+      getModelsArray?: () => WppMsg[];
+      on?: (event: string, listener: (...args: any[]) => void) => unknown;
+      off?: (event: string, listener: (...args: any[]) => void) => unknown;
+      length?: number;
+    };
   };
   on: (event: string, listener: (...args: any[]) => void) => unknown;
 }
@@ -201,7 +213,34 @@ export function senderIdOfMessage(msg: WppMsg, meId: string): string {
 }
 
 export function messageText(msg: WppMsg): string {
-  return String(msg.body ?? msg.caption ?? "").trim();
+  const type = String(msg.type ?? "chat");
+  const body = String(msg.body ?? "");
+  const caption = String(msg.caption ?? "").trim();
+
+  // For media, `body` may be a base64 thumbnail (especially image/video/sticker).
+  // Never ship that as the message text.
+  if (type !== "chat" && type !== "text") {
+    if (caption) return caption;
+    if (body.startsWith("data:")) return "";
+    if (type === "document") return String(msg.filename ?? "").trim() || body.trim();
+    return "";
+  }
+  return (body || caption).trim();
+}
+
+export function messagePreview(msg: WppMsg): string {
+  const type = String(msg.type ?? "");
+  if (!["image", "video", "sticker"].includes(type)) return "";
+  const mediaPreview = typeof msg.mediaData?.preview === "string" ? msg.mediaData.preview : "";
+  const body = String(msg.body ?? "");
+  const raw = mediaPreview || (body.startsWith("data:image") ? body : "");
+  if (!raw) return "";
+  if (raw.startsWith("data:image")) return raw.slice(0, 180_000);
+  if (raw.length > 80 && /^[A-Za-z0-9+/=\s]+$/.test(raw)) {
+    const mime = type === "sticker" ? "image/webp" : "image/jpeg";
+    return `data:${mime};base64,${raw.replace(/\s+/g, "")}`.slice(0, 180_000);
+  }
+  return "";
 }
 
 export function isGroupChat(chatId: string): boolean {

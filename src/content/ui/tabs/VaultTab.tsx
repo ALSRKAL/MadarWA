@@ -106,6 +106,12 @@ export function VaultTab() {
           onChange={(value) => patchAntiDelete({ desktopNotification: value })}
           label={t("vault.desktop")}
         />
+        <Toggle
+          checked={settings.antiDelete.inlineRestore}
+          onChange={(value) => patchAntiDelete({ inlineRestore: value })}
+          label={t("vault.inlineRestore")}
+          hint={t("vault.inlineRestoreHint")}
+        />
         <div className="px-1.5 pb-1.5 pt-1">
           <Field label={t("vault.maxCache")}>
             <TextInput
@@ -203,7 +209,7 @@ export function VaultTab() {
 
       {vault.length > 0 ? (
         <div className="flex justify-end">
-          <Button variant="danger" size="sm" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setClearOpen(true)}>
+          <Button variant="dangerGhost" size="sm" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setClearOpen(true)}>
             {t("vault.clearAll")}
           </Button>
         </div>

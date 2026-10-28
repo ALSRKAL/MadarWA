@@ -25,13 +25,16 @@ import type {
   EngineInfo,
   EnginePingResult,
   IncomingMessageEvent,
+  MessageSnapshot,
   PrivacyGuardStatus,
   RevokedMessageEvent,
   WebhookLogEntry,
 } from "../shared/types";
 import { truncate, uid } from "../shared/format";
+import { extractStanzaId } from "../shared/utils/revoke";
 import type { Attachment, StartCampaignInput } from "./broadcast";
 import { BroadcastManager } from "./broadcast";
+import { InlineRestorer } from "./inline-restore";
 import { LauncherManager } from "./launcher";
 import { applyPrivacyAttributes, detectTheme, PresenceScrubber, watchTheme } from "./privacy-runtime";
 import { emptyCampaign, useAppStore } from "./store";
@@ -86,6 +89,10 @@ export class ContentController {
   readonly broadcast = new BroadcastManager(this.bridge);
   readonly scrubber = new PresenceScrubber();
   readonly launcher = new LauncherManager();
+  readonly inlineRestorer = new InlineRestorer({
+    getLanguage: () => useAppStore.getState().settings.language,
+    onOpenVault: () => useAppStore.getState().openPanel("vault"),
+  });
 
   private initialized = false;
   private readonly cleanups: Array<() => void> = [];
@@ -103,6 +110,7 @@ export class ContentController {
   private lastEngineErrorAt = 0;
   private lastAutoReplyErrorAt = 0;
   private engineReady = false;
+  private preindexRequested = false;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -129,6 +137,9 @@ export class ContentController {
     this.messageCache = new Map(asMessageCache(rawCache).map((entry) => [entry.id, entry]));
     this.trimCache(settings.antiDelete.maxCache);
     this.updateBadge(vault.length);
+    this.inlineRestorer.setLanguage(settings.language);
+    this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
+    this.inlineRestorer.setRecords(vault);
 
     const report = asCampaignReport(rawReport);
     if (report && report.campaign.total > 0) {
@@ -151,6 +162,7 @@ export class ContentController {
 
     this.bridge.onConnectionChange((connected) => {
       useAppStore.getState().setBridgeConnected(connected);
+      this.preindexRequested = false;
       if (connected) {
         this.engineReady = false;
         void this.refreshEngineInfo(true);
@@ -191,6 +203,7 @@ export class ContentController {
             (entry) => entry && typeof entry.id === "string",
           );
           useAppStore.getState().setVault(nextVault);
+          this.inlineRestorer.setRecords(nextVault);
           this.updateBadge(nextVault.length);
         }
         const logChange = changes[STORAGE_KEYS.webhookLog];
@@ -235,8 +248,10 @@ export class ContentController {
         useAppStore.getState().setEngine(info);
         if (info.ready && !this.engineReady) {
           this.engineReady = true;
+          this.preindexRequested = false;
           this.resetPushSignatures();
           void this.pushConfig();
+          void this.requestPreindex();
         }
         break;
       }
@@ -255,8 +270,10 @@ export class ContentController {
       useAppStore.getState().setEngine(info);
       this.engineReady = info.ready;
       if (info.ready && (!wasReady || forcePush)) {
+        this.preindexRequested = false;
         this.resetPushSignatures();
         void this.pushConfig();
+        void this.requestPreindex();
       }
     } catch {
       // Connection listeners handle availability; avoid noisy toasts.
@@ -273,6 +290,9 @@ export class ContentController {
     initI18n(settings.language);
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
+    this.inlineRestorer.setLanguage(settings.language);
+    this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
+    if (settings.antiDelete.enabled) void this.requestPreindex();
     if (!settings.pin.enabled) useAppStore.getState().setLocked(false);
     document.body?.setAttribute(
       "data-madarwa-theme",
@@ -353,6 +373,7 @@ export class ContentController {
 
     const cached: CachedMessage = {
       id: event.id,
+      stanzaId: event.stanzaId,
       chatId: event.chatId,
       chatName: event.chatName,
       sender: event.sender,
@@ -361,6 +382,7 @@ export class ContentController {
       messageType: event.messageType,
       timestamp: event.timestamp,
       isGroup: event.isGroup,
+      previewDataUrl: event.previewDataUrl,
     };
     this.messageCache.set(event.id, cached);
     this.trimCache(settings.antiDelete.maxCache);
@@ -401,32 +423,89 @@ export class ContentController {
     }, 800);
   }
 
+  private async requestPreindex(): Promise<void> {
+    const settings = useAppStore.getState().settings;
+    if (this.preindexRequested || !settings.antiDelete.enabled || !this.engineReady || !this.bridge.isConnected()) {
+      return;
+    }
+    this.preindexRequested = true;
+    try {
+      const result = await this.bridge.request<{ messages?: MessageSnapshot[] }>(
+        BRIDGE_COMMANDS.preindexMessages,
+        { limit: 1000 },
+        45_000,
+      );
+      let changed = false;
+      for (const snapshot of result.messages ?? []) {
+        if (!snapshot?.id) continue;
+        const existing = this.messageCache.get(snapshot.id);
+        if (existing && existing.timestamp >= snapshot.timestamp && existing.text) continue;
+        this.messageCache.set(snapshot.id, {
+          id: snapshot.id,
+          stanzaId: snapshot.stanzaId,
+          chatId: snapshot.chatId,
+          chatName: snapshot.chatName,
+          sender: snapshot.sender,
+          senderName: snapshot.senderName,
+          text: snapshot.text,
+          messageType: snapshot.messageType,
+          timestamp: snapshot.timestamp,
+          isGroup: snapshot.isGroup,
+          previewDataUrl: snapshot.previewDataUrl,
+        });
+        changed = true;
+      }
+      if (changed) {
+        this.trimCache(settings.antiDelete.maxCache);
+        this.scheduleCacheFlush();
+      }
+    } catch {
+      this.preindexRequested = false;
+    }
+  }
+
+  private cachedByStanza(stanzaId: string): CachedMessage | undefined {
+    if (!stanzaId) return undefined;
+    for (const entry of this.messageCache.values()) {
+      if (entry.stanzaId === stanzaId || extractStanzaId(entry.id) === stanzaId) return entry;
+    }
+    return undefined;
+  }
+
   private async handleRevoked(event: RevokedMessageEvent): Promise<void> {
     const settings = useAppStore.getState().settings;
     if (!settings.antiDelete.enabled || !event?.refId) return;
 
-    const cached = this.messageCache.get(event.refId);
+    const cached = this.messageCache.get(event.refId) || this.cachedByStanza(event.stanzaId ?? "");
+    const original = event.original;
     const entry: DeletedMessage = {
-      id: event.refId || uid("deleted"),
-      chatId: cached?.chatId || event.chatId,
-      chatName: cached?.chatName || event.chatName,
-      sender: event.originalSenderPhone || cached?.sender || event.author,
-      senderName: cached?.senderName || event.originalSenderName || event.senderName || "",
-      text: cached?.text || "",
-      messageType: cached?.messageType || "",
-      timestamp: cached?.timestamp || event.timestamp,
-      isGroup: cached?.isGroup ?? event.isGroup,
+      id: original?.id || event.refId || uid("deleted"),
+      stanzaId: original?.stanzaId || event.stanzaId || extractStanzaId(event.refId),
+      chatId: original?.chatId || cached?.chatId || event.chatId,
+      chatName: original?.chatName || cached?.chatName || event.chatName,
+      sender: original?.sender || event.originalSenderPhone || cached?.sender || event.author,
+      senderName: original?.senderName || cached?.senderName || event.originalSenderName || event.senderName || "",
+      text: original?.text || cached?.text || "",
+      messageType: original?.messageType || cached?.messageType || "",
+      previewDataUrl: original?.previewDataUrl || cached?.previewDataUrl,
+      timestamp: original?.timestamp || cached?.timestamp || event.timestamp,
+      isGroup: original?.isGroup ?? cached?.isGroup ?? event.isGroup,
       revokedAt: Date.now(),
       revokedBy: event.revokedBy,
       revokeType: event.revokeType,
-      recoveredFromCache: Boolean(cached),
+      recoveredFromCache: Boolean(original || cached),
     };
 
-    if (this.messageCache.delete(event.refId)) this.scheduleCacheFlush();
+    this.messageCache.delete(event.refId);
+    if (cached && cached.id !== event.refId) this.messageCache.delete(cached.id);
+    this.scheduleCacheFlush();
 
     const store = useAppStore.getState();
     store.addVaultEntry(entry);
     const nextVault = useAppStore.getState().vault;
+    this.inlineRestorer.register(entry);
+    this.inlineRestorer.setRecords(nextVault);
+    this.inlineRestorer.restoreForRevoke(entry, event.revokeMessageId);
     await saveVault(nextVault);
     this.updateBadge(nextVault.length);
 
@@ -677,6 +756,7 @@ export class ContentController {
     if (this.cacheFlushTimer) window.clearTimeout(this.cacheFlushTimer);
     if (this.campaignPersistTimer) window.clearTimeout(this.campaignPersistTimer);
     this.launcher.stop();
+    this.inlineRestorer.dispose();
     this.bridge.dispose();
     for (const cleanup of this.cleanups.splice(0)) {
       try {

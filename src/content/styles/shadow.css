@@ -319,6 +319,15 @@ textarea.mw-input {
   background: rgb(var(--wa-danger) / 0.85);
 }
 
+.mw-btn-danger-ghost {
+  background: transparent;
+  color: rgb(var(--wa-danger));
+}
+
+.mw-btn-danger-ghost:hover:not(:disabled) {
+  background: rgb(var(--wa-danger) / 0.1);
+}
+
 .mw-btn-success {
   background: rgb(var(--wa-brand));
   color: var(--wa-on-brand);

@@ -22,6 +22,7 @@ export function createDefaultSettings(): AppSettings {
       enabled: true,
       inChatToast: true,
       desktopNotification: false,
+      inlineRestore: true,
       maxCache: 800,
     },
     autoReply: {
@@ -149,6 +150,7 @@ export function mergeSettings(input: unknown): AppSettings {
       enabled: bool(antiDelete.enabled, base.antiDelete.enabled),
       inChatToast: bool(antiDelete.inChatToast, base.antiDelete.inChatToast),
       desktopNotification: bool(antiDelete.desktopNotification, base.antiDelete.desktopNotification),
+      inlineRestore: bool(antiDelete.inlineRestore, base.antiDelete.inlineRestore),
       maxCache: Math.round(num(antiDelete.maxCache, base.antiDelete.maxCache, 50, 3000)),
     },
     autoReply: {

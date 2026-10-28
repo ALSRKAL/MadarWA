@@ -14,7 +14,7 @@ export function cn(...values: Array<string | false | null | undefined>): string 
   return values.filter(Boolean).join(" ");
 }
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "dangerGhost" | "success";
 type ButtonSize = "sm" | "md" | "icon";
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
@@ -22,6 +22,7 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   secondary: "mw-btn-secondary",
   ghost: "mw-btn-ghost",
   danger: "mw-btn-danger",
+  dangerGhost: "mw-btn-danger-ghost",
   success: "mw-btn-success",
 };
 

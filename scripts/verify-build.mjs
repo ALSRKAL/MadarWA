@@ -169,6 +169,10 @@ const injectedJs = await readText("injected.js");
 assert(injectedJs.includes("chat.new_message") && injectedJs.includes("chat.msg_revoke"), "injected.js subscribes to WA message events");
 assert(injectedJs.includes("sendTextMessage") && injectedJs.includes("sendFileMessage"), "injected.js calls real WA send APIs");
 assert(injectedJs.includes("MADARWA_CMD_REQUEST"), "injected.js includes the bridge listener");
+assert(injectedJs.includes("MsgStore") && injectedJs.includes("protocolMessageKey"), "injected.js pre-indexes MsgStore and resolves protocol keys");
+assert(injectedJs.includes("antidelete.preindex"), "injected.js exposes the store pre-index command");
+assert(contentJs.includes("madarwa-inline-restore"), "content.js injects the inline restored bubble");
+assert(contentJs.includes("antidelete.preindex"), "content.js requests the store pre-index");
 
 const backgroundJs = await readText("background.js");
 assert(backgroundJs.includes("MADARWA_WEBHOOK_DELIVER"), "background.js handles webhook delivery");
@@ -178,6 +182,7 @@ assert(backgroundJs.includes("notifications.create"), "background.js dispatches 
 const privacyCss = await readText("privacy.css");
 assert(privacyCss.includes("data-madarwa-blur-preview"), "privacy.css gates blurring by body dataset");
 assert(privacyCss.includes("data-madarwa-hidden-presence"), "privacy.css supports presence hiding");
+assert(privacyCss.includes("madarwa-inline-restore"), "privacy.css styles the inline restored bubble");
 
 const popupHtml = await readText("popup.html");
 const scriptSources = [...popupHtml.matchAll(/<script[^>]*\ssrc=["']([^"']+)["']/gi)].map((match) => match[1]);

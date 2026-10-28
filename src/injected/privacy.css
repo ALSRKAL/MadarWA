@@ -107,3 +107,104 @@ body[data-madarwa-hide-typing="1"] [data-madarwa-hidden-presence="1"] {
     transition: none !important;
   }
 }
+
+/* Inline restored message block, injected inside the WhatsApp message row. */
+.madarwa-inline-restore {
+  margin-top: 6px;
+  padding: 7px 8px 6px;
+  border-inline-start: 2px solid #00a884;
+  border-radius: 6px;
+  background: rgba(0, 168, 132, 0.08);
+  color: #e9edef;
+  font-family: Tajawal, Cairo, "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: start;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+body[data-madarwa-theme="light"] .madarwa-inline-restore {
+  background: rgba(0, 128, 105, 0.07);
+  color: #111b21;
+}
+
+.madarwa-inline-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  opacity: 0.82;
+}
+
+.madarwa-inline-icon {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  color: #00a884;
+}
+
+.madarwa-inline-icon svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.madarwa-inline-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.madarwa-inline-time {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.madarwa-inline-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 150px;
+  margin: 4px 0;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.madarwa-inline-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.madarwa-inline-muted {
+  opacity: 0.65;
+}
+
+.madarwa-inline-sender {
+  margin-top: 3px;
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+.madarwa-inline-footer {
+  margin-top: 2px;
+}
+
+.madarwa-inline-open {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #00a884;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+body[data-madarwa-theme="light"] .madarwa-inline-open {
+  color: #008069;
+}

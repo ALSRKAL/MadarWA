@@ -278,6 +278,8 @@ const ar = {
     enableHint: "يخزّن آخر الرسائل محلياً حتى يمكن استرجاع المحذوف منها.",
     toast: "إظهار تنبيه داخل واتساب عند الحذف",
     desktop: "إشعار سطح المكتب",
+    inlineRestore: "إظهار الرسائل المحذوفة داخل فقاعات المحادثة تلقائياً",
+    inlineRestoreHint: "يُعاد بناء نص الرسالة المحذوفة داخل فقاعة واتساب نفسها عند فتح المحادثة.",
     maxCache: "أقصى عدد رسائل محفوظة",
     count: "{{count}} رسالة محذوفة",
     search: "ابحث في النص أو المرسل أو المحادثة",
@@ -357,6 +359,12 @@ const ar = {
     ptt: "رسالة صوتية",
     text: "نص",
     other: "وسائط",
+  },
+  inlineRestored: {
+    title: "رسالة محذوفة مستعادة",
+    viewVault: "عرض في الخزنة",
+    media: "وسائط مستعادة",
+    sender: "المرسل",
   },
   toast: {
     deletedTitle: "رسالة محذوفة",
@@ -653,6 +661,8 @@ const en: typeof ar = {
     enableHint: "Stores recent messages locally so deleted ones can be recovered.",
     toast: "Show in-chat toast when a message is deleted",
     desktop: "Desktop notification",
+    inlineRestore: "Inline restore inside chat bubbles",
+    inlineRestoreHint: "Rebuilds the deleted message inside the original WhatsApp bubble when the chat opens.",
     maxCache: "Maximum cached messages",
     count: "{{count}} deleted messages",
     search: "Search text, sender or chat",
@@ -732,6 +742,12 @@ const en: typeof ar = {
     ptt: "Voice note",
     text: "Text",
     other: "Media",
+  },
+  inlineRestored: {
+    title: "Restored deleted message",
+    viewVault: "View in vault",
+    media: "Restored media",
+    sender: "Sender",
   },
   toast: {
     deletedTitle: "Deleted message",

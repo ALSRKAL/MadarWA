@@ -55,6 +55,7 @@ export const BRIDGE_COMMANDS = {
   startChat: "tools.startChat",
   configureAutoReply: "autoreply.configure",
   configureAntiDelete: "antidelete.configure",
+  preindexMessages: "antidelete.preindex",
 } as const;
 
 export const QUICK_TOOLS = {
