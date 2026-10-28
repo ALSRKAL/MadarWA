@@ -5,6 +5,29 @@
   "description": "MadarWA - Enterprise privacy, CRM, automation and broadcasting suite for WhatsApp Web (Manifest V3).",
   "type": "module",
   "license": "MIT",
+  "author": "ALSRKAL",
+  "homepage": "https://github.com/ALSRKAL/MadarWA#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ALSRKAL/MadarWA.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ALSRKAL/MadarWA/issues"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "manifest-v3",
+    "whatsapp-web",
+    "privacy",
+    "automation",
+    "broadcaster",
+    "wppconnect",
+    "react",
+    "typescript"
+  ],
   "scripts": {
     "dev": "node scripts/build.mjs --watch",
     "build": "node scripts/build.mjs",

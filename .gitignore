@@ -14,5 +14,6 @@ npm-debug.log*
 .vscode/
 .idea/
 *.tsbuildinfo
+.mimosa/
 
 .playwright-mcp/
