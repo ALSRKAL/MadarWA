@@ -9,6 +9,7 @@ import {
   loadWebhookLog,
   onStorageChanged,
   readStorage,
+  removeStorage,
   saveVault,
   saveSettings,
   saveWebhookLog,
@@ -17,11 +18,14 @@ import {
 import type {
   AppSettings,
   CachedMessage,
+  CampaignLogEntry,
   CampaignRecipient,
+  CampaignState,
   DeletedMessage,
   EngineInfo,
   EnginePingResult,
   IncomingMessageEvent,
+  PrivacyGuardStatus,
   RevokedMessageEvent,
   WebhookLogEntry,
 } from "../shared/types";
@@ -30,10 +34,38 @@ import type { Attachment, StartCampaignInput } from "./broadcast";
 import { BroadcastManager } from "./broadcast";
 import { LauncherManager } from "./launcher";
 import { applyPrivacyAttributes, detectTheme, PresenceScrubber, watchTheme } from "./privacy-runtime";
-import { useAppStore } from "./store";
+import { emptyCampaign, useAppStore } from "./store";
 
 function signature(settings: AppSettings): string {
   return JSON.stringify({ ...settings, updatedAt: 0 });
+}
+
+function asCampaignReport(value: unknown): { campaign: CampaignState; recipients: CampaignRecipient[] } | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as { campaign?: Partial<CampaignState>; recipients?: unknown[] };
+  const campaign = raw.campaign;
+  if (!campaign || typeof campaign.id !== "string" || !Array.isArray(campaign.logs)) return null;
+  const statuses: CampaignState["status"][] = ["idle", "running", "paused", "stopped", "completed"];
+  const status = statuses.includes(campaign.status as CampaignState["status"])
+    ? (campaign.status as CampaignState["status"])
+    : "stopped";
+  const recipients = Array.isArray(raw.recipients)
+    ? raw.recipients.filter((entry): entry is CampaignRecipient => {
+        if (typeof entry !== "object" || entry === null) return false;
+        const row = entry as Partial<CampaignRecipient>;
+        return typeof row.phone === "string" && typeof row.chatId === "string";
+      })
+    : [];
+
+  return {
+    campaign: {
+      ...emptyCampaign(),
+      ...campaign,
+      status,
+      logs: campaign.logs.slice(-500) as CampaignLogEntry[],
+    },
+    recipients,
+  };
 }
 
 function asMessageCache(value: unknown): CachedMessage[] {
@@ -59,6 +91,7 @@ export class ContentController {
   private readonly cleanups: Array<() => void> = [];
   private messageCache = new Map<string, CachedMessage>();
   private cacheFlushTimer = 0;
+  private campaignPersistTimer = 0;
   private settingsTimer = 0;
   private lastSaved = "";
   private lastPrivacy = "";
@@ -83,16 +116,28 @@ export class ContentController {
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
 
-    const [vault, webhookLog, rawCache] = await Promise.all([
+    const [vault, webhookLog, rawCache, rawReport] = await Promise.all([
       loadVault(),
       loadWebhookLog(),
       readStorage<unknown>(STORAGE_KEYS.messageCache, []),
+      readStorage<unknown>(STORAGE_KEYS.campaignReport, null),
     ]);
     useAppStore.getState().setVault(vault);
     useAppStore.getState().setWebhookLog(webhookLog);
     this.messageCache = new Map(asMessageCache(rawCache).map((entry) => [entry.id, entry]));
     this.trimCache(settings.antiDelete.maxCache);
     this.updateBadge(vault.length);
+
+    const report = asCampaignReport(rawReport);
+    if (report && report.campaign.total > 0) {
+      const interrupted = report.campaign.status === "running" || report.campaign.status === "paused";
+      useAppStore.getState().setCampaign({
+        ...report.campaign,
+        status: interrupted ? "stopped" : report.campaign.status,
+        finishedAt: interrupted ? Date.now() : report.campaign.finishedAt,
+      });
+      useAppStore.getState().setRecipients(report.recipients);
+    }
 
     this.cleanups.push(watchTheme((theme) => useAppStore.getState().setTheme(theme)));
 
@@ -115,6 +160,9 @@ export class ContentController {
     this.cleanups.push(
       useAppStore.subscribe((state, previous) => {
         if (state.settings !== previous.settings) this.onSettingsChanged(state.settings);
+        if (state.campaign !== previous.campaign || state.recipients !== previous.recipients) {
+          this.scheduleCampaignPersist();
+        }
       }),
     );
 
@@ -218,7 +266,6 @@ export class ContentController {
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
     if (!settings.pin.enabled) useAppStore.getState().setLocked(false);
-    if (settings.theme !== "auto") useAppStore.getState().setTheme(settings.theme);
 
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     this.settingsTimer = window.setTimeout(() => {
@@ -243,11 +290,12 @@ export class ContentController {
     if (privacySignature !== this.lastPrivacy) {
       this.lastPrivacy = privacySignature;
       try {
-        const result = await this.bridge.request<{ errors?: string[] }>(
+        const result = await this.bridge.request<{ errors?: string[]; guard?: PrivacyGuardStatus }>(
           BRIDGE_COMMANDS.privacyApply,
           settings.privacy,
           30_000,
         );
+        if (result.guard) useAppStore.getState().setPrivacyGuard(result.guard);
         if (result.errors && result.errors.length > 0) {
           const t = tFor(settings.language);
           useAppStore.getState().pushToast({
@@ -319,9 +367,26 @@ export class ContentController {
     if (this.cacheFlushTimer) return;
     this.cacheFlushTimer = window.setTimeout(() => {
       this.cacheFlushTimer = 0;
-      const values = [...this.messageCache.values()].slice(-1500);
+      const limit = Math.max(50, useAppStore.getState().settings.antiDelete.maxCache);
+      const values = [...this.messageCache.values()].slice(-limit);
       void writeStorage(STORAGE_KEYS.messageCache, values);
     }, 1500);
+  }
+
+  private scheduleCampaignPersist(): void {
+    if (this.campaignPersistTimer) return;
+    this.campaignPersistTimer = window.setTimeout(() => {
+      this.campaignPersistTimer = 0;
+      const { campaign, recipients } = useAppStore.getState();
+      if (campaign.total === 0 && recipients.length === 0) {
+        void removeStorage(STORAGE_KEYS.campaignReport);
+        return;
+      }
+      void writeStorage(STORAGE_KEYS.campaignReport, {
+        campaign,
+        recipients: recipients.slice(0, 20_000),
+      });
+    }, 800);
   }
 
   private async handleRevoked(event: RevokedMessageEvent): Promise<void> {
@@ -333,8 +398,8 @@ export class ContentController {
       id: event.refId || uid("deleted"),
       chatId: cached?.chatId || event.chatId,
       chatName: cached?.chatName || event.chatName,
-      sender: cached?.sender || event.author,
-      senderName: cached?.senderName || event.senderName || "",
+      sender: event.originalSenderPhone || cached?.sender || event.author,
+      senderName: cached?.senderName || event.originalSenderName || event.senderName || "",
       text: cached?.text || "",
       messageType: cached?.messageType || "",
       timestamp: cached?.timestamp || event.timestamp,
@@ -354,7 +419,7 @@ export class ContentController {
     this.updateBadge(nextVault.length);
 
     const t = tFor(settings.language);
-    const sender = entry.senderName || entry.revokedBy || t("common.unknown");
+    const sender = entry.senderName || entry.sender || entry.revokedBy || t("common.unknown");
     const bodyText = entry.text ? truncate(entry.text, 120) : entry.recoveredFromCache ? "" : t("vault.notCached");
 
     if (settings.antiDelete.inChatToast) {
@@ -598,6 +663,7 @@ export class ContentController {
     window.clearInterval(this.pingTimer);
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     if (this.cacheFlushTimer) window.clearTimeout(this.cacheFlushTimer);
+    if (this.campaignPersistTimer) window.clearTimeout(this.campaignPersistTimer);
     this.launcher.stop();
     this.bridge.dispose();
     for (const cleanup of this.cleanups.splice(0)) {

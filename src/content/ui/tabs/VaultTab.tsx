@@ -161,7 +161,7 @@ export function VaultTab() {
                     <span>{formatDateTime(entry.revokedAt, settings.language)}</span>
                     <span>·</span>
                     <span>
-                      {t("vault.sender")}: {entry.senderName || entry.revokedBy || entry.sender || t("common.unknown")}
+                      {t("vault.sender")}: {entry.senderName || entry.sender || entry.revokedBy || t("common.unknown")}
                     </span>
                   </div>
                 </div>
@@ -175,7 +175,9 @@ export function VaultTab() {
               ) : (
                 <div className="mt-2 rounded-xl border border-dashed border-[color:var(--mw-border)] px-2.5 py-2">
                   <Badge tone="neutral">{mediaLabel(entry)}</Badge>
-                  <p className="mw-muted mt-1 text-[10px] leading-5">{t("vault.notCached")}</p>
+                  {!entry.recoveredFromCache ? (
+                    <p className="mw-muted mt-1 text-[10px] leading-5">{t("vault.notCached")}</p>
+                  ) : null}
                 </div>
               )}
 

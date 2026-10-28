@@ -21,6 +21,7 @@ export function PrivacyTab() {
   const settings = useSettings();
   const setSettings = useAppStore((state) => state.setSettings);
   const pushToast = useAppStore((state) => state.pushToast);
+  const privacyGuard = useAppStore((state) => state.privacyGuard);
 
   const [pinFormOpen, setPinFormOpen] = useState(false);
   const [pin, setPin] = useState("");
@@ -179,6 +180,13 @@ export function PrivacyTab() {
           label={t("privacy.disableAudioReceipts")}
           hint={t("privacy.disableAudioReceiptsHint")}
         />
+        {settings.privacy.disableAudioReceipts && privacyGuard ? (
+          <div className="px-1.5 pb-1.5">
+            <Badge tone={privacyGuard.active ? "success" : "warning"}>
+              {privacyGuard.active ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
+            </Badge>
+          </div>
+        ) : null}
         <div className="mt-1 px-1">
           <Alert tone="warning">{t("privacy.warning")}</Alert>
         </div>

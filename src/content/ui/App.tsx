@@ -169,6 +169,7 @@ function Drawer() {
         className="mw-drawer animate-madar-slide-in absolute inset-y-0 end-0 flex w-[min(560px,100vw)] flex-col overflow-hidden border-s border-[color:var(--mw-border)] rounded-s-[26px]"
         onKeyDownCapture={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <header className="shrink-0 px-4 pb-3 pt-4">
           <div className="flex items-start gap-3">

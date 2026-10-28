@@ -138,12 +138,11 @@ export class PresenceScrubber {
     if (!this.hidePresence && !this.hideTyping) return;
     const nextMarked = new Set<HTMLElement>();
 
-    const consider = (element: HTMLElement | null, matcher: RegExp, allowPresence: boolean) => {
+    const consider = (element: HTMLElement | null, matcher: RegExp) => {
       if (!element) return;
       const text = (element.textContent ?? "").replace(/\s+/g, " ").trim();
       if (!text || text.length > 90) return;
       if (!matcher.test(text)) return;
-      if (!allowPresence && !this.hideTyping) return;
       element.setAttribute(PRESENCE_HIDDEN, "1");
       nextMarked.add(element);
     };
@@ -157,12 +156,14 @@ export class PresenceScrubber {
           if (!span) continue;
           const text = (span.textContent ?? "").trim();
           const isTyping = /يكتب|typing|recording|يسجل/i.test(text);
-          if (this.hidePresence && !isTyping) consider(span, HEADER_PRESENCE, true);
-          if (this.hideTyping && isTyping) consider(span, HEADER_PRESENCE, true);
+          if (this.hidePresence && !isTyping) consider(span, HEADER_PRESENCE);
+          if (this.hideTyping && isTyping) consider(span, HEADER_PRESENCE);
         }
       }
 
-      const rows = document.querySelectorAll<HTMLElement>('#pane-side [role="listitem"]');
+      const rows = document.querySelectorAll<HTMLElement>(
+        '#pane-side [role="listitem"], #pane-side [role="row"], #pane-side [data-testid="cell-frame-container"]',
+      );
       for (let i = 0; i < Math.min(rows.length, 80); i += 1) {
         const row = rows[i];
         if (!row) continue;
@@ -173,8 +174,8 @@ export class PresenceScrubber {
           const text = (span.textContent ?? "").trim();
           if (!text || text.length > 60) continue;
           const isTyping = /يكتب|typing|recording|يسجل/i.test(text);
-          if (this.hidePresence && !isTyping) consider(span, ROW_PRESENCE, true);
-          if (this.hideTyping && isTyping) consider(span, ROW_PRESENCE, true);
+          if (this.hidePresence && !isTyping) consider(span, ROW_PRESENCE);
+          if (this.hideTyping && isTyping) consider(span, ROW_PRESENCE);
         }
       }
     } catch {

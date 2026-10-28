@@ -480,12 +480,12 @@ export function BroadcasterTab() {
                 {t("broadcaster.start")}
               </Button>
             ) : null}
-            {isRunning ? (
+            {isRunning && !validation.active ? (
               <Button variant="secondary" size="sm" icon={<Pause className="h-3.5 w-3.5" />} onClick={() => contentController.broadcast.pause()}>
                 {t("common.pause")}
               </Button>
             ) : null}
-            {isPaused ? (
+            {isPaused && !validation.active ? (
               <Button variant="success" size="sm" icon={<Play className="h-3.5 w-3.5" />} onClick={() => contentController.broadcast.resume()}>
                 {t("common.resume")}
               </Button>

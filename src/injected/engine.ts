@@ -206,9 +206,13 @@ class MadarEngine {
 
     const authorRaw =
       widToId(data.author) || widToId(data.refId?.participant) || widToId(data.from) || widToId(data.refId?.remote);
-    const [revokedBy, senderName] = await Promise.all([
+    const isGroup = isGroupChat(chatId);
+    const originalRaw = widToId(data.refId?.participant) || (isGroup ? "" : widToId(data.from));
+    const [revokedBy, senderName, originalPhone, originalName] = await Promise.all([
       resolvePhone(this.wpp, authorRaw),
       resolveContactName(this.wpp, authorRaw),
+      originalRaw ? resolvePhone(this.wpp, originalRaw) : Promise.resolve(""),
+      originalRaw ? resolveContactName(this.wpp, originalRaw) : Promise.resolve(""),
     ]);
 
     const event: RevokedMessageEvent = {
@@ -219,7 +223,9 @@ class MadarEngine {
       revokedBy: revokedBy || phoneFromChatId(authorRaw),
       revokeType: String(data.type ?? "revoke"),
       timestamp: Date.now(),
-      isGroup: isGroupChat(chatId),
+      isGroup,
+      originalSenderPhone: originalPhone || (originalRaw ? phoneFromChatId(originalRaw) : ""),
+      originalSenderName: originalName,
     };
 
     this.bridge.emit("message.revoked", { ...event, senderName });

@@ -8,6 +8,7 @@ import type {
   CampaignState,
   DeletedMessage,
   EngineInfo,
+  PrivacyGuardStatus,
   WebhookLogEntry,
 } from "../shared/types";
 
@@ -61,6 +62,7 @@ interface AppState {
   campaign: CampaignState;
   recipients: CampaignRecipient[];
   validation: ValidationState;
+  privacyGuard: PrivacyGuardStatus | null;
   toasts: ToastItem[];
   setSettings: (settings: AppSettings) => void;
   setEngine: (engine: EngineInfo) => void;
@@ -80,6 +82,7 @@ interface AppState {
   appendCampaignLog: (entry: CampaignLogEntry) => void;
   setRecipients: (recipients: CampaignRecipient[]) => void;
   setValidation: (validation: ValidationState) => void;
+  setPrivacyGuard: (guard: PrivacyGuardStatus | null) => void;
   resetCampaign: () => void;
   pushToast: (toast: Omit<ToastItem, "id" | "at">) => void;
   dismissToast: (id: string) => void;
@@ -101,6 +104,7 @@ export const useAppStore = create<AppState>((set) => ({
   campaign: emptyCampaign(),
   recipients: [],
   validation: emptyValidation(),
+  privacyGuard: null,
   toasts: [],
 
   setSettings: (settings) => set({ settings }),
@@ -128,6 +132,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setRecipients: (recipients) => set({ recipients }),
   setValidation: (validation) => set({ validation }),
+  setPrivacyGuard: (privacyGuard) => set({ privacyGuard }),
   resetCampaign: () => set({ campaign: emptyCampaign(), recipients: [], validation: emptyValidation() }),
   pushToast: (toast) =>
     set((state) => {

@@ -81,7 +81,6 @@ export interface AppSettings {
   version: number;
   language: Language;
   theme: ThemeMode;
-  enabled: boolean;
   privacy: PrivacySettings;
   antiDelete: AntiDeleteSettings;
   autoReply: AutoReplySettings;
@@ -176,6 +175,12 @@ export interface WebhookLogEntry {
   event: string;
 }
 
+export interface PrivacyGuardStatus {
+  active: boolean;
+  patched: number;
+  unsupported: number;
+}
+
 export interface EngineInfo {
   ready: boolean;
   wppVersion: string;
@@ -206,6 +211,8 @@ export interface RevokedMessageEvent {
   timestamp: number;
   isGroup: boolean;
   senderName?: string;
+  originalSenderPhone?: string;
+  originalSenderName?: string;
 }
 
 export interface PresenceEvent {

@@ -30,7 +30,7 @@
   "content_scripts": [
     {
       "matches": ["https://web.whatsapp.com/*"],
-      "js": ["wppconnect-wa.js", "injected.js"],
+      "js": ["preload.js", "wppconnect-wa.js", "injected.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },

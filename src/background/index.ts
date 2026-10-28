@@ -17,6 +17,20 @@ function uid(): string {
   }
 }
 
+/** Delivery logs keep the endpoint but drop credentials, query values and hash. */
+function redactUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().slice(0, 500);
+  } catch {
+    return String(raw ?? "").slice(0, 500);
+  }
+}
+
 async function appendWebhookLog(entry: WebhookLogEntry): Promise<void> {
   logChain = logChain.catch(() => undefined).then(async () => {
     const stored = await chrome.storage.local.get(STORAGE_KEYS.webhookLog);
@@ -57,7 +71,7 @@ async function postWebhook(
       await appendWebhookLog({
         id: uid(),
         at: Date.now(),
-        url: settings.webhook.url.slice(0, 500),
+        url: redactUrl(settings.webhook.url),
         ok: false,
         status: 0,
         error: check.reason,
@@ -73,7 +87,7 @@ async function postWebhook(
     await appendWebhookLog({
       id: uid(),
       at: Date.now(),
-      url: check.url,
+      url: redactUrl(check.url),
       ok: false,
       status: 0,
       error: result.error,
@@ -105,7 +119,7 @@ async function postWebhook(
     await appendWebhookLog({
       id: uid(),
       at: Date.now(),
-      url: check.url,
+      url: redactUrl(check.url),
       ok: result.ok,
       status: result.status,
       error: result.error,
@@ -122,7 +136,7 @@ async function postWebhook(
     await appendWebhookLog({
       id: uid(),
       at: Date.now(),
-      url: check.url,
+      url: redactUrl(check.url),
       ok: false,
       status: 0,
       error: result.error.slice(0, 300),

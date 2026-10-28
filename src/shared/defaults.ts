@@ -7,7 +7,6 @@ export function createDefaultSettings(): AppSettings {
     version: SETTINGS_VERSION,
     language: "ar",
     theme: "auto",
-    enabled: true,
     privacy: {
       blurPreview: false,
       blurNames: false,
@@ -135,7 +134,6 @@ export function mergeSettings(input: unknown): AppSettings {
     version: SETTINGS_VERSION,
     language: input.language === "en" ? "en" : "ar",
     theme: input.theme === "light" || input.theme === "dark" ? input.theme : "auto",
-    enabled: bool(input.enabled, base.enabled),
     privacy: {
       blurPreview: bool(privacy.blurPreview, base.privacy.blurPreview),
       blurNames: bool(privacy.blurNames, base.privacy.blurNames),

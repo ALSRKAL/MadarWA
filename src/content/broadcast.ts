@@ -1,4 +1,4 @@
-import { BRIDGE_COMMANDS } from "../shared/constants";
+import { BRIDGE_COMMANDS, UI_LIMITS } from "../shared/constants";
 import { tFor } from "../shared/i18n";
 import type {
   AppSettings,
@@ -49,6 +49,7 @@ export function parseManualRecipients(text: string, defaultCountryCode = ""): {
   let duplicates = 0;
 
   for (const line of text.split(/\r?\n/)) {
+    if (recipients.length >= UI_LIMITS.maxCampaignRecipients) break;
     const raw = line.trim();
     if (!raw) continue;
     const parts = raw.split(/[,;\t]/);

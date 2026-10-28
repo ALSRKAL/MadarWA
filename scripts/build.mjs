@@ -101,6 +101,7 @@ async function buildAll() {
 
   await buildPopup();
   await buildLib("src/content/index.tsx", "MadarWAContent", "content.js", [react()]);
+  await buildLib("src/injected/preload.ts", "MadarWAPreload", "preload.js");
   await buildLib("src/injected/engine.ts", "MadarWAEngine", "injected.js");
   await buildLib("src/background/index.ts", "MadarWABackground", "background.js");
   await copyStatic();
@@ -110,6 +111,7 @@ async function buildAll() {
     "manifest.json",
     "background.js",
     "content.js",
+    "preload.js",
     "injected.js",
     "wppconnect-wa.js",
     "privacy.css",

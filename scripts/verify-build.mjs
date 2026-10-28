@@ -97,6 +97,8 @@ assert(Boolean(isolatedScript), "ISOLATED world content script declared");
 
 if (mainScript) {
   const js = Array.isArray(mainScript.js) ? mainScript.js : [];
+  assert(js.includes("preload.js"), "MAIN world loads the analytics preload shim first");
+  assert(js[0] === "preload.js", "preload.js runs before the wa-js bundle");
   assert(js.includes("wppconnect-wa.js"), "MAIN world loads local wppconnect-wa.js");
   assert(js.includes("injected.js"), "MAIN world loads injected.js");
   assert(mainScript.run_at === "document_start", "MAIN engine runs at document_start");
@@ -144,6 +146,7 @@ for (const [size, file] of Object.entries(manifest.icons ?? {})) {
 }
 
 await checkFile("wppconnect-wa.js", "wppconnect-wa.js");
+await checkFile("preload.js", "preload.js");
 await checkFile("privacy.css", "privacy.css");
 await checkFile("popup.html", "popup.html");
 await checkFile("content.js", "content.js");
@@ -152,6 +155,10 @@ await checkFile("background.js", "background.js");
 
 const wppBundle = await readText("wppconnect-wa.js");
 assert(wppBundle.includes("self.WPP="), "wa-js bundle exposes window.WPP locally");
+
+const preloadJs = await readText("preload.js");
+assert(preloadJs.includes("disableGoogleAnalytics"), "preload disables wa-js analytics");
+assert(preloadJs.includes("MadarWA"), "preload brands the linked device as MadarWA");
 
 const contentJs = await readText("content.js");
 assert(contentJs.includes("madarwa-shadow-host"), "content.js mounts the Shadow DOM host");

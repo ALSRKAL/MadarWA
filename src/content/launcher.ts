@@ -124,6 +124,16 @@ export class LauncherManager {
     shadow.append(style, wrap);
     mount.appendChild(host);
 
+    const rect = host.getBoundingClientRect();
+    if (rect.width < 20 || rect.height < 20) {
+      host.remove();
+      this.host = null;
+      this.button = null;
+      this.dot = null;
+      useAppStore.getState().setLauncherFallback(true);
+      return;
+    }
+
     this.host = host;
     this.button = button;
     this.dot = button.querySelector<HTMLSpanElement>(".dot");
