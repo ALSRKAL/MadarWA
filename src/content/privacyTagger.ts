@@ -12,7 +12,8 @@ export type PrivacyElementTag =
   | "chat-preview"
   | "avatar"
   | "message-text"
-  | "media-box";
+  | "media-box"
+  | "composer-input";
 
 const MAX_ROWS = 120;
 const MAX_MESSAGE_ROWS = 320;
@@ -141,6 +142,7 @@ export class PrivacyTagger {
       this.tagNames();
       this.tagMessageText();
       this.tagMedia();
+      this.tagComposer();
     } catch {
       // WhatsApp re-rendered mid-scan; the next mutation schedules another pass.
     }
@@ -289,6 +291,17 @@ export class PrivacyTagger {
           count += 1;
         }
       }
+    }
+  }
+
+  private tagComposer(): void {
+    const main = document.querySelector("#main");
+    if (!main) return;
+    const composers = main.querySelectorAll<HTMLElement>(
+      'footer [contenteditable="true"], [contenteditable="true"][role="textbox"], [data-testid="conversation-compose-box-input"]',
+    );
+    for (const composer of Array.from(composers).slice(0, 3)) {
+      this.mark(composer, "composer-input");
     }
   }
 

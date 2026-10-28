@@ -14,6 +14,9 @@ describe("settings defaults and defensive merge", () => {
     const defaults = mergeSettings(null);
     expect(defaults.privacy.blurPreview).toBe(false);
     expect(defaults.privacy.suppressDeliveryReceipts).toBe(false);
+    expect(defaults.privacy.blurComposer).toBe(false);
+    expect(defaults.privacy.hideRecording).toBe(false);
+    expect(defaults.privacy.privateStatusView).toBe(false);
     expect(defaults.antiDelete.enabled).toBe(true);
     expect(defaults.autoReply.rules.length).toBeGreaterThan(0);
     expect(defaults.broadcaster.minDelaySec).toBe(6);
@@ -25,7 +28,14 @@ describe("settings defaults and defensive merge", () => {
     const merged = mergeSettings({
       language: "xx",
       theme: "neon",
-      privacy: { blurPreview: "yes", blurMessages: true, suppressDeliveryReceipts: "yes" },
+      privacy: {
+        blurPreview: "yes",
+        blurMessages: true,
+        suppressDeliveryReceipts: "yes",
+        blurComposer: "yes",
+        hideRecording: "yes",
+        privateStatusView: "yes",
+      },
       antiDelete: { maxCache: 999_999, enabled: "no" },
       broadcaster: {
         minDelaySec: 99_999,
@@ -48,6 +58,9 @@ describe("settings defaults and defensive merge", () => {
     expect(merged.privacy.blurPreview).toBe(false);
     expect(merged.privacy.blurMessages).toBe(true);
     expect(merged.privacy.suppressDeliveryReceipts).toBe(false);
+    expect(merged.privacy.blurComposer).toBe(false);
+    expect(merged.privacy.hideRecording).toBe(false);
+    expect(merged.privacy.privateStatusView).toBe(false);
     expect(merged.antiDelete.maxCache).toBe(3000);
     expect(merged.antiDelete.enabled).toBe(true);
     expect(merged.broadcaster.minDelaySec).toBe(600);
@@ -68,7 +81,13 @@ describe("settings defaults and defensive merge", () => {
     const merged = mergeSettings({
       language: "en",
       theme: "dark",
-      privacy: { disableReadReceipts: true, suppressDeliveryReceipts: true },
+      privacy: {
+        disableReadReceipts: true,
+        suppressDeliveryReceipts: true,
+        blurComposer: true,
+        hideRecording: true,
+        privateStatusView: true,
+      },
       broadcaster: { minDelaySec: 8, maxDelaySec: 20, batchSize: 25 },
       pin: { enabled: true, idleMinutes: 45, hash: "abc", salt: "def" },
       webhook: { enabled: true, url: "https://hooks.example.org/x", token: "t" },
@@ -77,6 +96,9 @@ describe("settings defaults and defensive merge", () => {
     expect(merged.theme).toBe("dark");
     expect(merged.privacy.disableReadReceipts).toBe(true);
     expect(merged.privacy.suppressDeliveryReceipts).toBe(true);
+    expect(merged.privacy.blurComposer).toBe(true);
+    expect(merged.privacy.hideRecording).toBe(true);
+    expect(merged.privacy.privateStatusView).toBe(true);
     expect(merged.broadcaster.maxDelaySec).toBe(20);
     expect(merged.pin.idleMinutes).toBe(45);
     expect(merged.webhook.enabled).toBe(true);

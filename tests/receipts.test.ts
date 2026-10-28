@@ -81,36 +81,25 @@ describe("delivery receipt guard", () => {
     expect((common.sendAggregateReceipts as unknown as { __madarwa?: string }).__madarwa).toBe("receipt-filter");
   });
 
-  it("blocks played and high-level receipt jobs when present", () => {
+  it("blocks the high-level receipt handler when present", () => {
     const { modules, calls, delivery } = makeModules();
-    const played = {
-      default: (_payload?: unknown) => {
-        calls.played += 1;
-      },
-    };
     const handle = {
       sendReceipt: (_a?: unknown, _b?: unknown, _c?: unknown, _d?: unknown) => {
         calls.handle += 1;
       },
     };
-    modules.WAWebSendPlayedReceiptJob = played;
     modules.WAWebHandleMsgSendReceipt = handle;
     const guard = new DeliveryReceiptGuard();
     const result = guard.sync(loadFrom(modules), true);
 
-    expect(result.patched).toBe(6);
-    expect(result.modules).toContain("WAWebSendPlayedReceiptJob.default");
+    expect(result.patched).toBe(5);
     expect(result.modules).toContain("WAWebHandleMsgSendReceipt.sendReceipt");
 
-    played.default({});
     handle.sendReceipt({}, {}, {}, {});
-    expect(calls.played).toBe(0);
     expect(calls.handle).toBe(0);
 
     guard.sync(loadFrom(modules), false);
-    played.default({});
     handle.sendReceipt({}, {}, {}, {});
-    expect(calls.played).toBe(1);
     expect(calls.handle).toBe(1);
     expect(delivery).toBeTruthy();
   });
@@ -212,5 +201,73 @@ describe("privacy controller stealth integration", () => {
     expect(privacyCalls).toContain("read:all");
     expect(off.guard.deliveryActive).toBe(false);
     expect(calls.delivery).toBe(0);
+  });
+
+  it("suppresses native played and status receipts independently", async () => {
+    const { modules } = makeModules();
+    let playedCalls = 0;
+    let statusCalls = 0;
+    const playedModule = {
+      default: () => {
+        playedCalls += 1;
+      },
+    };
+    const readModule = {
+      markStatusRead: () => {
+        statusCalls += 1;
+      },
+    };
+    const allModules: Record<string, unknown> = {
+      ...modules,
+      WAWebSendPlayedReceiptJob: playedModule,
+      WAWebSendReadReceiptJob: readModule,
+    };
+    const wpp = {
+      loader: { loadModule: (name: string) => allModules[name] },
+      privacy: {
+        get: async () => ({ readReceipts: "all", online: "all" }),
+        setReadReceipts: async (value: string) => value,
+        setOnline: async (value: string) => value,
+      },
+      chat: {
+        get: (chatId: string) => ({ id: chatId }),
+        markIsRead: async () => undefined,
+        markMessageAsRead: async () => undefined,
+        markPlayed: async () => undefined,
+      },
+      whatsapp: {
+        functions: {
+          markChatRead: async () => undefined,
+          markPlayed: async () => undefined,
+          updateUnreadCountMD: () => undefined,
+        },
+      },
+    } as unknown as WppApi;
+
+    const controller = new PrivacyController();
+    const settings = createDefaultSettings().privacy;
+    const on = await controller.apply(wpp, {
+      ...settings,
+      disableAudioReceipts: true,
+      privateStatusView: true,
+    });
+    expect(on.guard.audioActive).toBe(true);
+    expect(on.guard.statusActive).toBe(true);
+    expect((playedModule.default as unknown as { __madarwa?: string }).__madarwa).toBe("played-noop");
+    expect((readModule.markStatusRead as unknown as { __madarwa?: string }).__madarwa).toBe("status-noop");
+
+    playedModule.default();
+    readModule.markStatusRead();
+    expect(playedCalls).toBe(0);
+    expect(statusCalls).toBe(0);
+
+    const off = await controller.apply(wpp, { ...settings });
+    expect(off.guard.audioActive).toBe(false);
+    expect(off.guard.statusActive).toBe(false);
+
+    playedModule.default();
+    readModule.markStatusRead();
+    expect(playedCalls).toBe(1);
+    expect(statusCalls).toBe(1);
   });
 });

@@ -6,6 +6,8 @@ export interface ReceiptGuardResult {
   active: boolean;
   patched: number;
   unsupported: number;
+  audioActive: boolean;
+  statusActive: boolean;
 }
 
 export interface PrivacyGuardResult extends ReceiptGuardResult {
@@ -35,29 +37,57 @@ interface GuardSlot {
  */
 class ReceiptGuard {
   private slots: GuardSlot[] = [];
-  private lastResult: ReceiptGuardResult = { active: false, patched: 0, unsupported: 0 };
+  private lastResult: ReceiptGuardResult = {
+    active: false,
+    patched: 0,
+    unsupported: 0,
+    audioActive: false,
+    statusActive: false,
+  };
   private signature = "";
 
-  sync(wpp: WppApi, flags: { audio: boolean; read: boolean }): ReceiptGuardResult {
-    const signature = `${flags.audio ? 1 : 0}:${flags.read ? 1 : 0}`;
+  sync(wpp: WppApi, flags: { audio: boolean; read: boolean; status: boolean }): ReceiptGuardResult {
+    const signature = `${flags.audio ? 1 : 0}:${flags.read ? 1 : 0}:${flags.status ? 1 : 0}`;
     if (signature === this.signature) return this.lastResult;
 
     this.restore();
     let patched = 0;
     let unsupported = 0;
+    let audioPatched = 0;
+    let statusPatched = 0;
 
-    const attempt = (owner: Record<string, unknown> | undefined, key: string, replacement: (...args: unknown[]) => Promise<unknown>) => {
+    const attempt = (
+      owner: Record<string, unknown> | undefined,
+      key: string,
+      replacement: (...args: unknown[]) => Promise<unknown>,
+      bucket?: "audio" | "status",
+    ) => {
       if (!owner) {
         unsupported += 1;
         return;
       }
-      if (this.patch(owner, key, replacement)) patched += 1;
-      else unsupported += 1;
+      if (this.patch(owner, key, replacement)) {
+        patched += 1;
+        if (bucket === "audio") audioPatched += 1;
+        if (bucket === "status") statusPatched += 1;
+      } else {
+        unsupported += 1;
+      }
     };
 
     if (flags.audio) {
-      attempt(wpp.chat as unknown as Record<string, unknown>, "markPlayed", async () => undefined);
-      attempt(wpp.whatsapp?.functions, "markPlayed", async () => undefined);
+      attempt(wpp.chat as unknown as Record<string, unknown>, "markPlayed", async () => undefined, "audio");
+      attempt(wpp.whatsapp?.functions, "markPlayed", async () => undefined, "audio");
+      const playedModule = wpp.loader?.loadModule?.("WAWebSendPlayedReceiptJob") as
+        | Record<string, unknown>
+        | undefined;
+      if (playedModule && typeof playedModule.default === "function") {
+        const playedNoop = (async () => undefined) as ((...args: unknown[]) => Promise<unknown>) & {
+          __madarwa?: string;
+        };
+        playedNoop.__madarwa = "played-noop";
+        attempt(playedModule, "default", playedNoop, "audio");
+      }
     }
     if (flags.read) {
       attempt(wpp.chat as unknown as Record<string, unknown>, "markIsRead", async (chatId) =>
@@ -66,9 +96,25 @@ class ReceiptGuard {
       attempt(wpp.chat as unknown as Record<string, unknown>, "markMessageAsRead", async () => undefined);
       attempt(wpp.whatsapp?.functions, "markChatRead", async () => undefined);
     }
+    if (flags.status) {
+      const readModule = wpp.loader?.loadModule?.("WAWebSendReadReceiptJob") as
+        | Record<string, unknown>
+        | undefined;
+      const statusNoop = (async () => undefined) as ((...args: unknown[]) => Promise<unknown>) & {
+        __madarwa?: string;
+      };
+      statusNoop.__madarwa = "status-noop";
+      attempt(readModule, "markStatusRead", statusNoop, "status");
+    }
 
     this.signature = signature;
-    this.lastResult = { active: patched > 0, patched, unsupported };
+    this.lastResult = {
+      active: patched > 0,
+      patched,
+      unsupported,
+      audioActive: audioPatched > 0,
+      statusActive: statusPatched > 0,
+    };
     return this.lastResult;
   }
 
@@ -123,7 +169,13 @@ class ReceiptGuard {
       }
     }
     this.slots = [];
-    this.lastResult = { active: false, patched: 0, unsupported: 0 };
+    this.lastResult = {
+      active: false,
+      patched: 0,
+      unsupported: 0,
+      audioActive: false,
+      statusActive: false,
+    };
   }
 }
 
@@ -198,8 +250,9 @@ export class PrivacyController {
     }
 
     const guard = this.guard.sync(wpp, {
-      audio: settings.disableAudioReceipts,
+      audio: settings.disableAudioReceipts || settings.suppressDeliveryReceipts,
       read: readOff,
+      status: settings.privateStatusView,
     });
     const delivery = this.deliveryGuard.sync(wpp.loader?.loadModule, settings.suppressDeliveryReceipts);
 

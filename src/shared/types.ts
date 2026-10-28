@@ -13,9 +13,12 @@ export interface PrivacySettings {
   blurAvatars: boolean;
   blurMessages: boolean;
   blurMedia: boolean;
+  blurComposer: boolean;
   hidePresence: boolean;
   hideTyping: boolean;
+  hideRecording: boolean;
   disableReadReceipts: boolean;
+  privateStatusView: boolean;
   suppressDeliveryReceipts: boolean;
   disableAudioReceipts: boolean;
 }
@@ -218,6 +221,8 @@ export interface PrivacyGuardStatus {
   active: boolean;
   patched: number;
   unsupported: number;
+  audioActive?: boolean;
+  statusActive?: boolean;
   deliveryActive?: boolean;
   deliveryPatched?: number;
   deliveryUnsupported?: number;

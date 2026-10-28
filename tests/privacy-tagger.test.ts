@@ -14,6 +14,7 @@ const ALL_BLURS: PrivacySettings = {
   blurAvatars: true,
   blurMessages: true,
   blurMedia: true,
+  blurComposer: true,
 };
 
 function mountWhatsapp(): void {
@@ -42,6 +43,7 @@ function mountWhatsapp(): void {
           <img src="https://example.com/photo.jpg" alt="" />
         </div>
       </div>
+      <footer><div contenteditable="true" role="textbox">Draft message</div></footer>
     </div>
   `;
 }
@@ -88,6 +90,7 @@ describe("privacy tagger", () => {
     expect(el("#pane-side div[role='listitem'] > img").getAttribute(ELEMENT_ATTR)).toBe("avatar");
     expect(el('[data-testid="msg-text"]').getAttribute(ELEMENT_ATTR)).toBe("message-text");
     expect(el('[data-id] img').getAttribute(ELEMENT_ATTR)).toBe("media-box");
+    expect(el('#main footer [contenteditable="true"]').getAttribute(ELEMENT_ATTR)).toBe("composer-input");
     expect(el("#main header [data-testid='conversation-info-header-chat-title'] span").getAttribute(ELEMENT_ATTR)).toBe(
       "contact-name",
     );
@@ -148,7 +151,7 @@ describe("surgical hover-to-reveal CSS", () => {
   const css = readFileSync(resolve(process.cwd(), "src/injected/privacy.css"), "utf8");
 
   it("blurs and reveals each tagged element individually", () => {
-    for (const tag of ["contact-name", "phone-number", "chat-preview", "avatar", "message-text", "media-box"]) {
+    for (const tag of ["contact-name", "phone-number", "chat-preview", "avatar", "message-text", "media-box", "composer-input"]) {
       expect(css).toContain(`[data-madarwa-el="${tag}"]`);
       expect(css).toContain(`[data-madarwa-el="${tag}"]:hover`);
     }
@@ -159,6 +162,11 @@ describe("surgical hover-to-reveal CSS", () => {
 
   it("keeps the phone-number blur gated by its own body attribute", () => {
     expect(css).toContain('body[data-madarwa-blur-phones="1"] [data-madarwa-el="phone-number"]');
+  });
+
+  it("blurs the composer until it is focused", () => {
+    expect(css).toContain('body[data-madarwa-blur-composer="1"] [data-madarwa-el="composer-input"]');
+    expect(css).toContain('[data-madarwa-el="composer-input"]:focus');
   });
 
   it("does not unblur every name when hovering an unrelated header area", () => {

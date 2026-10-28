@@ -129,7 +129,7 @@ export class ContentController {
     useAppStore.getState().setTheme(initialTheme);
     document.body?.setAttribute("data-madarwa-theme", initialTheme);
     applyPrivacyAttributes(settings.privacy);
-    this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
+    this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping, settings.privacy.hideRecording);
     this.privacyTagger.setActive(settings.privacy);
 
     const [vault, webhookLog, rawCache, rawReport] = await Promise.all([
@@ -303,7 +303,7 @@ export class ContentController {
   private onSettingsChanged(settings: AppSettings): void {
     initI18n(settings.language);
     applyPrivacyAttributes(settings.privacy);
-    this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping);
+    this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping, settings.privacy.hideRecording);
     this.privacyTagger.setActive(settings.privacy);
     this.inlineRestorer.setLanguage(settings.language);
     this.inlineRestorer.setMode(settings.antiDelete.inlineMode);

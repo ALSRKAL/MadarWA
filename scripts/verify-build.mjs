@@ -170,6 +170,8 @@ assert(contentJs.includes("data-madarwa-media-kind"), "content.js renders media-
 assert(contentJs.includes("Show Deleted Message") && contentJs.includes("Hide Content"), "content.js ships bilingual reveal pills");
 assert(contentJs.includes("madarwa-lightbox"), "content.js implements the full-screen media lightbox");
 assert(contentJs.includes("suppressDeliveryReceipts"), "content.js exposes the one-tick stealth toggle");
+assert(contentJs.includes("blurComposer") && contentJs.includes("hideRecording"), "content.js ships composer blur and recording controls");
+assert(contentJs.includes("privateStatusView"), "content.js ships private status viewing");
 assert(contentJs.includes("deliveryActive"), "content.js reports the delivery-receipt guard status");
 
 const injectedJs = await readText("injected.js");
@@ -185,7 +187,8 @@ assert(injectedJs.includes("WAWebSendDeliveryReceiptJob"), "injected.js locates 
 assert(injectedJs.includes("sendDeliveryReceiptsAfterDecryption"), "injected.js suppresses native delivery receipts");
 assert(injectedJs.includes("WAWebSendReceiptJobCommon"), "injected.js filters aggregate receipts");
 assert(injectedJs.includes("receipt-filter") && injectedJs.includes("delivery-noop"), "injected.js marks every receipt patch");
-assert(injectedJs.includes("WAWebSendPlayedReceiptJob"), "injected.js suppresses played receipt jobs");
+assert(injectedJs.includes("WAWebSendPlayedReceiptJob"), "injected.js suppresses native played receipt jobs");
+assert(injectedJs.includes("WAWebSendReadReceiptJob") && injectedJs.includes("markStatusRead"), "injected.js suppresses private status view receipts");
 assert(injectedJs.includes("updateUnreadCountMD"), "injected.js clears local unread state without a receipt");
 assert(contentJs.includes("madarwa-inline-restore"), "content.js injects the inline restored bubble");
 assert(contentJs.includes("antidelete.preindex"), "content.js requests the store pre-index");
@@ -205,6 +208,8 @@ assert(privacyCss.includes('data-madarwa-el="phone-number"'), "privacy.css blurs
 assert(privacyCss.includes('data-madarwa-el="message-text"'), "privacy.css blurs tagged message text");
 assert(privacyCss.includes('data-madarwa-el="media-box"'), "privacy.css blurs tagged media boxes");
 assert(privacyCss.includes("data-madarwa-blur-phones"), "privacy.css supports the phone-number toggle");
+assert(privacyCss.includes("data-madarwa-blur-composer"), "privacy.css supports composer blur");
+assert(privacyCss.includes('data-madarwa-el="composer-input"'), "privacy.css blurs the tagged composer input");
 assert(privacyCss.includes("filter: blur(0px) !important"), "privacy.css reveals only the hovered element");
 assert(privacyCss.includes("madarwa-lightbox"), "privacy.css styles the media lightbox");
 

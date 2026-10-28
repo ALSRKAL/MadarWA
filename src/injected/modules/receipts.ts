@@ -25,7 +25,6 @@ const COMMON_MODULE = "WAWebSendReceiptJobCommon";
 const SAFE_RECEIPT_TYPES = new Set(["history-sync-completion", "server-error"]);
 
 const OPTIONAL_RECEIPT_MODULES: ReadonlyArray<readonly [string, readonly string[]]> = [
-  ["WAWebSendPlayedReceiptJob", ["default"]],
   ["WAWebSendReceiptJob", ["default", "sendReceipt", "sendReceipts"]],
   ["WAWebHandleMsgSendReceipt", ["sendReceipt"]],
 ];

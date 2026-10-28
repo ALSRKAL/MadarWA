@@ -34,9 +34,12 @@ const ALL_PRIVACY_ON: PrivacySettings = {
   blurAvatars: true,
   blurMessages: true,
   blurMedia: true,
+  blurComposer: true,
   hidePresence: true,
   hideTyping: true,
+  hideRecording: true,
   disableReadReceipts: true,
+  privateStatusView: true,
   suppressDeliveryReceipts: true,
   disableAudioReceipts: true,
 };
@@ -48,9 +51,12 @@ const ALL_PRIVACY_OFF: PrivacySettings = {
   blurAvatars: false,
   blurMessages: false,
   blurMedia: false,
+  blurComposer: false,
   hidePresence: false,
   hideTyping: false,
+  hideRecording: false,
   disableReadReceipts: false,
+  privateStatusView: false,
   suppressDeliveryReceipts: false,
   disableAudioReceipts: false,
 };
@@ -75,11 +81,13 @@ export function PrivacyTab() {
   }, [settings.pin.idleMinutes]);
 
   const patchPrivacy = (patch: Partial<PrivacySettings>) => {
-    setSettings({ ...settings, privacy: { ...settings.privacy, ...patch } });
+    const current = useAppStore.getState().settings;
+    setSettings({ ...current, privacy: { ...current.privacy, ...patch } });
   };
 
   const applyPreset = (privacy: PrivacySettings, message: string) => {
-    setSettings({ ...settings, privacy });
+    const current = useAppStore.getState().settings;
+    setSettings({ ...current, privacy });
     pushToast({ kind: "success", title: message, body: "" });
   };
 
@@ -93,9 +101,10 @@ export function PrivacyTab() {
       return;
     }
     setPinFormOpen(false);
+    const current = useAppStore.getState().settings;
     setSettings({
-      ...settings,
-      pin: { ...settings.pin, enabled: false, hash: "", salt: "" },
+      ...current,
+      pin: { ...current.pin, enabled: false, hash: "", salt: "" },
     });
     pushToast({ kind: "info", title: t("privacy.pinDisabled"), body: "" });
   };
@@ -115,8 +124,9 @@ export function PrivacyTab() {
     try {
       const record = await createPinRecord(pin);
       const idleMinutes = Math.min(480, Math.max(1, Number(idle) || 30));
+      const current = useAppStore.getState().settings;
       setSettings({
-        ...settings,
+        ...current,
         pin: {
           enabled: true,
           hash: record.hash,
@@ -138,8 +148,9 @@ export function PrivacyTab() {
   const applyIdle = () => {
     const value = Math.min(480, Math.max(1, Number(idle) || 30));
     setIdle(String(value));
-    if (value !== settings.pin.idleMinutes) {
-      setSettings({ ...settings, pin: { ...settings.pin, idleMinutes: value } });
+    const current = useAppStore.getState().settings;
+    if (value !== current.pin.idleMinutes) {
+      setSettings({ ...current, pin: { ...current.pin, idleMinutes: value } });
     }
   };
 
@@ -220,6 +231,12 @@ export function PrivacyTab() {
           label={t("privacy.blurMedia")}
           hint={t("privacy.blurMediaHint")}
         />
+        <Toggle
+          checked={settings.privacy.blurComposer}
+          onChange={(value) => patchPrivacy({ blurComposer: value })}
+          label={t("privacy.blurComposer")}
+          hint={t("privacy.blurComposerHint")}
+        />
       </Card>
 
       <Card className="p-0">
@@ -240,6 +257,12 @@ export function PrivacyTab() {
           label={t("privacy.hideTyping")}
           hint={t("privacy.hideTypingHint")}
         />
+        <Toggle
+          checked={settings.privacy.hideRecording}
+          onChange={(value) => patchPrivacy({ hideRecording: value })}
+          label={t("privacy.hideRecording")}
+          hint={t("privacy.hideRecordingHint")}
+        />
       </Card>
 
       <Card className="p-0">
@@ -253,6 +276,19 @@ export function PrivacyTab() {
           label={t("privacy.disableReadReceipts")}
           hint={t("privacy.disableReadReceiptsHint")}
           warning
+        />
+        <Toggle
+          checked={settings.privacy.privateStatusView}
+          onChange={(value) => patchPrivacy({ privateStatusView: value })}
+          label={t("privacy.privateStatusView")}
+          hint={t("privacy.privateStatusViewHint")}
+          action={
+            settings.privacy.privateStatusView && privacyGuard ? (
+              <Badge tone={privacyGuard.statusActive ? "success" : "warning"}>
+                {privacyGuard.statusActive ? t("privacy.stealthActive") : t("privacy.stealthUnsupported")}
+              </Badge>
+            ) : undefined
+          }
         />
         <Toggle
           checked={settings.privacy.suppressDeliveryReceipts}
@@ -280,13 +316,14 @@ export function PrivacyTab() {
           hint={t("privacy.disableAudioReceiptsHint")}
           action={
             settings.privacy.disableAudioReceipts && privacyGuard ? (
-              <Badge tone={privacyGuard.active ? "success" : "warning"}>
-                {privacyGuard.active ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
+              <Badge tone={privacyGuard.audioActive ? "success" : "warning"}>
+                {privacyGuard.audioActive ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
               </Badge>
             ) : undefined
           }
         />
         {settings.privacy.disableReadReceipts ||
+        settings.privacy.privateStatusView ||
         settings.privacy.suppressDeliveryReceipts ||
         settings.privacy.disableAudioReceipts ? (
           <div className="px-2 pb-2">

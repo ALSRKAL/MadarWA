@@ -8,6 +8,7 @@ const ATTRS = {
   blurAvatars: "data-madarwa-blur-avatars",
   blurMessages: "data-madarwa-blur-messages",
   blurMedia: "data-madarwa-blur-media",
+  blurComposer: "data-madarwa-blur-composer",
   hidePresence: "data-madarwa-hide-presence",
   hideTyping: "data-madarwa-hide-typing",
 } as const;
@@ -19,7 +20,8 @@ export function hasAnyBlur(settings: PrivacySettings): boolean {
       settings.blurPhoneNumbers ||
       settings.blurAvatars ||
       settings.blurMessages ||
-      settings.blurMedia,
+      settings.blurMedia ||
+      settings.blurComposer,
   );
 }
 
@@ -106,16 +108,18 @@ const ROW_PRESENCE =
 export class PresenceScrubber {
   private hidePresence = false;
   private hideTyping = false;
+  private hideRecording = false;
   private observer: MutationObserver | null = null;
   private interval = 0;
   private timer = 0;
   private readonly marked = new Set<HTMLElement>();
 
-  setEnabled(hidePresence: boolean, hideTyping: boolean): void {
-    const wasEnabled = this.hidePresence || this.hideTyping;
+  setEnabled(hidePresence: boolean, hideTyping: boolean, hideRecording: boolean): void {
+    const wasEnabled = this.hidePresence || this.hideTyping || this.hideRecording;
     this.hidePresence = hidePresence;
     this.hideTyping = hideTyping;
-    const enabled = hidePresence || hideTyping;
+    this.hideRecording = hideRecording;
+    const enabled = hidePresence || hideTyping || hideRecording;
 
     if (enabled && !wasEnabled) this.start();
     if (!enabled && wasEnabled) this.stop();
@@ -141,7 +145,7 @@ export class PresenceScrubber {
   }
 
   schedule(delay = 500): void {
-    if (!this.hidePresence && !this.hideTyping) return;
+    if (!this.hidePresence && !this.hideTyping && !this.hideRecording) return;
     if (this.timer) return;
     this.timer = window.setTimeout(() => {
       this.timer = 0;
@@ -149,8 +153,12 @@ export class PresenceScrubber {
     }, delay);
   }
 
+  scanNow(): void {
+    this.scan();
+  }
+
   private scan(): void {
-    if (!this.hidePresence && !this.hideTyping) return;
+    if (!this.hidePresence && !this.hideTyping && !this.hideRecording) return;
     const nextMarked = new Set<HTMLElement>();
 
     const consider = (element: HTMLElement | null, matcher: RegExp) => {
@@ -170,9 +178,11 @@ export class PresenceScrubber {
           const span = spans[i];
           if (!span) continue;
           const text = (span.textContent ?? "").trim();
-          const isTyping = /يكتب|typing|recording|يسجل/i.test(text);
-          if (this.hidePresence && !isTyping) consider(span, HEADER_PRESENCE);
+          const isRecording = /يسجل|recording/i.test(text);
+          const isTyping = !isRecording && /يكتب|typing/i.test(text);
+          if (this.hidePresence && !isTyping && !isRecording) consider(span, HEADER_PRESENCE);
           if (this.hideTyping && isTyping) consider(span, HEADER_PRESENCE);
+          if (this.hideRecording && isRecording) consider(span, HEADER_PRESENCE);
         }
       }
 
@@ -188,9 +198,11 @@ export class PresenceScrubber {
           if (!span) continue;
           const text = (span.textContent ?? "").trim();
           if (!text || text.length > 60) continue;
-          const isTyping = /يكتب|typing|recording|يسجل/i.test(text);
-          if (this.hidePresence && !isTyping) consider(span, ROW_PRESENCE);
+          const isRecording = /يسجل|recording/i.test(text);
+          const isTyping = !isRecording && /يكتب|typing/i.test(text);
+          if (this.hidePresence && !isTyping && !isRecording) consider(span, ROW_PRESENCE);
           if (this.hideTyping && isTyping) consider(span, ROW_PRESENCE);
+          if (this.hideRecording && isRecording) consider(span, ROW_PRESENCE);
         }
       }
     } catch {
