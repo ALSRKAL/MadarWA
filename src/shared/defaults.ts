@@ -17,6 +17,7 @@ export function createDefaultSettings(): AppSettings {
       hidePresence: false,
       hideTyping: false,
       disableReadReceipts: false,
+      suppressDeliveryReceipts: false,
       disableAudioReceipts: false,
     },
     antiDelete: {
@@ -147,6 +148,7 @@ export function mergeSettings(input: unknown): AppSettings {
       hidePresence: bool(privacy.hidePresence, base.privacy.hidePresence),
       hideTyping: bool(privacy.hideTyping, base.privacy.hideTyping),
       disableReadReceipts: bool(privacy.disableReadReceipts, base.privacy.disableReadReceipts),
+      suppressDeliveryReceipts: bool(privacy.suppressDeliveryReceipts, base.privacy.suppressDeliveryReceipts),
       disableAudioReceipts: bool(privacy.disableAudioReceipts, base.privacy.disableAudioReceipts),
     },
     antiDelete: {

@@ -37,6 +37,7 @@ const ALL_PRIVACY_ON: PrivacySettings = {
   hidePresence: true,
   hideTyping: true,
   disableReadReceipts: true,
+  suppressDeliveryReceipts: true,
   disableAudioReceipts: true,
 };
 
@@ -50,6 +51,7 @@ const ALL_PRIVACY_OFF: PrivacySettings = {
   hidePresence: false,
   hideTyping: false,
   disableReadReceipts: false,
+  suppressDeliveryReceipts: false,
   disableAudioReceipts: false,
 };
 
@@ -253,6 +255,25 @@ export function PrivacyTab() {
           warning
         />
         <Toggle
+          checked={settings.privacy.suppressDeliveryReceipts}
+          onChange={(value) => patchPrivacy({ suppressDeliveryReceipts: value })}
+          label={t("privacy.suppressDelivery")}
+          hint={t("privacy.suppressDeliveryHint")}
+          warning
+          action={
+            settings.privacy.suppressDeliveryReceipts && privacyGuard ? (
+              <Badge tone={privacyGuard.deliveryActive ? "success" : "warning"}>
+                {privacyGuard.deliveryActive ? t("privacy.stealthActive") : t("privacy.stealthUnsupported")}
+              </Badge>
+            ) : undefined
+          }
+        />
+        {settings.privacy.suppressDeliveryReceipts ? (
+          <div className="px-2 pb-1">
+            <Alert tone="warning">{t("privacy.suppressDeliveryWarning")}</Alert>
+          </div>
+        ) : null}
+        <Toggle
           checked={settings.privacy.disableAudioReceipts}
           onChange={(value) => patchPrivacy({ disableAudioReceipts: value })}
           label={t("privacy.disableAudioReceipts")}
@@ -265,7 +286,9 @@ export function PrivacyTab() {
             ) : undefined
           }
         />
-        {settings.privacy.disableReadReceipts || settings.privacy.disableAudioReceipts ? (
+        {settings.privacy.disableReadReceipts ||
+        settings.privacy.suppressDeliveryReceipts ||
+        settings.privacy.disableAudioReceipts ? (
           <div className="px-2 pb-2">
             <Alert tone="warning">{t("privacy.warning")}</Alert>
           </div>

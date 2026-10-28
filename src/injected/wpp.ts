@@ -122,6 +122,8 @@ export interface WppApi {
     isFullReady?: boolean;
     loaderType?: string;
     onReady?: (listener: () => void, delay?: number) => void;
+    loadModule?: (name: string) => unknown;
+    search?: (predicate: (exports: Record<string, unknown>) => boolean) => unknown;
   };
   webpack?: {
     isReady?: boolean;

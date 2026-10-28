@@ -1,5 +1,6 @@
 import type { PrivacySettings } from "../../shared/types";
 import type { WppApi } from "../wpp";
+import { DeliveryReceiptGuard } from "./receipts";
 
 export interface ReceiptGuardResult {
   active: boolean;
@@ -7,10 +8,17 @@ export interface ReceiptGuardResult {
   unsupported: number;
 }
 
+export interface PrivacyGuardResult extends ReceiptGuardResult {
+  deliveryActive: boolean;
+  deliveryPatched: number;
+  deliveryUnsupported: number;
+  deliveryModules: string[];
+}
+
 export interface PrivacyApplyResult {
   readReceipts: string;
   online: string;
-  guard: ReceiptGuardResult;
+  guard: PrivacyGuardResult;
   errors: string[];
 }
 
@@ -110,6 +118,7 @@ class ReceiptGuard {
  */
 export class PrivacyController {
   private guard = new ReceiptGuard();
+  private deliveryGuard = new DeliveryReceiptGuard();
   private currentRead: string | null = null;
   private currentOnline: string | null = null;
   private originalRead = "all";
@@ -131,9 +140,10 @@ export class PrivacyController {
 
   async apply(wpp: WppApi, settings: PrivacySettings): Promise<PrivacyApplyResult> {
     const errors: string[] = [];
+    const readOff = settings.disableReadReceipts || settings.suppressDeliveryReceipts;
     await this.snapshot(wpp);
 
-    if (settings.disableReadReceipts) {
+    if (readOff) {
       if (this.currentRead !== "none") {
         try {
           await wpp.privacy.setReadReceipts("none");
@@ -173,13 +183,20 @@ export class PrivacyController {
 
     const guard = this.guard.sync(wpp, {
       audio: settings.disableAudioReceipts,
-      read: settings.disableReadReceipts,
+      read: readOff,
     });
+    const delivery = this.deliveryGuard.sync(wpp.loader?.loadModule, settings.suppressDeliveryReceipts);
 
     return {
       readReceipts: this.currentRead ?? this.originalRead,
       online: this.currentOnline ?? this.originalOnline,
-      guard,
+      guard: {
+        ...guard,
+        deliveryActive: delivery.active,
+        deliveryPatched: delivery.patched,
+        deliveryUnsupported: delivery.unsupported,
+        deliveryModules: delivery.modules,
+      },
       errors,
     };
   }

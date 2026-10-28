@@ -110,6 +110,7 @@ describe("Shadow DOM dashboard", () => {
     expect(useAppStore.getState().settings.privacy.blurMedia).toBe(true);
     expect(useAppStore.getState().settings.privacy.blurPhoneNumbers).toBe(true);
     expect(useAppStore.getState().settings.privacy.hidePresence).toBe(true);
+    expect(useAppStore.getState().settings.privacy.suppressDeliveryReceipts).toBe(true);
 
     const disableAll = [...container.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("إيقاف الكل"),
@@ -119,6 +120,7 @@ describe("Shadow DOM dashboard", () => {
     });
     expect(useAppStore.getState().settings.privacy.blurMedia).toBe(false);
     expect(useAppStore.getState().settings.privacy.hidePresence).toBe(false);
+    expect(useAppStore.getState().settings.privacy.suppressDeliveryReceipts).toBe(false);
 
     // Broadcaster: step 1 only, the send action appears on step 3.
     await act(async () => {

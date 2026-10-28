@@ -16,6 +16,7 @@ export interface PrivacySettings {
   hidePresence: boolean;
   hideTyping: boolean;
   disableReadReceipts: boolean;
+  suppressDeliveryReceipts: boolean;
   disableAudioReceipts: boolean;
 }
 
@@ -217,6 +218,10 @@ export interface PrivacyGuardStatus {
   active: boolean;
   patched: number;
   unsupported: number;
+  deliveryActive?: boolean;
+  deliveryPatched?: number;
+  deliveryUnsupported?: number;
+  deliveryModules?: string[];
 }
 
 export interface EngineInfo {

@@ -169,6 +169,8 @@ assert(contentJs.includes("data-madarwa-el"), "content.js tags semantic WhatsApp
 assert(contentJs.includes("data-madarwa-media-kind"), "content.js renders media-kind aware inline bubbles");
 assert(contentJs.includes("Show Deleted Message") && contentJs.includes("Hide Content"), "content.js ships bilingual reveal pills");
 assert(contentJs.includes("madarwa-lightbox"), "content.js implements the full-screen media lightbox");
+assert(contentJs.includes("suppressDeliveryReceipts"), "content.js exposes the one-tick stealth toggle");
+assert(contentJs.includes("deliveryActive"), "content.js reports the delivery-receipt guard status");
 
 const injectedJs = await readText("injected.js");
 assert(injectedJs.includes("chat.new_message") && injectedJs.includes("chat.msg_revoke"), "injected.js subscribes to WA message events");
@@ -179,6 +181,9 @@ assert(injectedJs.includes("antidelete.preindex"), "injected.js exposes the stor
 assert(injectedJs.includes("antidelete.revokedIndex"), "injected.js exposes the revoked-row index command");
 assert(injectedJs.includes("downloadMedia"), "injected.js proactively downloads decrypted media before revocation");
 assert(injectedJs.includes("madarwa_media_vault"), "injected.js writes captured media to the shared vault");
+assert(injectedJs.includes("WAWebSendDeliveryReceiptJob"), "injected.js locates the native delivery-receipt job");
+assert(injectedJs.includes("sendDeliveryReceiptsAfterDecryption"), "injected.js suppresses native delivery receipts");
+assert(injectedJs.includes("WAWebSendReceiptJobCommon"), "injected.js filters aggregate delivery receipts");
 assert(contentJs.includes("madarwa-inline-restore"), "content.js injects the inline restored bubble");
 assert(contentJs.includes("antidelete.preindex"), "content.js requests the store pre-index");
 assert(contentJs.includes("antidelete.revokedIndex"), "content.js reconnects old vault entries to on-screen revoked rows");

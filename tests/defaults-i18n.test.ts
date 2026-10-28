@@ -13,6 +13,7 @@ describe("settings defaults and defensive merge", () => {
   it("returns complete defaults for empty/corrupt storage", () => {
     const defaults = mergeSettings(null);
     expect(defaults.privacy.blurPreview).toBe(false);
+    expect(defaults.privacy.suppressDeliveryReceipts).toBe(false);
     expect(defaults.antiDelete.enabled).toBe(true);
     expect(defaults.autoReply.rules.length).toBeGreaterThan(0);
     expect(defaults.broadcaster.minDelaySec).toBe(6);
@@ -24,7 +25,7 @@ describe("settings defaults and defensive merge", () => {
     const merged = mergeSettings({
       language: "xx",
       theme: "neon",
-      privacy: { blurPreview: "yes", blurMessages: true },
+      privacy: { blurPreview: "yes", blurMessages: true, suppressDeliveryReceipts: "yes" },
       antiDelete: { maxCache: 999_999, enabled: "no" },
       broadcaster: {
         minDelaySec: 99_999,
@@ -46,6 +47,7 @@ describe("settings defaults and defensive merge", () => {
     expect(merged.theme).toBe("auto");
     expect(merged.privacy.blurPreview).toBe(false);
     expect(merged.privacy.blurMessages).toBe(true);
+    expect(merged.privacy.suppressDeliveryReceipts).toBe(false);
     expect(merged.antiDelete.maxCache).toBe(3000);
     expect(merged.antiDelete.enabled).toBe(true);
     expect(merged.broadcaster.minDelaySec).toBe(600);
@@ -66,7 +68,7 @@ describe("settings defaults and defensive merge", () => {
     const merged = mergeSettings({
       language: "en",
       theme: "dark",
-      privacy: { disableReadReceipts: true },
+      privacy: { disableReadReceipts: true, suppressDeliveryReceipts: true },
       broadcaster: { minDelaySec: 8, maxDelaySec: 20, batchSize: 25 },
       pin: { enabled: true, idleMinutes: 45, hash: "abc", salt: "def" },
       webhook: { enabled: true, url: "https://hooks.example.org/x", token: "t" },
@@ -74,6 +76,7 @@ describe("settings defaults and defensive merge", () => {
     expect(merged.language).toBe("en");
     expect(merged.theme).toBe("dark");
     expect(merged.privacy.disableReadReceipts).toBe(true);
+    expect(merged.privacy.suppressDeliveryReceipts).toBe(true);
     expect(merged.broadcaster.maxDelaySec).toBe(20);
     expect(merged.pin.idleMinutes).toBe(45);
     expect(merged.webhook.enabled).toBe(true);
