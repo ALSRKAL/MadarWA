@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.DS_Store
+*.crx
+*.zip
+*.pem
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+.vscode/
+.idea/
+*.tsbuildinfo
