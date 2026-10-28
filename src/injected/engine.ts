@@ -1,6 +1,7 @@
 import { BRIDGE_COMMANDS, ENGINE_VERSION, UI_LIMITS } from "../shared/constants";
 import { BridgeEngine } from "../shared/bridge/bridge";
 import { mergeSettings } from "../shared/defaults";
+import { MediaVaultCache, type MediaVaultRecord } from "../shared/media-vault";
 import type {
   ContactRow,
   EnginePingResult,
@@ -10,10 +11,17 @@ import type {
   MessageSnapshot,
   PresenceEvent,
   RevokedMessageEvent,
+  RevokedRowIndexEntry,
   SendResult,
   ValidationResult,
 } from "../shared/types";
 import { isGroupChatId, normalizeChatId, phoneFromChatId, sanitizePhone } from "../shared/utils/phone";
+import {
+  guessMimetype,
+  inspectMediaBlob,
+  MAX_MEDIA_BYTES,
+  normalizeMediaKind,
+} from "../shared/utils/media";
 import {
   extractStanzaId,
   findSnapshotByCandidates,
@@ -45,6 +53,13 @@ import {
 } from "./wpp";
 
 const SUPPORTED_WA_JS = "4.7.2";
+const MEDIA_CAPTURE_WINDOW_MS = 24 * 60 * 60_000;
+const MEDIA_INDEX_LIMIT = 12;
+const MEDIA_CONCURRENCY = 2;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 class EngineError extends Error {
   readonly code: string;
@@ -97,6 +112,11 @@ class MadarEngine {
   private antiDeleteEnabled = true;
   private readonly msgIndex = new Map<string, MessageSnapshot>();
   private readonly processedRevokes = new Set<string>();
+  private readonly mediaVault = new MediaVaultCache();
+  private readonly mediaTasks = new Map<string, Promise<MediaVaultRecord | null>>();
+  private readonly mediaCompleted = new Set<string>();
+  private readonly mediaWaiters: Array<() => void> = [];
+  private mediaActive = 0;
   private readonly privacy = new PrivacyController();
   private readonly autoReply = new AutoReplyController();
 
@@ -165,14 +185,28 @@ class MadarEngine {
   private indexExistingMessages(): void {
     try {
       const models = this.wpp?.whatsapp?.MsgStore?.getModelsArray?.() ?? [];
-      for (const msg of models.slice(-500)) this.indexMessage(msg);
+      const recent = models.slice(-500);
+      for (const msg of recent) this.indexMessage(msg);
+
+      // Only the latest media messages are pre-downloaded; older history stays
+      // as lightweight thumbnails so opening WhatsApp never causes a storm of
+      // 25MB downloads.
+      const mediaModels = recent
+        .filter((msg) => normalizeMediaKind(msg.type) !== "")
+        .slice(-MEDIA_INDEX_LIMIT);
+      for (const msg of mediaModels) this.startMediaCapture(msg, MEDIA_CAPTURE_WINDOW_MS);
     } catch {
       // Store may be unavailable during a WhatsApp reload; live add events cover it.
     }
   }
 
   private handleStoreAdd = (raw: unknown): void => {
-    this.indexMessage(raw as WppMsg);
+    const msg = raw as WppMsg;
+    this.indexMessage(msg);
+    const fresh =
+      Boolean(msg?.isNewMsg) ||
+      (typeof msg?.t === "number" && Date.now() - msg.t * 1000 < 10 * 60_000);
+    if (fresh) this.startMediaCapture(msg, MEDIA_CAPTURE_WINDOW_MS);
   };
 
   private handleStoreChangeType = (raw: unknown): void => {
@@ -188,6 +222,7 @@ class MadarEngine {
     if (!chatId) return null;
     const stanzaId = String(msg.id?.id ?? extractStanzaId(id));
     const senderRaw = senderIdOfMessage(msg, engineInfo(this.wpp).me);
+    const mediaType = normalizeMediaKind(msg.type);
     return {
       id,
       stanzaId: stanzaId || extractStanzaId(id),
@@ -201,6 +236,15 @@ class MadarEngine {
       isGroup: isGroupChat(chatId),
       fromMe: Boolean(msg.id?.fromMe ?? msg.fromMe),
       previewDataUrl: messagePreview(msg),
+      caption: String(msg.caption ?? "").trim(),
+      hasFullMedia: mediaType ? this.mediaCompleted.has(id) : false,
+      mediaType: mediaType || undefined,
+      mimetype: String(msg.mimetype ?? ""),
+      filename: String(msg.filename ?? ""),
+      fileSize: typeof msg.size === "number" ? msg.size : 0,
+      duration: typeof msg.duration === "number" ? msg.duration : 0,
+      width: typeof msg.width === "number" ? msg.width : 0,
+      height: typeof msg.height === "number" ? msg.height : 0,
     };
   }
 
@@ -217,6 +261,41 @@ class MadarEngine {
     return snapshot;
   }
 
+  /**
+   * Existing revoked store models carry the original key in
+   * `protocolMessageKey` while WhatsApp's DOM uses the revoked stanza as
+   * `data-id`. This index lets the content script reconnect old vault entries
+   * to the rows that are already on screen after a reload.
+   */
+  private revokedRowIndex(): RevokedRowIndexEntry[] {
+    try {
+      const models = this.wpp?.whatsapp?.MsgStore?.getModelsArray?.() ?? [];
+      const rows: RevokedRowIndexEntry[] = [];
+      for (const model of models.slice(-2000)) {
+        if (model?.type !== "revoked" && model?.type !== "protocol") continue;
+        const protocol = model.protocolMessageKey;
+        const revokeFull = msgKeyToId(model.id);
+        const revokeStanza = String(model.id?.id ?? extractStanzaId(revokeFull));
+        const originalFull = msgKeyToId(protocol);
+        const originalStanza = String(protocol?.id ?? extractStanzaId(originalFull));
+        const chatId =
+          widToId(model.id?.remote) || widToId(model.from) || widToId(protocol?.remote);
+        if (!revokeFull || (!originalFull && !originalStanza)) continue;
+        rows.push({
+          revokeFull,
+          revokeStanza,
+          originalFull,
+          originalStanza,
+          chatId,
+          timestamp: typeof model.t === "number" ? model.t * 1000 : 0,
+        });
+      }
+      return rows.slice(-1000);
+    } catch {
+      return [];
+    }
+  }
+
   private getIndexedSnapshots(limit: number): MessageSnapshot[] {
     const seen = new Set<string>();
     const messages: MessageSnapshot[] = [];
@@ -226,6 +305,130 @@ class MadarEngine {
       messages.push(snapshot);
     }
     return messages.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+  }
+
+  /** Starts a bounded decrypted download before the sender can revoke. */
+  private startMediaCapture(msg: WppMsg, maxAgeMs = 0): Promise<MediaVaultRecord | null> | null {
+    if (!this.wpp || !this.antiDeleteEnabled || !msg) return null;
+    const kind = normalizeMediaKind(msg.type);
+    if (!kind) return null;
+    if (typeof msg.t === "number" && maxAgeMs > 0 && Date.now() - msg.t * 1000 > maxAgeMs) return null;
+
+    const id = msgKeyToId(msg.id);
+    if (!id) return null;
+    if (this.mediaCompleted.has(id)) return null;
+    const existing = this.mediaTasks.get(id);
+    if (existing) return existing;
+
+    const chatId = chatIdOfMessage(msg);
+    if (!chatId || isIgnoredChat(chatId)) return null;
+    if (typeof this.wpp.chat.downloadMedia !== "function") return null;
+    if (typeof msg.size === "number" && msg.size > MAX_MEDIA_BYTES) return null;
+
+    const task = this.withMediaSlot(() => this.captureMedia(msg, id, kind, chatId))
+      .catch(() => null)
+      .finally(() => {
+        this.mediaTasks.delete(id);
+      });
+    this.mediaTasks.set(id, task);
+    return task;
+  }
+
+  private async captureMedia(
+    msg: WppMsg,
+    id: string,
+    kind: ReturnType<typeof normalizeMediaKind>,
+    chatId: string,
+  ): Promise<MediaVaultRecord | null> {
+    const wpp = this.wpp;
+    if (!wpp?.chat.downloadMedia || !kind) return null;
+
+    const blob = await wpp.chat.downloadMedia(id);
+    if (!blob || blob.size === 0 || blob.size > MAX_MEDIA_BYTES) return null;
+
+    const metadata = await inspectMediaBlob(blob, kind);
+    const stanzaId = String(msg.id?.id ?? extractStanzaId(id));
+    const mimetype = String(msg.mimetype || blob.type || guessMimetype(kind));
+    const record = await this.mediaVault.put({
+      id,
+      stanzaId,
+      chatId,
+      kind,
+      mimetype,
+      filename: String(msg.filename ?? ""),
+      fileSize: blob.size,
+      duration: Number(msg.duration ?? 0) || metadata.duration,
+      width: Number(msg.width ?? 0) || metadata.width,
+      height: Number(msg.height ?? 0) || metadata.height,
+      blob,
+      previewDataUrl: messagePreview(msg),
+      caption: String(msg.caption ?? "").trim(),
+    });
+
+    this.mediaCompleted.add(id);
+    while (this.mediaCompleted.size > 2000) {
+      const oldest = this.mediaCompleted.values().next().value as string | undefined;
+      if (!oldest) break;
+      this.mediaCompleted.delete(oldest);
+    }
+
+    for (const key of [id, stanzaId, record.id]) {
+      const snapshot = key ? this.msgIndex.get(key) : undefined;
+      if (!snapshot) continue;
+      snapshot.hasFullMedia = true;
+      snapshot.mediaType = kind;
+      snapshot.mimetype = record.mimetype;
+      snapshot.filename = record.filename;
+      snapshot.fileSize = record.fileSize;
+      snapshot.duration = record.duration;
+      snapshot.width = record.width;
+      snapshot.height = record.height;
+    }
+
+    return record;
+  }
+
+  private async withMediaSlot<T>(task: () => Promise<T>): Promise<T> {
+    if (this.mediaActive >= MEDIA_CONCURRENCY) {
+      await new Promise<void>((resolve) => this.mediaWaiters.push(resolve));
+    } else {
+      this.mediaActive += 1;
+    }
+    try {
+      return await task();
+    } finally {
+      const next = this.mediaWaiters.shift();
+      if (next) next();
+      else this.mediaActive = Math.max(0, this.mediaActive - 1);
+    }
+  }
+
+  private async resolveMediaForRevoke(
+    original: MessageSnapshot | undefined,
+    candidates: RevokeKeyCandidates,
+    beforeMsg?: WppMsg,
+  ): Promise<MediaVaultRecord | null> {
+    if (beforeMsg) this.startMediaCapture(beforeMsg);
+
+    const keys = [
+      original?.id,
+      original?.stanzaId,
+      ...candidates.fullIds,
+      ...candidates.stanzaIds,
+    ].filter((value): value is string => typeof value === "string" && value.length > 0);
+
+    const deadline = Date.now() + 6000;
+    for (const key of [...new Set(keys)]) {
+      const pending = this.mediaTasks.get(key);
+      if (pending) {
+        const remaining = Math.max(0, deadline - Date.now());
+        await Promise.race([pending.catch(() => null), delay(remaining)]);
+      }
+      const record = await this.mediaVault.get(key);
+      if (record) return record;
+    }
+
+    return null;
   }
 
   private processStoreRevoke(msg: WppMsg): void {
@@ -263,6 +466,7 @@ class MadarEngine {
     // even if they were not emitted as a live chat event.
     const snapshot = this.indexMessage(msg);
     if (!snapshot || msg.type === "revoked" || msg.type === "protocol") return;
+    this.startMediaCapture(msg, MEDIA_CAPTURE_WINDOW_MS);
 
     const timestamp = snapshot.timestamp;
     if (typeof msg.t === "number" && Date.now() - timestamp > 5 * 60_000) return;
@@ -281,6 +485,15 @@ class MadarEngine {
       isGroup: snapshot.isGroup,
       fromMe: snapshot.fromMe,
       previewDataUrl: snapshot.previewDataUrl,
+      caption: snapshot.caption,
+      hasFullMedia: snapshot.hasFullMedia,
+      mediaType: snapshot.mediaType,
+      mimetype: snapshot.mimetype,
+      filename: snapshot.filename,
+      fileSize: snapshot.fileSize,
+      duration: snapshot.duration,
+      width: snapshot.width,
+      height: snapshot.height,
     };
 
     this.bridge.emit("message.new", event);
@@ -394,6 +607,31 @@ class MadarEngine {
       originalRaw ? resolveContactName(this.wpp, originalRaw) : Promise.resolve(""),
     ]);
 
+    const media = await this.resolveMediaForRevoke(original, request.candidates, request.beforeMsg);
+    const mediaType =
+      media?.kind ||
+      original?.mediaType ||
+      (request.beforeMsg ? normalizeMediaKind(request.beforeMsg.type) : "") ||
+      "";
+    const mimetype =
+      media?.mimetype || original?.mimetype || String(request.beforeMsg?.mimetype ?? "");
+    const filename =
+      media?.filename || original?.filename || String(request.beforeMsg?.filename ?? "");
+    const fileSize =
+      media?.fileSize || original?.fileSize || Number(request.beforeMsg?.size ?? 0) || 0;
+    const duration =
+      media?.duration || original?.duration || Number(request.beforeMsg?.duration ?? 0) || 0;
+    const width = media?.width || original?.width || Number(request.beforeMsg?.width ?? 0) || 0;
+    const height = media?.height || original?.height || Number(request.beforeMsg?.height ?? 0) || 0;
+    const previewDataUrl =
+      original?.previewDataUrl ||
+      media?.previewDataUrl ||
+      (request.beforeMsg ? messagePreview(request.beforeMsg) : "");
+    const caption =
+      original?.caption || media?.caption || String(request.beforeMsg?.caption ?? "").trim();
+    const originalText = original?.text || (request.beforeMsg ? messageText(request.beforeMsg) : "");
+    const hasFullMedia = Boolean(media);
+
     const normalizedOriginal: MessageSnapshot | undefined = original
       ? {
           ...original,
@@ -401,6 +639,15 @@ class MadarEngine {
           chatName: original.chatName || chatDisplayName(this.wpp, chatId),
           sender: originalPhone || original.sender,
           senderName: original.senderName || originalName,
+          mediaType: mediaType || original.mediaType,
+          mimetype: mimetype || original.mimetype,
+          filename: filename || original.filename,
+          fileSize: fileSize || original.fileSize,
+          duration: duration || original.duration,
+          width: width || original.width,
+          height: height || original.height,
+          hasFullMedia,
+          caption,
         }
       : undefined;
 
@@ -418,6 +665,17 @@ class MadarEngine {
       senderName,
       originalSenderPhone: originalPhone || normalizedOriginal?.sender || "",
       originalSenderName: normalizedOriginal?.senderName || originalName,
+      previewDataUrl,
+      caption,
+      originalText,
+      hasFullMedia,
+      mediaType: mediaType || undefined,
+      mimetype: mimetype || undefined,
+      filename: filename || undefined,
+      fileSize,
+      duration,
+      width,
+      height,
       original: normalizedOriginal,
     };
 
@@ -598,6 +856,11 @@ class MadarEngine {
         );
         this.indexExistingMessages();
         return { messages: this.getIndexedSnapshots(limit) };
+      }
+
+      case BRIDGE_COMMANDS.revokedIndex: {
+        this.requireWpp();
+        return { rows: this.revokedRowIndex() };
       }
 
       case BRIDGE_COMMANDS.configureAntiDelete: {

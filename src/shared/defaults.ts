@@ -1,6 +1,6 @@
 import type { AppSettings } from "./types";
 
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 export function createDefaultSettings(): AppSettings {
   return {
@@ -10,6 +10,7 @@ export function createDefaultSettings(): AppSettings {
     privacy: {
       blurPreview: false,
       blurNames: false,
+      blurPhoneNumbers: false,
       blurAvatars: false,
       blurMessages: false,
       blurMedia: false,
@@ -23,6 +24,7 @@ export function createDefaultSettings(): AppSettings {
       inChatToast: true,
       desktopNotification: false,
       inlineRestore: true,
+      inlineMode: "interactive",
       maxCache: 800,
     },
     autoReply: {
@@ -138,6 +140,7 @@ export function mergeSettings(input: unknown): AppSettings {
     privacy: {
       blurPreview: bool(privacy.blurPreview, base.privacy.blurPreview),
       blurNames: bool(privacy.blurNames, base.privacy.blurNames),
+      blurPhoneNumbers: bool(privacy.blurPhoneNumbers, base.privacy.blurPhoneNumbers),
       blurAvatars: bool(privacy.blurAvatars, base.privacy.blurAvatars),
       blurMessages: bool(privacy.blurMessages, base.privacy.blurMessages),
       blurMedia: bool(privacy.blurMedia, base.privacy.blurMedia),
@@ -151,6 +154,7 @@ export function mergeSettings(input: unknown): AppSettings {
       inChatToast: bool(antiDelete.inChatToast, base.antiDelete.inChatToast),
       desktopNotification: bool(antiDelete.desktopNotification, base.antiDelete.desktopNotification),
       inlineRestore: bool(antiDelete.inlineRestore, base.antiDelete.inlineRestore),
+      inlineMode: antiDelete.inlineMode === "expanded" ? "expanded" : "interactive",
       maxCache: Math.round(num(antiDelete.maxCache, base.antiDelete.maxCache, 50, 3000)),
     },
     autoReply: {

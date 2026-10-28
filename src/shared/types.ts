@@ -9,6 +9,7 @@ export type ThemeMode = "auto" | "light" | "dark";
 export interface PrivacySettings {
   blurPreview: boolean;
   blurNames: boolean;
+  blurPhoneNumbers: boolean;
   blurAvatars: boolean;
   blurMessages: boolean;
   blurMedia: boolean;
@@ -18,11 +19,14 @@ export interface PrivacySettings {
   disableAudioReceipts: boolean;
 }
 
+export type InlineRestoreMode = "interactive" | "expanded";
+
 export interface AntiDeleteSettings {
   enabled: boolean;
   inChatToast: boolean;
   desktopNotification: boolean;
   inlineRestore: boolean;
+  inlineMode: InlineRestoreMode;
   maxCache: number;
 }
 
@@ -92,7 +96,20 @@ export interface AppSettings {
   updatedAt: number;
 }
 
-export interface MessageSnapshot {
+/** Media metadata shared by snapshots, cache entries and revoke events. */
+export interface MediaMetadata {
+  hasFullMedia?: boolean;
+  mediaType?: string;
+  mimetype?: string;
+  filename?: string;
+  fileSize?: number;
+  duration?: number;
+  width?: number;
+  height?: number;
+  caption?: string;
+}
+
+export interface MessageSnapshot extends MediaMetadata {
   id: string;
   stanzaId: string;
   chatId: string;
@@ -107,7 +124,7 @@ export interface MessageSnapshot {
   previewDataUrl: string;
 }
 
-export interface CachedMessage {
+export interface CachedMessage extends MediaMetadata {
   id: string;
   stanzaId?: string;
   chatId: string;
@@ -126,6 +143,8 @@ export interface DeletedMessage extends CachedMessage {
   revokedBy: string;
   revokeType: string;
   recoveredFromCache: boolean;
+  /** Full id of the revoke placeholder; its stanza is the real DOM data-id. */
+  revokeMessageId?: string;
 }
 
 export interface GroupSummary {
@@ -207,7 +226,7 @@ export interface EngineInfo {
   connected: boolean;
 }
 
-export interface IncomingMessageEvent {
+export interface IncomingMessageEvent extends MediaMetadata {
   id: string;
   stanzaId?: string;
   chatId: string;
@@ -222,7 +241,16 @@ export interface IncomingMessageEvent {
   previewDataUrl?: string;
 }
 
-export interface RevokedMessageEvent {
+export interface RevokedRowIndexEntry {
+  revokeFull: string;
+  revokeStanza: string;
+  originalFull: string;
+  originalStanza: string;
+  chatId: string;
+  timestamp: number;
+}
+
+export interface RevokedMessageEvent extends MediaMetadata {
   refId: string;
   stanzaId?: string;
   revokeMessageId?: string;
@@ -236,6 +264,8 @@ export interface RevokedMessageEvent {
   senderName?: string;
   originalSenderPhone?: string;
   originalSenderName?: string;
+  previewDataUrl?: string;
+  originalText?: string;
   original?: MessageSnapshot;
 }
 

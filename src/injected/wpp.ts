@@ -1,5 +1,6 @@
 import type { EngineInfo } from "../shared/types";
 import { phoneFromChatId, sanitizePhone } from "../shared/utils/phone";
+import { normalizeMediaPreview } from "../shared/utils/media";
 
 /* Minimal, explicit typing of the @wppconnect/wa-js 4.7.x surface we call. */
 
@@ -27,6 +28,12 @@ export interface WppMsg {
   t?: number;
   notifyName?: string;
   filename?: string;
+  mimetype?: string;
+  size?: number;
+  duration?: number;
+  width?: number;
+  height?: number;
+  isViewOnce?: boolean;
   from?: WppWid;
   to?: WppWid;
   author?: WppWid;
@@ -129,6 +136,7 @@ export interface WppApi {
     get: (chatId: string) => WppChat | undefined;
     getActiveChat: () => WppChat | undefined;
     list: (options?: Record<string, unknown>) => Promise<WppChat[]>;
+    downloadMedia?: (id: string) => Promise<Blob>;
     markPlayed?: (messageId: unknown) => Promise<unknown>;
     markIsRead?: (chatId: unknown) => Promise<unknown>;
     markMessageAsRead?: (message: unknown) => Promise<unknown>;
@@ -236,14 +244,8 @@ export function messagePreview(msg: WppMsg): string {
   if (!["image", "video", "sticker"].includes(type)) return "";
   const mediaPreview = typeof msg.mediaData?.preview === "string" ? msg.mediaData.preview : "";
   const body = String(msg.body ?? "");
-  const raw = mediaPreview || (body.startsWith("data:image") ? body : "");
-  if (!raw) return "";
-  if (raw.startsWith("data:image")) return raw.slice(0, 180_000);
-  if (raw.length > 80 && /^[A-Za-z0-9+/=\s]+$/.test(raw)) {
-    const mime = type === "sticker" ? "image/webp" : "image/jpeg";
-    return `data:${mime};base64,${raw.replace(/\s+/g, "")}`.slice(0, 180_000);
-  }
-  return "";
+  const raw = mediaPreview || body;
+  return normalizeMediaPreview(raw, type);
 }
 
 export function isGroupChat(chatId: string): boolean {

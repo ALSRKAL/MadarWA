@@ -56,6 +56,7 @@ export const BRIDGE_COMMANDS = {
   configureAutoReply: "autoreply.configure",
   configureAntiDelete: "antidelete.configure",
   preindexMessages: "antidelete.preindex",
+  revokedIndex: "antidelete.revokedIndex",
 } as const;
 
 export const QUICK_TOOLS = {
