@@ -325,7 +325,7 @@ export function AutoReplyTab() {
             ))}
           </div>
         )}
-        <p className="mw-muted mt-2 text-[10px] leading-5">{t("autoreply.variables")}</p>
+        <p className="mw-muted mt-2 text-[10px] leading-5">{t("autoreply.variables", { name: "{{name}}" })}</p>
       </div>
 
       <Modal
@@ -369,10 +369,10 @@ export function AutoReplyTab() {
                 />
               </Field>
             ) : null}
-            <Field label={t("autoreply.response")} hint={t("autoreply.variables")}>
+            <Field label={t("autoreply.response")} hint={t("autoreply.variables", { name: "{{name}}" })}>
               <TextArea
                 dir="auto"
-                placeholder={t("autoreply.responsePlaceholder")}
+                placeholder={t("autoreply.responsePlaceholder", { name: "{{name}}" })}
                 value={draft.response}
                 onChange={(event) => setDraft({ ...draft, response: event.target.value })}
               />

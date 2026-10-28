@@ -78,7 +78,8 @@ function parseGroup(source: string, start: number, random: RandomSource, depth: 
   }
 
   // Unterminated group: leave the source as written rather than losing data.
-  return { text: `{${options.join("|")}${current}`, next: source.length };
+  options.push(current);
+  return { text: `{${options.join("|")}`, next: source.length };
 }
 
 export function spin(source: string, random: RandomSource = Math.random): string {

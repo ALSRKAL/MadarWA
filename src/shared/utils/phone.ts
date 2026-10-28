@@ -48,7 +48,8 @@ export function sanitizePhone(raw: string, defaultCountryCode = ""): SanitizedPh
 
   if (country) {
     if (digits.startsWith(country)) {
-      // Already international.
+      const rest = digits.slice(country.length);
+      if (rest.startsWith("0")) digits = country + rest.replace(/^0+/, "");
     } else if (digits.startsWith("0")) {
       digits = country + digits.replace(/^0+/, "");
     } else if (!hadPlus && digits.length <= 10) {

@@ -17,7 +17,7 @@ export function isValidRegex(pattern: string): boolean {
   if (!pattern || pattern.length > UI_LIMITS.maxPatternLength) return false;
   try {
     const compiled = new RegExp(pattern, "i");
-    return compiled.test("") === false || true;
+    return typeof compiled.source === "string";
   } catch {
     return false;
   }

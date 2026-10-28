@@ -141,6 +141,10 @@ export class BroadcastQueue<T> {
     return new Promise<void>((resolve) => this.waiters.push(resolve));
   }
 
+  private isStopped(): boolean {
+    return this.statusValue === "stopped";
+  }
+
   private async waitWhilePaused(token: number): Promise<boolean> {
     while (this.statusValue === "paused" && token === this.runToken) {
       await this.waitForWake();
@@ -156,7 +160,7 @@ export class BroadcastQueue<T> {
   private async runLoop(token: number): Promise<void> {
     try {
       while (this.index < this.items.length) {
-        if (this.statusValue !== "running" || token !== this.runToken) return;
+        if (token !== this.runToken || this.statusValue === "stopped") return;
         if (!(await this.waitWhilePaused(token))) return;
 
         const item = this.items[this.index];
@@ -187,8 +191,9 @@ export class BroadcastQueue<T> {
         this.index += 1;
         this.callbacks.onProgress(this.snapshot());
 
-        if (token !== this.runToken || this.statusValue !== "running") return;
+        if (token !== this.runToken || this.isStopped()) return;
         if (this.index >= this.items.length) break;
+        if (!(await this.waitWhilePaused(token))) return;
 
         if (this.index % this.config.batchSize === 0 && this.config.batchCooldownSec > 0) {
           this.callbacks.onCooldown?.(this.config.batchCooldownSec, this.index);
@@ -198,7 +203,11 @@ export class BroadcastQueue<T> {
         }
       }
 
-      if (token === this.runToken && this.statusValue === "running") {
+      if (
+        token === this.runToken &&
+        this.index >= this.items.length &&
+        (this.statusValue === "running" || this.statusValue === "paused")
+      ) {
         this.setStatus("completed");
       }
     } catch (error) {

@@ -336,13 +336,20 @@ export function BroadcasterTab() {
         </div>
         <TextArea
           dir="auto"
-          placeholder={t("broadcaster.messagePlaceholder")}
+          placeholder={t("broadcaster.messagePlaceholder", { name: "{{name}}" })}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           maxLength={4096}
           disabled={busy}
         />
-        <p className="mw-muted mt-1.5 text-[10.5px] leading-5">{t("broadcaster.variablesHint")}</p>
+        <p className="mw-muted mt-1.5 text-[10.5px] leading-5">
+          {t("broadcaster.variablesHint", {
+            name: "{{name}}",
+            custom1: "{{custom1}}",
+            custom2: "{{custom2}}",
+            phone: "{{phone}}",
+          })}
+        </p>
         <p className="mw-muted text-[10.5px] leading-5">{t("broadcaster.spintaxHint")}</p>
         <div className="mt-1">
           <Toggle
