@@ -2,43 +2,60 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { build } from "vite";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = resolve(root, "icons");
 
-const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#10b981"/>
-      <stop offset="1" stop-color="#047857"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="30%" cy="22%" r="55%">
-      <stop offset="0" stop-color="#d1fae5" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#d1fae5" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect x="3" y="3" width="122" height="122" rx="31" fill="url(#g)"/>
-  <rect x="3" y="3" width="122" height="122" rx="31" fill="url(#glow)"/>
-  <rect x="3" y="3" width="122" height="122" rx="31" fill="none" stroke="#a7f3d0" stroke-opacity="0.35" stroke-width="2"/>
-  <ellipse cx="64" cy="64" rx="43" ry="19" fill="none" stroke="#ffffff" stroke-width="7" stroke-opacity="0.94" transform="rotate(-28 64 64)"/>
-  <circle cx="64" cy="64" r="14" fill="#ffffff"/>
-  <circle cx="101" cy="39" r="8" fill="#a7f3d0"/>
-</svg>`;
+/**
+ * How much detail the mark keeps at each size, and its transparent margin.
+ * Toolbar sizes are full-bleed so the tile is as large as Chrome draws it;
+ * the Chrome Web Store asks for 96px of artwork inside 16px of padding at 128.
+ */
+const ICONS = [
+  { size: 16, detail: "tiny", padding: 0 },
+  { size: 32, detail: "small", padding: 0 },
+  { size: 48, detail: "full", padding: 2 },
+  { size: 128, detail: "full", padding: 16 },
+];
 
-const sizes = [16, 32, 48, 128];
+/** Bundles src/shared/brand.ts, so the icons are drawn by the same code as the UI. */
+async function loadBrand() {
+  const result = await build({
+    configFile: false,
+    root,
+    publicDir: false,
+    logLevel: "silent",
+    build: {
+      write: false,
+      minify: false,
+      emptyOutDir: false,
+      copyPublicDir: false,
+      lib: { entry: resolve(root, "src/shared/brand.ts"), formats: ["es"], fileName: "brand" },
+    },
+  });
+  const outputs = Array.isArray(result) ? result : [result];
+  const chunk = outputs.flatMap((output) => output.output).find((item) => item.type === "chunk" && item.isEntry);
+  if (!chunk) throw new Error("Could not bundle src/shared/brand.ts");
+  return import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString("base64")}`);
+}
+
+const { brandMarkSvg } = await loadBrand();
 
 await mkdir(outDir, { recursive: true });
 
-for (const size of sizes) {
+for (const { size, detail, padding } of ICONS) {
   const file = resolve(outDir, `icon-${size}.png`);
-  await sharp(Buffer.from(svg)).resize(size, size, { fit: "cover" }).png().toFile(file);
+  await sharp(Buffer.from(brandMarkSvg({ size, detail, padding })))
+    .png({ compressionLevel: 9 })
+    .toFile(file);
   const meta = await sharp(file).metadata();
   if (meta.width !== size || meta.height !== size) {
     throw new Error(`Icon ${size} rendered as ${meta.width}x${meta.height}`);
   }
-  console.log(`icon-${size}.png  ${meta.width}x${meta.height}`);
+  console.log(`icon-${size}.png  ${meta.width}x${meta.height}  ${detail}, ${padding}px padding`);
 }
 
-await writeFile(resolve(outDir, "icon.svg"), svg.trim(), "utf8");
+// Full-bleed vector master for anything that needs the mark at another size.
+await writeFile(resolve(outDir, "icon.svg"), `${brandMarkSvg({ size: 128, detail: "full" })}\n`, "utf8");
 console.log("Icons generated.");

@@ -28,12 +28,18 @@ export const STORAGE_KEYS = {
 
 /**
  * Colours needed outside the panel's CSS tokens (src/content/styles/shadow.css):
- * the toolbar badge and the launcher inside WhatsApp's header. Same values as
- * --wa-accent and the state tokens.
+ * the mark (src/shared/brand.ts), the toolbar badge and the launcher inside
+ * WhatsApp's header. Same values as --wa-accent, --wa-satellite and the state
+ * tokens.
  */
 export const BRAND_COLORS = {
+  /** The mark's tile. */
   accent: "#19694f",
+  /** The planet and ring on the tile. */
   onAccent: "#ffffff",
+  /** The mark's satellite, and the unseen count, which often sits on the tile. */
+  satellite: "#f2b33d",
+  onSatellite: "#131416",
   waiting: "#b45309",
   offline: "#c4242a",
 } as const;
