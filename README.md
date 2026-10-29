@@ -7,7 +7,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-10b981?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-133%20passing-10b981?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-153%20passing-10b981?style=flat-square" />
   <a href="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
@@ -52,10 +52,10 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 | **الخصوصية والتمويه** | تمويه دقيق لكل عنصر على حدة: أسماء، أرقام هواتف، معاينات، صور شخصية، نص الرسالة، **مربع الكتابة**، ووسائط. موسوم عبر `data-madarwa-el` من `privacyTagger` ثم يُكشف **العنصر الذي يمر عليه المؤشر فقط** خلال 160ms. إخفاء الحالة والكتابة **والتسجيل**، **عرض الحالات بشكل خاص**، وإيقاف إيصالات القراءة والاستماع عبر `WPP.privacy` الحقيقي، وخيار «صح واحد» يحجب **كل** إيصالات واتساب ويب (delivery/read/read-self/inactive/played/sender) مع تحديث عدّاد غير المقروء محلياً فقط (أفضل جهد). |
 | **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
 | **خزنة الرسائل المحذوفة** | فهرسة مسبقة لآخر رسائل `MsgStore`، ومراقبة `add` و`change:type` و`chat.msg_revoke`، بما في ذلك نماذج `revoked` التي يضيفها واتساب كصف جديد عبر `add`، مع حل متسلسل لمفتاح الرسالة الأصلي. تنزيل استباقي للوسائط المفكوكة عبر `WPP.chat.downloadMedia` قبل الحذف (≤25MB) وتخزينها في IndexedDB (`madarwa_media_vault`) بحد LRU 150. تُعاد الرسالة المحذوفة **داخل فقاعة واتساب** كزر تفاعلي: نص + نسخ + أوقات، صورة مع Lightbox وتنزيل، فيديو/صوت قابل للتشغيل، ومستند بتنزيله. |
-| **الإرسال الجماعي الذكي** | مسار من 3 خطوات (أرقام ← رسالة ← إرسال). لصق أرقام أو رفع CSV/XLSX. تطبيع دولي، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي ودفعات وراحة، إيقاف/استئناف/إيقاف نهائي، سجل مباشر وتقرير CSV. |
+| **الإرسال الجماعي الذكي** | مسار من 3 خطوات (أرقام ← رسالة ← إرسال). لصق أرقام أو رفع CSV/XLSX. تطبيع دولي، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي ودفعات وراحة، إيقاف/استئناف/إيقاف نهائي، إيقاف مؤقت تلقائي عند انقطاع واتساب واستئناف ذاتي دون تخطي أي رقم مع الحفاظ على باقي فاصل الحماية، تقدير المدة قبل البدء، سجل مباشر وتقرير CSV. |
 | **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. تظهر القواعد فقط عند تفعيل الرد الآلي؛ والقوالب جاهزة للإرسال أو الإدراج في حقل الكتابة. |
 | **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
-| **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، اختبار اتصال وسجل تسليم. إعدادات Webhook التقنية داخل درج «تخصيص». |
+| **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، إعادة محاولة تلقائية للأعطال المؤقتة (الشبكة، 429، 5xx) مع معرّف ثابت في `X-MadarWA-Delivery` لمنع التكرار، اختبار اتصال وسجل تسليم يبيّن عدد المحاولات. إعدادات Webhook التقنية داخل درج «تخصيص». |
 | **واجهة موحّدة** | 6 أقسام في شريط تنقل عمودي، رأس 40px، تبديل AR/EN فوري، RTL/LTR تلقائي، ثيم داكن/فاتح. كشف تدريجي: صفوف تبديل نظيفة، وكل خيار متقدم داخل درج «تخصيص» أو لا يظهر إلا بعد تفعيل الميزة. وضع خصوصية كامل/إيقاف الكل بضغطة، ومرشحات خزنة (الكل/نصوص/صور/فيديو/صوتيات). |
 
 
@@ -178,7 +178,7 @@ npm run verify
 | `npm install` | تثبيت الاعتماديات |
 | `npm run dev` | مراقبة `src/`, `public/`, `icons/`, `popup.html` وإعادة بناء `dist/` (بدون HMR؛ أعد تحميل الإضافة/الصفحة) |
 | `npm run typecheck` | `tsc --noEmit` — صفر أخطاء |
-| `npm test` | 133 اختبار Vitest |
+| `npm test` | 153 اختبار Vitest |
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
 | `npm run verify` | 99 فحصاً هيكلياً على `dist/` |
@@ -187,16 +187,20 @@ npm run verify
 
 ### الاختبارات والتحقق
 
-**133 اختباراً** في 18 ملفاً:
+**153 اختباراً** في 22 ملفاً:
 
 | الاختبار | العدد | التغطية |
 |---|---:|---|
-| `bridge.test.ts` | 11 | تعمية/فك التعمية، توقيع العبث، منع إعادة التسلسل، المهلة، الأخطاء، الأحداث، رفض الأصل الأجنبي |
+| `bridge.test.ts` | 15 | تعمية/فك التعمية، توقيع العبث، منع إعادة التسلسل، المهلة، الأخطاء، الأحداث، رفض الأصل الأجنبي، ثبات الاتصال مع مؤقتات التبويب المبطّأة، انتظار عودة الاتصال، إفشال الأوامر المعلّقة فوراً عند غياب المحرك |
+| `connection-errors.test.ts` | 6 | نموذج حالة الاتصال الموحّد ونصوصه بالعربية والإنجليزية، وتحويل رموز الأخطاء إلى رسائل مفهومة |
+| `campaign-resilience.test.ts` | 3 | إيقاف الحملة مؤقتاً عند انقطاع واتساب واستئنافها دون تخطي أحد، إعادة محاولة ما لم يصل فقط، الإيقاف للمراجعة بعد إخفاقات متتالية |
+| `webhook-retry.test.ts` | 2 | إعادة محاولة الأعطال المؤقتة فقط، جدول التأخير و`Retry-After` |
+| `ui-behaviour.test.tsx` | 4 | التراجع عن وضع الخصوصية، Escape يغلق الحوار وحده، شريط إعادة التحميل، حقل الأرقام لا يقفز أثناء الكتابة |
 | `security.test.ts` | 10 | SSRF: localhost، IPv4/IPv6 الخاصة، العناوين العددية، `.local`، بيانات الاعتماد، ترويسة الرمز |
 | `spintax-template.test.ts` | 10 | Spintax متداخل/هروب، الحفاظ على `{{...}}`، الاستيفاء، القيم التي تحتوي أقواساً |
 | `phone-csv.test.ts` | 9 | تطبيع دولي/عربي، CSV مع فواصل وأسطر داخلية، رؤوس عربية، BOM، حقن الصيغ |
 | `rules.test.ts` | 9 | Exact/Contains/StartsWith/Regex/Fallback، النطاق، التهدئة، Regex غير صالح |
-| `queue.test.ts` | 6 | Jitter، الدفعات، Pause/Resume، Stop، الأخطاء، طابور فارغ |
+| `queue.test.ts` | 7 | Jitter، الدفعات، Pause/Resume مع الحفاظ على باقي فاصل الحماية، Stop، الأخطاء، طابور فارغ |
 | `defaults-i18n.test.ts` | 6 | تطهير الإعدادات، تطابق مفاتيح ar/en، القيم الافتراضية |
 | `pin.test.ts` | 6 | PBKDF2، ملح فريد، رفض الرمز الخاطئ، صيغة الرمز |
 | `revoke.test.ts` | 6 | حل مفاتيح الإلغاء المتسلسل وfallback للـstanza |
@@ -220,7 +224,7 @@ npm run verify
 - احتواء الحزم على نقاط التكامل الحقيقية: `chat.new_message`، `chat.msg_revoke`، `sendTextMessage`، Webhook، إلخ.
 - عدم وجود `node_modules` داخل `dist/`.
 
-**نتيجة البوابة الحالية:** `typecheck` ✅ · `133/133 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**نتيجة البوابة الحالية:** `typecheck` ✅ · `153/153 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 153 على حساب واتساب مسجّل. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2`، واتصال محرك MAIN والجسر (`live`)، وتركيب الواجهة. أُرسلت أربع رسائل تجريبية عبر `WPP.emit` (نص، صورة، فيديو WebM، صورة بمعاينة فقط) ثم أُلغيت: ظهرت أربع فقاعات مستعادة بجانب «تم حذف هذه الرسالة»، والتوسيع أظهر النص والأوقات وزر النسخ؛ صورة PNG كاملة مع Lightbox وتكبير وتنزيل؛ فيديو WebM قابل للتشغيل مع تنزيل؛ ومعاينة `data:image/jpeg;base64,...` مع ملاحظة «معاينة فقط». اختُبرت الخزنة الحقيقية: 5 مرشحات (الكل/نصوص/صور/فيديو/صوتيات) وتنزيل `deleted-photo.png` من معاينة الوسائط. عند تفعيل «وضع الخصوصية الكامل» وُسمت عناصر واتساب الحقيقية (اسم/رقم/معاينة/صورة/نص/وسائط)، وتمرير المؤشر على اسم أزال التمويه عنه فقط (`blur(0px)`) بينما بقي الاسم الآخر `blur(4px)` والرسالة `blur(5px)`. كما اختُبر مسار الإلغاء الحقيقي `MsgStore change:type`: صف واتساب الذي يحمل `data-id` مجرّداً (32 حرفاً) استقبل الفقاعة والنص المستعاد، واختُبر ربط سجل خزنة قديم بصف إلغاء ظاهر بعد إعادة التحميل عبر `antidelete.revokedIndex`. الرسائل التي حُذفت قبل التقاطها لا يمكن إعادة بنائها لأن واتساب لا يحتفظ بنصها الأصلي.
 
@@ -281,7 +285,9 @@ npm run verify
 | الزر غير ظاهر في الهيدر | يجب أن يظهر الزر العائم بديلاً؛ إن لم يظهر فتأكد من تنشيط الإضافة وأن الصفحة `web.whatsapp.com`. |
 | زر «فتح اللوحة» من Popup لا يعمل | أعد تحميل صفحة واتساب (Content script لم يُحقن قبل الإضافة). |
 | Webhook يفشل | استخدم HTTPS عاماً، ليس localhost أو IP خاص، وتحقق من الرمز وسجل التسليم. |
-| «تم إيقاف الحملة» بعد 3 إخفاقات | تعذّر الاتصال بالمحرك 3 مرات غالباً بعد إعادة تحميل الصفحة أو تسجيل الخروج. أعد التحميل وابدأ حملة جديدة. |
+| الحملة «بانتظار الاتصال» | انقطع الاتصال بواتساب أو سُجّل الخروج؛ الحملة متوقفة مؤقتاً وستُستأنف وحدها عند عودته دون تخطي أي رقم. |
+| «توقفت مؤقتاً بعد 5 محاولات فاشلة متتالية» | غالباً مشكلة في الحساب أو الأرقام. راجع السجل ثم اضغط «متابعة». |
+| شريط «يلزم إعادة التحميل» | تم تحديث الإضافة وصفحة واتساب مفتوحة. أعد التحميل (بعد انتهاء أي حملة جارية). |
 | نسيت PIN | القفل في ذاكرة الجلسة؛ إعادة تحميل صفحة واتساب تزيل القفل. يمكن أيضاً مسح تخزين الإضافة من `chrome://extensions` (يفقد الإعدادات والخزنة). القفل ليس حماية تشفيرية. |
 | لا تظهر الرسائل المحذوفة | الخزنة تلتقط فقط بعد تفعيلها؛ قد تكون الرسالة أقدم من التفعيل أو الكاش. |
 | واجهة مشوّهة | ثيم واتساب غيّر بنيته؛ أعد التحميل وأبلغ عن المحدد. الواجهة داخل Shadow DOM ولا تتأثر بأنماط الصفحة. |
@@ -325,7 +331,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 133 Vitest tests
+├── tests/                        # 153 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
@@ -375,10 +381,10 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 | **Privacy & stealth** | Surgical per-element blurring for names, phone numbers, previews, avatars, message text, media and the **composer input**. `data-madarwa-el` tags from `privacyTagger` let CSS reveal **only the hovered item** in 160ms. Presence/typing/**recording** hiding, **private status viewing**, real read/played-receipt controls through `WPP.privacy`, and a best-effort “one tick” option that suppresses **every** WhatsApp Web receipt job (delivery/read/read-self/inactive/played/sender) while clearing the local unread state. |
 | **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
 | **Anti-delete vault** | Pre-indexes the latest `MsgStore` messages, listens to `add`, `change:type` and `chat.msg_revoke`, including `revoked` models that WhatsApp inserts as a new row through `add`, and resolves the original key through cascading fallbacks. Proactively downloads decrypted media with `WPP.chat.downloadMedia` before deletion (≤25MB) into IndexedDB (`madarwa_media_vault`, LRU 150). Restores an **interactive pill inside the WhatsApp bubble**: text + copy + timestamps, photo with lightbox/download, playable video/voice note, and document download. |
-| **Smart broadcaster** | Three-step flow (numbers → message → send). Paste numbers or upload CSV/XLSX. International sanitizer, pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter and batch cooldowns, start/pause/resume/stop, live logs and CSV report. |
+| **Smart broadcaster** | Three-step flow (numbers → message → send). Paste numbers or upload CSV/XLSX. International sanitizer, pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter and batch cooldowns, start/pause/resume/stop, automatic pause while WhatsApp is unreachable with self-resume (nobody skipped, remaining anti-ban delay kept), an estimated duration before starting, live logs and CSV report. |
 | **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Rules appear only when auto-reply is enabled; templates can be sent or inserted into the composer. |
 | **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
-| **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations from the service worker with `X-MadarWA-Token`, test delivery and inspect a delivery log. Technical webhook fields live behind the Configure drawer. |
+| **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations from the service worker with `X-MadarWA-Token`, retry transient failures (network, 429, 5xx) with a stable `X-MadarWA-Delivery` id for de-duplication, test delivery and inspect a delivery log with attempt counts. Technical webhook fields live behind the Configure drawer. |
 | **Unified UI** | Six-section vertical rail, 40px header, instant AR/EN switch, automatic RTL/LTR, dark/light theme. Progressive disclosure: clean toggle rows, advanced options behind Configure or hidden until the feature is on. One-click Full Stealth / Disable All, plus vault filter chips (All/Text/Photos/Videos/Audio). |
 
 
@@ -499,7 +505,7 @@ npm run verify
 | `npm install` | Install dependencies |
 | `npm run dev` | Watch `src/`, `public/`, `icons/`, `popup.html` and rebuild `dist/` (no HMR; reload extension/page) |
 | `npm run typecheck` | `tsc --noEmit` — zero errors |
-| `npm test` | 133 Vitest tests |
+| `npm test` | 153 Vitest tests |
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
 | `npm run verify` | 99 structural assertions on `dist/` |
@@ -508,16 +514,20 @@ npm run verify
 
 ### Tests & verification
 
-**133 tests** across 18 files:
+**153 tests** across 22 files:
 
 | Suite | Count | Coverage |
 |---|---:|---|
-| `bridge.test.ts` | 11 | Encode/decode, tamper detection, replay rejection, timeouts, error propagation, events, foreign-origin refusal |
+| `bridge.test.ts` | 15 | Encode/decode, tamper detection, replay rejection, timeouts, error propagation, events, foreign-origin refusal, stable connection under hidden-tab timer throttling, waiting out a short outage, failing in-flight commands fast when the engine is gone |
+| `connection-errors.test.ts` | 6 | Single connection-state model with ar/en labels, error codes mapped to plain messages |
+| `campaign-resilience.test.ts` | 3 | Auto-pause while WhatsApp is unreachable and resume without skipping anyone, retry only sends that never left, pause for review after repeated failures |
+| `webhook-retry.test.ts` | 2 | Retry only transient failures, backoff table and `Retry-After` |
+| `ui-behaviour.test.tsx` | 4 | Privacy preset undo, Escape closes only the dialog, reload banner, number field does not jump while typing |
 | `security.test.ts` | 10 | SSRF: localhost, private IPv4/IPv6, numeric hosts, `.local`, credentials, token headers |
 | `spintax-template.test.ts` | 10 | Nested/escaped spintax, protected `{{...}}`, interpolation, values containing braces |
 | `phone-csv.test.ts` | 9 | International/Arabic normalization, quoted CSV with commas/newlines, Arabic headers, BOM, formula injection |
 | `rules.test.ts` | 9 | Exact/Contains/StartsWith/Regex/Fallback, scope, cooldown, invalid regex |
-| `queue.test.ts` | 6 | Jitter, batches, pause/resume, stop, failures, empty queue |
+| `queue.test.ts` | 7 | Jitter, batches, pause/resume that keeps the remaining anti-ban delay, stop, failures, empty queue |
 | `defaults-i18n.test.ts` | 6 | Settings sanitization, ar/en key parity, defaults |
 | `pin.test.ts` | 6 | PBKDF2, unique salt, wrong PIN, format validation |
 | `revoke.test.ts` | 6 | Cascading revoke-key resolver and stanza fallback |
@@ -541,7 +551,7 @@ npm run verify
 - Bundles contain the real integration points (`chat.new_message`, `chat.msg_revoke`, `sendTextMessage`, webhooks, etc.).
 - No `node_modules` inside `dist/`.
 
-**Current gate:** `typecheck` ✅ · `133/133 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**Current gate:** `typecheck` ✅ · `153/153 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **Real browser verification:** `dist/` was loaded as an unpacked extension in Chromium 153 against a signed-in WhatsApp account. Confirmed: local `@wppconnect/wa-js 4.7.2`, MAIN engine + bridge (`live`), and the Shadow DOM UI. Four synthetic messages were emitted through `WPP.emit` (text, photo, WebM video, preview-only photo) and then revoked: four restored pills appeared next to “This message was deleted”; expanding showed the text, timestamps and copy button; the full PNG opened a lightbox with zoom/download; the WebM played inline with a download; the preview-only photo rendered a normalized `data:image/jpeg;base64,...` with the preview-only note. The real vault was checked with five filters (all/text/photos/videos/audio) and `deleted-photo.png` downloaded from the media preview. With **Full Stealth Mode**, real WhatsApp elements were tagged (name/phone/preview/avatar/message/media); hovering one name removed its blur only (`blur(0px)`) while the other name stayed `blur(4px)` and the message `blur(5px)`. The real `MsgStore change:type` revoke path was also exercised: a WhatsApp row whose `data-id` is the bare 32-char revoke stanza received the pill and restored text, and an old vault entry was reconnected to an on-screen revoked row after reload through `antidelete.revokedIndex`. Messages deleted before they were captured cannot be reconstructed because WhatsApp does not retain their original text.
 
@@ -597,7 +607,9 @@ No `tabs` permission is requested; host permissions cover the popup’s tab look
 | Header button missing | The floating fallback should appear; ensure the extension is enabled and the tab is `web.whatsapp.com`. |
 | Popup “Open dashboard” does nothing | Reload the WhatsApp tab; the content script is not injected until reload after install/update. |
 | Webhook fails | Use a public HTTPS endpoint, not localhost/private IP; verify token and delivery log. |
-| Campaign stops after three failures | The engine is unreachable after a reload/logout. Reload the page and start a new campaign. |
+| Campaign shows “Waiting for connection” | WhatsApp dropped or logged out; the campaign is paused and resumes on its own when it is back, without skipping anyone. |
+| “Paused after 5 failed sends in a row” | Usually an account or number-list problem. Check the log, then press Resume. |
+| “Reload required” banner | The extension was updated while WhatsApp stayed open. Reload (after any running campaign finishes). |
 | Forgot PIN | The lock is page-session state; reloading WhatsApp clears it. Clearing extension storage also works but loses settings/vault. The lock is not cryptographic protection. |
 | Deleted messages not captured | Capture only starts after enabling the vault; messages older than activation/cache limits are unavailable. |
 | UI looks off | WhatsApp changed its DOM; reload and report the selector. The UI itself is Shadow-DOM isolated. |
@@ -641,7 +653,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 133 Vitest tests
+├── tests/                        # 153 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json

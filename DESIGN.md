@@ -15,6 +15,20 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
   headings, oversized rounded corners, or decorative animation.
 - Type: Arabic = Tajawal/Cairo with system fallback; English = Inter with system fallback. Counters,
   delays, phone numbers and timestamps use `tabular-nums`.
+- Type scale (tokens `--mw-text-*`, Tailwind `text-mw-*`), used by the panel and the popup alike:
+
+  | Token | Size | Use |
+  |---|---|---|
+  | `2xs` | 11px | Counters, badges, timestamps. The floor: nothing renders smaller. |
+  | `xs` | 12px | Hints, field labels, group labels, secondary meta. |
+  | `sm` | 13px | Body, setting rows, controls, navigation. |
+  | `base` | 14px | Section and dialog titles, header title. |
+  | `lg` | 16px | Metric values, lock-screen title. |
+  | `xl` | 20px | PIN keypad digits. |
+
+  Arbitrary sizes (`text-[10px]`) are not allowed; the old 8.5–10.5px text was unreadable in Arabic.
+- Locale-formatted values (dates, times) use `unicode-bidi: plaintext` so Arabic dates are never
+  forced left-to-right.
 - Density: 40px top header, 28–32px controls, `py-2.5 px-3` setting rows, 6–8px radii on surfaces,
   full inline feedback. A professional tool may be dense; it may not be noisy.
 - Motion: 120–200ms, transform/opacity only. The live connection dot may pulse because the state is
@@ -58,14 +72,43 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
 
 ## Shell
 
-- Drawer: `min(660px, 100vw)` at the inline-end edge; header 40px; vertical icon+label rail at the
-  inline-start edge; active item gets a 2px solid emerald indicator and a muted emerald wash.
-- Header: orbit mark, product name, live status dot + text, AR/EN segmented control, lock (when
-  enabled), close. No tagline in the header.
+- Drawer: `min(660px, 100vw)` at the inline-end edge; header 40px; 152px vertical icon+label rail at
+  the inline-start edge; active item gets a 2px solid emerald indicator and a muted emerald wash.
+  No footer and no version in the shell (the version lives in Tools and the popup).
+- Header: orbit mark, product name, status dot (+ "Connected" text only when live), عربي/EN
+  segmented control, lock (when enabled), close. No tagline in the header.
+- Dialogs (drawer, modals, lock screen): focus moves in on open, Tab stays inside, focus returns to
+  the opener on close. Escape closes the top-most layer only. Entrance animations use fill-mode
+  `backwards` so no transform outlives them (a kept transform would trap `position: fixed` dialogs).
+- Toasts: top-center while the panel is closed; at the bottom of the panel column while it is open,
+  so they never cover the header or the connection banner. Actions such as Undo pause the timer on
+  hover/focus.
+
+## Connection states
+
+One model (`src/shared/connection.ts`) drives the header dot, the native launcher, the floating
+launcher and the popup, so a state always has the same words everywhere.
+
+| Phase | Tone | Shown as | Action |
+|---|---|---|---|
+| `live` | live | "Connected" | none |
+| `connecting` / `loading` | waiting | banner with the reason | none, it resolves itself |
+| `login` | waiting | "Waiting for login", scan the QR code | none |
+| `reconnecting` | waiting | dropped for a moment, recovers on its own | none |
+| `slow` | waiting | WhatsApp loading longer than usual | Reload WhatsApp |
+| `updated` | offline | extension updated while the page stayed open | Reload WhatsApp (secondary while a campaign is sending) |
+| `unreachable` (popup) | offline | MadarWA not running in the open tab | Reload WhatsApp |
+| `absent` (popup) | offline | no WhatsApp Web tab | Open WhatsApp Web |
+
+The banner appears under the header only when the phase is not `live`, says what is happening in one
+line, and offers a single action only where a reload actually helps. Error toasts use plain,
+translated messages mapped from error codes (`src/shared/errors.ts`), never raw engine text.
 - Native launcher: 40×40 circular icon button in `#side header`, transparent at rest, WhatsApp-style
   hover wash, emerald orbit, live dot, unread count badge. Floating launcher only as fallback and
   draggable; never both at once.
-- Popup: 340px, same tokens, compact status + metrics + one primary action.
+- Popup: 340px, imports the panel stylesheet (same tokens, scale and controls), live status that
+  refreshes while open, metrics, and one state-driven primary action: Open panel, Reload WhatsApp
+  (tab open but MadarWA not running), or Open WhatsApp Web. It never opens a second WhatsApp tab.
 
 ## Progressive disclosure
 
@@ -97,8 +140,11 @@ interface should read as if WhatsApp shipped an expert panel, not as a dashboard
 
 ## Slop audit (self-check)
 
-- No emoji in UI; all iconography is Lucide with a single stroke.
+- No emoji or text glyphs as icons (no "✓", "!", "?"); all iconography is Lucide with a single
+  stroke, and status icons carry a visually hidden text label.
 - No gradients/shadows at rest; no glass; no generic feature-card grid.
+- No decorative emerald: group labels and section icons are muted; category badges are neutral.
+- Every async action shows its own loading state and cannot be submitted twice.
 - Every number uses tabular figures; every destructive action is labeled, not just colored.
 - Every dynamic surface has empty, loading, error and success states.
 - Both AR/RTL and EN/LTR are composed, not mirrored by accident.
