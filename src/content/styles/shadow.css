@@ -38,6 +38,9 @@
   --wa-brand-strong: 44 47 51;
   /* The only hue outside state: logo, data, focus */
   --wa-accent: 25 105 79;
+  /* The mark's satellite, and the unseen count (BRAND_COLORS.satellite) */
+  --wa-satellite: 242 179 61;
+  --wa-on-satellite: #131416;
   /* State */
   --wa-success: 30 123 79;
   --wa-danger: 196 36 42;
@@ -279,16 +282,17 @@
     font-weight: 600;
   }
 
-  /* Unseen deleted messages only, in the accent, like WhatsApp's unread count.
-     It disappears once the vault has been looked at. */
+  /* Unseen deleted messages only, in the satellite gold of the mark, the same
+     as the toolbar badge and the header launcher. It disappears once the vault
+     has been looked at. */
   .mw-count {
     flex: 0 0 auto;
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
     border-radius: 999px;
-    background: rgb(var(--wa-accent));
-    color: var(--wa-on-brand);
+    background: rgb(var(--wa-satellite));
+    color: var(--wa-on-satellite);
     font-size: var(--mw-text-2xs);
     font-weight: 600;
     line-height: 18px;
@@ -936,18 +940,21 @@
   }
 }
 
-/* Fallback launcher (QR screen): a white disc, ink mark, state dot. */
+/* Fallback launcher (QR screen): the MadarWA tile itself, lifted off the page.
+   White rings cut the state dot and the count out of the tile. */
 .mw-fab {
-  background: rgb(var(--wa-surface));
-  color: rgb(var(--wa-text));
-  border: 1px solid var(--wa-line);
-  box-shadow: 0 8px 24px rgba(19, 20, 22, 0.16);
+  /* The tile's own corner at 48px (src/shared/brand.ts), so the shadow and
+     the focus ring follow it. */
+  border-radius: 11px;
+  background: transparent;
+  box-shadow: 0 6px 18px rgba(19, 20, 22, 0.22);
   touch-action: none;
   user-select: none;
 }
 
-.mw-fab:hover {
-  background: #f6f7f8;
+.mw-fab .mw-status-dot,
+.mw-fab .mw-count {
+  box-shadow: 0 0 0 2px rgb(var(--wa-surface));
 }
 
 /* Locale-formatted values (times, dates, counts). The run takes its direction

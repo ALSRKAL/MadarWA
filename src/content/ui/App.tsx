@@ -11,9 +11,9 @@ import { dirFor } from "../../shared/i18n";
 import type { Language } from "../../shared/types";
 import { contentController } from "../controller";
 import { useAppStore, useConnectionPhase, useT, useUnseenVault, type TabId } from "../store";
+import { BrandMark } from "./BrandMark";
 import { Button, cn, IconButton, useDialogFocus } from "./components";
 import { LockScreen } from "./LockScreen";
-import { OrbitMark } from "./OrbitMark";
 import { AutoReplyTab } from "./tabs/AutoReplyTab";
 import { BroadcasterTab } from "./tabs/BroadcasterTab";
 import { ExporterTab } from "./tabs/ExporterTab";
@@ -139,16 +139,18 @@ function FloatingLauncher() {
         title={label}
         aria-label={label}
         className={cn(
-          "mw-fab relative flex h-12 w-12 items-center justify-center rounded-full transition-transform",
+          "mw-fab relative flex h-12 w-12 items-center justify-center transition-transform",
           dragging ? "scale-105 cursor-grabbing" : "cursor-grab hover:scale-[1.03]",
         )}
       >
-        <OrbitMark className="h-6 w-6" />
-        {/* The dot only appears when something is wrong; the label carries the state. */}
+        <BrandMark className="h-12 w-12" detail="full" />
+        {/* The dot only appears when something is wrong; the label carries the state.
+            The mark never mirrors, so in RTL too the dot sits on the tile's empty
+            bottom-right corner and the count covers the satellite. */}
         {tone !== "live" ? (
-          <span className="mw-status-dot absolute bottom-2 end-2" data-state={tone} aria-hidden="true" />
+          <span className="mw-status-dot absolute bottom-0 right-0" data-state={tone} aria-hidden="true" />
         ) : null}
-        <UnseenCount count={unseen} className="absolute -end-1 -top-1" />
+        <UnseenCount count={unseen} className="absolute -right-1 top-1" />
       </button>
     </div>
   );
@@ -266,7 +268,7 @@ function Drawer() {
         onClick={(event) => event.stopPropagation()}
       >
         <header className="mw-header flex h-12 shrink-0 items-center gap-2.5 pe-2 ps-4">
-          <OrbitMark className="h-5 w-5 shrink-0 text-wa-accent" />
+          <BrandMark className="h-6 w-6 shrink-0" />
           <h1 className="min-w-0 truncate text-mw-base font-semibold leading-6">{t("app.name")}</h1>
 
           <div className="ms-auto flex items-center gap-1">

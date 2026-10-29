@@ -29,7 +29,7 @@ import {
 import { createDefaultSettings, mergeSettings } from "../shared/defaults";
 import { dirFor, initI18n, tFor } from "../shared/i18n";
 import type { AppSettings, EngineInfo, Language } from "../shared/types";
-import { OrbitMark } from "../content/ui/OrbitMark";
+import { BrandMark } from "../content/ui/BrandMark";
 
 interface ContentStatus {
   ok?: boolean;
@@ -242,7 +242,7 @@ export function Popup() {
   return (
     <div className="flex flex-col" aria-busy={phase === "checking"}>
       <header className="mw-header flex h-12 items-center gap-2 px-4">
-        <OrbitMark className="h-5 w-5 shrink-0 text-wa-accent" />
+        <BrandMark className="h-6 w-6 shrink-0" />
         <h1 className="min-w-0 flex-1 truncate text-mw-base font-semibold">{t("popup.title")}</h1>
         <div className="mw-segmented" role="group" aria-label={t("common.languageSwitch")}>
           {LANGUAGES.map((language) => (

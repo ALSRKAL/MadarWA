@@ -3,7 +3,7 @@ import { ArrowRight, Delete, Loader2, LockKeyhole } from "lucide-react";
 import { verifyPin } from "../../shared/utils/pin";
 import { contentController } from "../controller";
 import { useAppStore, useT } from "../store";
-import { OrbitMark } from "./OrbitMark";
+import { BrandMark } from "./BrandMark";
 
 export function LockScreen() {
   const t = useT();
@@ -66,9 +66,7 @@ export function LockScreen() {
     >
       <div className="w-full max-w-[320px]">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-wa-line bg-wa-surface text-wa-accent">
-            <OrbitMark className="h-6 w-6" />
-          </div>
+          <BrandMark className="h-12 w-12" detail="full" />
           <h1 className="mt-3 text-mw-lg font-semibold leading-6">{t("privacy.unlockTitle")}</h1>
           <p className="mt-1 text-mw-xs leading-5 text-wa-muted">{t("privacy.unlockHint")}</p>
         </div>

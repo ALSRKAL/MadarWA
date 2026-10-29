@@ -1,3 +1,4 @@
+import { brandMarkSvg } from "../shared/brand";
 import { connectionLabelKey, connectionTone } from "../shared/connection";
 import { BRAND_COLORS } from "../shared/constants";
 import { UI_FONT_FAMILY } from "../shared/fonts";
@@ -6,33 +7,36 @@ import { selectConnectionPhase, selectUnseenVault, useAppStore } from "./store";
 
 const HOST_ID = "madarwa-launcher-host";
 
-// The launcher sits in WhatsApp's own header, so it borrows WhatsApp's icon
-// colour (--mw-ink, read from the neighbouring icon button) instead of a brand
-// colour. The dot appears only when MadarWA is not working; the badge only
-// for deleted messages the user has not looked at yet.
+// The launcher is one more of WhatsApp's 40px header buttons, with WhatsApp's
+// own hover, carrying the MadarWA tile so it is found at a glance. The rings
+// around the dot and the badge take the header's colour (--mw-ring) to cut
+// them out of the tile. The dot appears only when MadarWA is not working; the
+// badge only for deleted messages the user has not looked at yet.
+// The mark never mirrors, so neither do they: in RTL and LTR alike the badge
+// covers the satellite (top right) and the dot sits on the tile's empty
+// bottom-right corner, clear of the ring.
 const LAUNCHER_CSS = `
 :host { all: initial; }
 .host { display: flex; align-items: center; justify-content: center; }
 button {
   width: 40px; height: 40px; border: 0; padding: 0; cursor: pointer;
   border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: var(--mw-ink, #54656f); position: relative; outline: none;
+  background: transparent; position: relative; outline: none;
   transition: background .12s ease;
 }
-button[data-theme="dark"] { color: var(--mw-ink, #e9edef); }
 button:hover, button[data-active="true"] { background: rgba(11, 20, 26, .08); }
 button[data-theme="dark"]:hover, button[data-theme="dark"][data-active="true"] { background: rgba(255, 255, 255, .1); }
 button:focus-visible { outline: 2px solid ${BRAND_COLORS.accent}; outline-offset: 2px; }
-svg { width: 22px; height: 22px; display: block; }
+svg { width: 24px; height: 24px; display: block; }
 .dot {
-  position: absolute; inset-inline-end: 7px; bottom: 7px; width: 8px; height: 8px;
+  position: absolute; right: 6px; bottom: 6px; width: 8px; height: 8px;
   border-radius: 999px; box-shadow: 0 0 0 2px var(--mw-ring, #ffffff); display: none;
 }
 button[data-state="waiting"] .dot { display: block; background: ${BRAND_COLORS.waiting}; }
 button[data-state="offline"] .dot { display: block; background: ${BRAND_COLORS.offline}; }
 .badge {
-  position: absolute; top: 1px; inset-inline-end: 0; min-width: 18px; height: 18px;
-  border-radius: 999px; background: ${BRAND_COLORS.accent}; color: ${BRAND_COLORS.onAccent};
+  position: absolute; top: 1px; right: 0; min-width: 18px; height: 18px;
+  border-radius: 999px; background: ${BRAND_COLORS.satellite}; color: ${BRAND_COLORS.onSatellite};
   box-shadow: 0 0 0 2px var(--mw-ring, #ffffff);
   font: 600 11px/18px "${UI_FONT_FAMILY}", "Segoe UI", system-ui, sans-serif; text-align: center; padding: 0 5px;
   box-sizing: border-box; display: none; font-variant-numeric: tabular-nums;
@@ -43,11 +47,7 @@ button[data-state="offline"] .dot { display: block; background: ${BRAND_COLORS.o
 }
 `;
 
-const ORBIT_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-  <ellipse cx="12" cy="12" rx="9.1" ry="4.1" stroke="currentColor" stroke-width="1.75" transform="rotate(-28 12 12)"/>
-  <circle cx="12" cy="12" r="2.8" fill="currentColor"/>
-  <circle cx="19.1" cy="7.4" r="1.5" fill="currentColor"/>
-</svg>`;
+const MARK_SVG = brandMarkSvg({ detail: "small" });
 
 const TRANSPARENT = /^(transparent|rgba\(0,\s*0,\s*0,\s*0\))$/;
 
@@ -94,16 +94,13 @@ function findToolbar(): HTMLElement | null {
   return toolbar;
 }
 
-/** WhatsApp's own icon colour and header ground, so the launcher looks native in either theme. */
-function readNativeColours(toolbar: HTMLElement): { ink: string; ring: string } {
-  const plain = iconButtons(toolbar).find((button) => TRANSPARENT.test(getComputedStyle(button).backgroundColor));
-  const ink = plain ? getComputedStyle(plain).color : "";
-  let ring = "";
-  for (let node: HTMLElement | null = toolbar; node && !ring; node = node.parentElement) {
+/** WhatsApp's header ground, for the rings that cut the dot and badge out of the tile in either theme. */
+function readHeaderGround(toolbar: HTMLElement): string {
+  for (let node: HTMLElement | null = toolbar; node; node = node.parentElement) {
     const background = getComputedStyle(node).backgroundColor;
-    if (!TRANSPARENT.test(background)) ring = background;
+    if (!TRANSPARENT.test(background)) return background;
   }
-  return { ink, ring };
+  return "";
 }
 
 /**
@@ -171,7 +168,7 @@ export class LauncherManager {
     wrap.className = "host";
     const button = document.createElement("button");
     button.type = "button";
-    button.innerHTML = `${ORBIT_SVG}<span class="dot"></span><span class="badge"></span>`;
+    button.innerHTML = `${MARK_SVG}<span class="dot"></span><span class="badge"></span>`;
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -201,9 +198,7 @@ export class LauncherManager {
 
   private syncColours(theme: string): void {
     if (!this.host || !this.mountTarget || this.colourTheme === theme) return;
-    const { ink, ring } = readNativeColours(this.mountTarget);
-    if (ink) this.host.style.setProperty("--mw-ink", ink);
-    else this.host.style.removeProperty("--mw-ink");
+    const ring = readHeaderGround(this.mountTarget);
     if (ring) this.host.style.setProperty("--mw-ring", ring);
     else this.host.style.removeProperty("--mw-ring");
     this.colourTheme = theme;

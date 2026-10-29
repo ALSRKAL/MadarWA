@@ -91,8 +91,9 @@ async function updateBadge(count: number): Promise<void> {
   const text = count > 99 ? "99+" : count > 0 ? String(count) : "";
   await chrome.action.setBadgeText({ text });
   if (count > 0) {
-    await chrome.action.setBadgeBackgroundColor({ color: BRAND_COLORS.accent });
-    await chrome.action.setBadgeTextColor({ color: BRAND_COLORS.onAccent });
+    // Gold, like the mark's satellite: a green badge would vanish into the green icon.
+    await chrome.action.setBadgeBackgroundColor({ color: BRAND_COLORS.satellite });
+    await chrome.action.setBadgeTextColor({ color: BRAND_COLORS.onSatellite });
   }
 }
 
