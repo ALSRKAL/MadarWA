@@ -8,7 +8,6 @@ import {
   ShieldOff,
   Timer,
   UserX,
-  VolumeX,
 } from "lucide-react";
 import { createPinRecord, validatePinFormat } from "../../../shared/utils/pin";
 import type { PrivacySettings } from "../../../shared/types";
@@ -22,6 +21,7 @@ import {
   ConfigureButton,
   Disclosure,
   Field,
+  GroupLabel,
   SectionTitle,
   TextInput,
   Toggle,
@@ -85,10 +85,25 @@ export function PrivacyTab() {
     setSettings({ ...current, privacy: { ...current.privacy, ...patch } });
   };
 
+  // Presets touch up to 14 settings, some of them account-wide, so each one
+  // can be undone from its confirmation toast.
   const applyPreset = (privacy: PrivacySettings, message: string) => {
     const current = useAppStore.getState().settings;
+    const previous = current.privacy;
     setSettings({ ...current, privacy });
-    pushToast({ kind: "success", title: message, body: "" });
+    pushToast({
+      kind: "success",
+      title: message,
+      body: "",
+      action: {
+        label: t("common.undo"),
+        run: () => {
+          const latest = useAppStore.getState().settings;
+          setSettings({ ...latest, privacy: previous });
+          pushToast({ kind: "info", title: t("privacy.presetUndone"), body: "" });
+        },
+      },
+    });
   };
 
   const togglePin = (enabled: boolean) => {
@@ -163,9 +178,7 @@ export function PrivacyTab() {
       />
 
       <Card className="p-2">
-        <div className="mb-1.5 px-0.5">
-          <h3 className="text-[10px] font-semibold text-wa-muted">{t("privacy.quickActions")}</h3>
-        </div>
+        <h3 className="mb-1.5 px-0.5 text-mw-xs font-semibold text-wa-muted">{t("privacy.quickActions")}</h3>
         <div className="grid gap-1.5">
           <Button
             size="sm"
@@ -185,16 +198,13 @@ export function PrivacyTab() {
             {t("privacy.disableAll")}
           </Button>
         </div>
-        <p className="text-wa-muted px-0.5 pb-0.5 pt-1.5 text-[9.5px] leading-4">
+        <p className="text-wa-muted px-0.5 pb-0.5 pt-2 text-mw-xs leading-5">
           {t("privacy.fullStealthHint")}
         </p>
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
-          <EyeOff className="h-3.5 w-3.5 text-wa-brand" />
-          <h3 className="text-[11px] font-semibold">{t("privacy.blurSection")}</h3>
-        </div>
+        <GroupLabel icon={<EyeOff className="h-3.5 w-3.5" />}>{t("privacy.blurSection")}</GroupLabel>
         <Toggle
           checked={settings.privacy.blurPreview}
           onChange={(value) => patchPrivacy({ blurPreview: value })}
@@ -240,10 +250,7 @@ export function PrivacyTab() {
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
-          <UserX className="h-3.5 w-3.5 text-wa-brand" />
-          <h3 className="text-[11px] font-semibold">{t("privacy.presenceSection")}</h3>
-        </div>
+        <GroupLabel icon={<UserX className="h-3.5 w-3.5" />}>{t("privacy.presenceSection")}</GroupLabel>
         <Toggle
           checked={settings.privacy.hidePresence}
           onChange={(value) => patchPrivacy({ hidePresence: value })}
@@ -266,10 +273,7 @@ export function PrivacyTab() {
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
-          <MessageSquareOff className="h-3.5 w-3.5 text-wa-brand" />
-          <h3 className="text-[11px] font-semibold">{t("privacy.receiptsSection")}</h3>
-        </div>
+        <GroupLabel icon={<MessageSquareOff className="h-3.5 w-3.5" />}>{t("privacy.receiptsSection")}</GroupLabel>
         <Toggle
           checked={settings.privacy.disableReadReceipts}
           onChange={(value) => patchPrivacy({ disableReadReceipts: value })}
@@ -333,11 +337,12 @@ export function PrivacyTab() {
       </Card>
 
       <Card className="p-0">
-        <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
-          <KeyRound className="h-3.5 w-3.5 text-wa-brand" />
-          <h3 className="text-[11px] font-semibold">{t("privacy.lockSection")}</h3>
-          {settings.pin.enabled ? <Badge tone="success">{t("common.on")}</Badge> : null}
-        </div>
+        <GroupLabel
+          icon={<KeyRound className="h-3.5 w-3.5" />}
+          action={settings.pin.enabled ? <Badge tone="success">{t("common.on")}</Badge> : null}
+        >
+          {t("privacy.lockSection")}
+        </GroupLabel>
 
         <Toggle
           checked={settings.pin.enabled || pinFormOpen}
@@ -462,13 +467,6 @@ export function PrivacyTab() {
                   </Button>
                 </div>
               </div>
-            ) : null}
-
-            {!settings.pin.enabled && !pinFormOpen ? (
-              <p className="text-wa-muted flex items-center gap-1 text-[10px] leading-5">
-                <VolumeX className="h-3 w-3 shrink-0" />
-                {t("privacy.lockEnableHint")}
-              </p>
             ) : null}
           </div>
         </Disclosure>

@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Trash2,
 } from "lucide-react";
+import { describeError } from "../../../shared/errors";
 import { formatDateTime, formatNumber } from "../../../shared/format";
 import { MediaVaultCache, type MediaVaultRecord } from "../../../shared/media-vault";
 import { saveVault } from "../../../shared/storage";
@@ -32,6 +33,7 @@ import {
   Field,
   FilterChips,
   Modal,
+  NumberInput,
   SectionTitle,
   Select,
   TextInput,
@@ -123,8 +125,8 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
               loading="lazy"
             />
             {url ? (
-              <span className="absolute bottom-1 end-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <Search className="h-3 w-3" />
+              <span className="mw-media-overlay absolute bottom-1 end-1 flex h-6 w-6 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Search className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
             ) : null}
           </button>
@@ -162,7 +164,7 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
             src={url}
             controls
             preload="metadata"
-            className="max-h-48 w-full max-w-sm rounded-md bg-black"
+            className="mw-media-frame max-h-48 w-full max-w-sm rounded-md"
           />
         ) : preview ? (
           <button
@@ -172,8 +174,8 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
             aria-label={t("vault.previewMedia")}
           >
             <img src={preview} alt={t("media.video")} className="max-h-40 max-w-full object-cover" />
-            <span className="absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white">
-              <Play className="h-4 w-4" />
+            <span className="mw-media-overlay absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-full">
+              <Play className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </span>
           </button>
         ) : (
@@ -218,10 +220,10 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
 
   return (
     <div className="mt-2 flex items-center gap-2 rounded-md border border-wa-line px-2.5 py-2">
-      <FileText className="h-4 w-4 shrink-0 text-wa-brand" />
+      <FileText className="h-4 w-4 shrink-0 text-wa-muted" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[10.5px] font-semibold">{filename}</p>
-        <p className="text-wa-muted text-[9px]">{size > 0 ? formatBytes(size, language) : t("media.document")}</p>
+        <p className="truncate text-mw-sm font-semibold">{filename}</p>
+        <p className="text-wa-muted text-mw-2xs">{size > 0 ? formatBytes(size, language) : t("media.document")}</p>
       </div>
       {downloadLink}
     </div>
@@ -241,6 +243,7 @@ export function VaultTab() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [openingId, setOpeningId] = useState("");
 
   const patchAntiDelete = (patch: Partial<AntiDeleteSettings>) => {
     setSettings({ ...settings, antiDelete: { ...settings.antiDelete, ...patch } });
@@ -276,26 +279,36 @@ export function VaultTab() {
   };
 
   const openChat = async (entry: DeletedMessage) => {
-    if (!entry.chatId) return;
+    if (!entry.chatId || openingId) return;
+    setOpeningId(entry.id);
     try {
       await contentController.openChat(entry.chatId);
-      pushToast({ kind: "success", title: t("vault.openChat"), body: entry.chatName });
+      pushToast({ kind: "success", title: t("vault.chatOpened"), body: entry.chatName });
     } catch (error) {
-      pushToast({
-        kind: "error",
-        title: t("errors.bridgeUnavailable"),
-        body: error instanceof Error ? error.message.slice(0, 180) : "",
-      });
+      const { title, detail } = describeError(error, t);
+      pushToast({ kind: "error", title, body: detail });
+    } finally {
+      setOpeningId("");
     }
   };
 
+  // Persist first: the list is only emptied once storage confirmed the write,
+  // so a failed save never shows "cleared" while the data is still there.
   const confirmClear = async () => {
     setClearing(true);
-    clearVault();
-    await Promise.all([saveVault([]), mediaVault.clear()]);
-    setClearing(false);
-    setClearOpen(false);
-    pushToast({ kind: "info", title: t("vault.cleared"), body: "" });
+    try {
+      const saved = await saveVault([]);
+      if (!saved) {
+        pushToast({ kind: "error", title: t("errors.saveFailed"), body: "" });
+        return;
+      }
+      await mediaVault.clear();
+      clearVault();
+      setClearOpen(false);
+      pushToast({ kind: "info", title: t("vault.cleared"), body: "" });
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (
@@ -304,7 +317,7 @@ export function VaultTab() {
         icon={<ShieldAlert className="h-4 w-4" />}
         title={t("vault.title")}
         subtitle={t("vault.subtitle")}
-        action={<Badge tone={vault.length > 0 ? "danger" : "neutral"}>{t("vault.count", { count: formatNumber(vault.length, settings.language) })}</Badge>}
+        action={<Badge tone="neutral">{t("vault.count", { count: formatNumber(vault.length, settings.language) })}</Badge>}
       />
 
       <Card className="p-0">
@@ -354,15 +367,11 @@ export function VaultTab() {
               </Select>
             </Field>
             <Field label={t("vault.maxCache")}>
-              <TextInput
-                type="number"
+              <NumberInput
                 min={50}
                 max={3000}
                 value={settings.antiDelete.maxCache}
-                onChange={(event) => {
-                  const value = Math.min(3000, Math.max(50, Number(event.target.value) || 800));
-                  patchAntiDelete({ maxCache: value });
-                }}
+                onCommit={(value) => patchAntiDelete({ maxCache: value })}
               />
             </Field>
           </div>
@@ -372,8 +381,10 @@ export function VaultTab() {
       <div className="relative">
         <Search className="absolute inset-y-0 start-3 my-auto h-4 w-4 text-wa-muted" />
         <TextInput
-          className="ps-9"
+          type="search"
+          className="bg-wa-surface ps-9"
           placeholder={t("vault.search")}
+          aria-label={t("vault.search")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -381,7 +392,7 @@ export function VaultTab() {
           <button
             type="button"
             onClick={() => setSearch("")}
-            className="text-wa-muted absolute inset-y-0 end-2 my-auto h-6 rounded px-1.5 text-[10px] hover:bg-wa-hover"
+            className="text-wa-muted absolute inset-y-0 end-2 my-auto h-7 rounded px-2 text-mw-xs hover:bg-wa-hover"
           >
             {t("common.clear")}
           </button>
@@ -412,24 +423,32 @@ export function VaultTab() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-[11.5px] font-semibold">{entry.chatName || entry.chatId}</p>
-                    <Badge tone={entry.isGroup ? "brand" : "neutral"}>{entry.isGroup ? t("vault.group") : t("vault.private")}</Badge>
+                    <p className="truncate text-mw-sm font-semibold">{entry.chatName || entry.chatId}</p>
+                    <Badge tone="neutral">{entry.isGroup ? t("vault.group") : t("vault.private")}</Badge>
                     {entry.recoveredFromCache ? <Badge tone="success">{t("vault.recovered")}</Badge> : null}
                     {kindOf(entry) ? <Badge tone="neutral">{mediaLabel(entry)}</Badge> : null}
                   </div>
-                  <div className="text-wa-muted mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9.5px]">
-                    <span>{formatDateTime(entry.revokedAt, settings.language)}</span>
-                    <span>·</span>
+                  <div className="text-wa-muted mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-mw-xs">
                     <span>
                       {t("vault.sender")}: {entry.senderName || entry.sender || entry.revokedBy || t("common.unknown")}
                     </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {t("vault.deletedAt")}: {formatDateTime(entry.revokedAt, settings.language)}
+                    </span>
                   </div>
                 </div>
-                <span className="text-wa-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.timestamp, settings.language)}</span>
+                <span
+                  className="text-wa-muted mw-lang-pill shrink-0 text-mw-2xs"
+                  title={t("vault.originalTime")}
+                  aria-label={`${t("vault.originalTime")}: ${formatDateTime(entry.timestamp, settings.language)}`}
+                >
+                  {formatDateTime(entry.timestamp, settings.language)}
+                </span>
               </div>
 
               {entry.text ? (
-                <p className="mt-2 whitespace-pre-wrap break-words border-s-2 border-wa-brand/40 ps-2.5 text-[11px] leading-5">
+                <p className="mt-2 whitespace-pre-wrap break-words border-s-2 border-wa-line ps-2.5 text-mw-sm leading-6" dir="auto">
                   {entry.text}
                 </p>
               ) : null}
@@ -440,25 +459,29 @@ export function VaultTab() {
                 <div className="mt-2 rounded-sm bg-wa-input/50 px-2.5 py-2">
                   <Badge tone="neutral">{mediaLabel(entry)}</Badge>
                   {!entry.recoveredFromCache ? (
-                    <p className="text-wa-muted mt-1 text-[10px] leading-5">{t("vault.notCached")}</p>
+                    <p className="text-wa-muted mt-1 text-mw-xs leading-5">{t("vault.notCached")}</p>
                   ) : null}
                 </div>
               ) : null}
 
               <div className="mt-2 flex items-center justify-between gap-1 border-t border-wa-line pt-1.5">
-                <span className="text-wa-muted mw-code truncate text-[9px]" dir="ltr">
+                <span className="text-wa-muted mw-code truncate text-mw-2xs" dir="ltr">
                   {entry.revokedBy || ""}
                 </span>
                 <div className="flex items-center gap-1">
                   {entry.text ? <CopyButton text={entry.text} label={t("vault.copyText")} copiedLabel={t("common.copied")} /> : null}
-                  <button
-                    type="button"
-                    onClick={() => void openChat(entry)}
-                    className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition-colors hover:bg-wa-hover hover:text-wa-text"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    {t("vault.openChat")}
-                  </button>
+                  {entry.chatId ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
+                      loading={openingId === entry.id}
+                      disabled={openingId !== ""}
+                      onClick={() => void openChat(entry)}
+                    >
+                      {t("vault.openChat")}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -490,7 +513,7 @@ export function VaultTab() {
           </>
         }
       >
-        <p className="text-[12px] leading-6">{t("vault.clearConfirm")}</p>
+        <p className="text-mw-sm leading-6">{t("vault.clearConfirm")}</p>
       </Modal>
     </div>
   );

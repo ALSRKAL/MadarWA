@@ -30,6 +30,17 @@
   --wa-line: rgba(134, 150, 160, 0.15);
   --wa-hover: rgba(134, 150, 160, 0.1);
   --wa-on-brand: #0b141a;
+  --wa-on-danger: #1b1013;
+  --wa-chat-bg: #0b141a;
+  --wa-bubble-out: #005c4b;
+  --wa-media-backdrop: rgba(11, 20, 26, 0.72);
+  /* Type scale: 11px is the floor (counters, badges); body text is 13px. */
+  --mw-text-2xs: 11px;
+  --mw-text-xs: 12px;
+  --mw-text-sm: 13px;
+  --mw-text-base: 14px;
+  --mw-text-lg: 16px;
+  --mw-text-xl: 20px;
   color-scheme: dark;
   color: rgb(var(--wa-text));
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
@@ -55,6 +66,8 @@
   --wa-line: #e9edef;
   --wa-hover: rgba(17, 27, 33, 0.06);
   --wa-on-brand: #ffffff;
+  --wa-chat-bg: #efeae2;
+  --wa-bubble-out: #d9fdd3;
   color-scheme: light;
 }
 
@@ -65,6 +78,13 @@
 .mw-app :focus-visible {
   outline: 2px solid rgb(var(--wa-brand));
   outline-offset: 2px;
+}
+
+/* Dialog containers receive focus programmatically so screen readers land
+   inside them; they are not controls and must not draw a ring. */
+.mw-app [tabindex="-1"]:focus,
+.mw-app [tabindex="-1"]:focus-visible {
+  outline: none;
 }
 
 .mw-num,
@@ -98,8 +118,8 @@
   background: rgb(var(--wa-input));
   color: rgb(var(--wa-text));
   padding: 7px 10px;
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: var(--mw-text-sm);
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
   transition:
     border-color 120ms ease,
@@ -193,8 +213,8 @@ textarea.mw-input {
 }
 
 .mw-rail {
-  width: 132px;
-  flex: 0 0 132px;
+  width: 152px;
+  flex: 0 0 152px;
   border-inline-end: 1px solid var(--wa-line);
   background: rgb(var(--wa-panel));
   padding: 8px 6px;
@@ -211,7 +231,7 @@ textarea.mw-input {
   padding: 6px 8px;
   border-radius: 6px;
   color: rgb(var(--wa-muted));
-  font-size: 10.5px;
+  font-size: var(--mw-text-sm);
   font-weight: 600;
   text-align: start;
   transition:
@@ -246,7 +266,7 @@ textarea.mw-input {
 
 .mw-nav-count {
   margin-inline-start: auto;
-  font-size: 9px;
+  font-size: var(--mw-text-2xs);
   font-weight: 700;
   color: rgb(var(--wa-danger));
   font-variant-numeric: tabular-nums;
@@ -261,7 +281,7 @@ textarea.mw-input {
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--mw-text-sm);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -280,7 +300,7 @@ textarea.mw-input {
 .mw-btn-sm {
   height: 28px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: var(--mw-text-xs);
 }
 
 .mw-btn-primary {
@@ -313,7 +333,7 @@ textarea.mw-input {
 
 .mw-btn-danger {
   background: rgb(var(--wa-danger));
-  color: #1b1013;
+  color: var(--wa-on-danger);
 }
 
 .mw-btn-danger:hover:not(:disabled) {
@@ -397,13 +417,13 @@ textarea.mw-input {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  padding: 0 7px;
+  height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--wa-line);
   border-radius: 6px;
   background: transparent;
   color: rgb(var(--wa-muted));
-  font-size: 9.5px;
+  font-size: var(--mw-text-xs);
   font-weight: 600;
   white-space: nowrap;
   transition:
@@ -501,14 +521,14 @@ textarea.mw-input {
 
 .mw-step {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   align-items: center;
   gap: 5px;
   min-width: 0;
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: 6px;
   color: rgb(var(--wa-muted));
-  font-size: 9.5px;
+  font-size: var(--mw-text-xs);
   font-weight: 600;
   transition:
     background 120ms ease,
@@ -528,12 +548,12 @@ textarea.mw-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
   border: 1px solid currentColor;
   border-radius: 999px;
-  font-size: 8.5px;
+  font-size: var(--mw-text-2xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -571,13 +591,13 @@ textarea.mw-input {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--wa-line);
   border-radius: 999px;
   background: transparent;
   color: rgb(var(--wa-muted));
-  font-size: 9.5px;
+  font-size: var(--mw-text-xs);
   font-weight: 600;
   white-space: nowrap;
   transition:
@@ -602,7 +622,7 @@ textarea.mw-input {
   padding: 0 3px;
   border-radius: 999px;
   background: rgb(var(--wa-muted) / 0.15);
-  font-size: 8.5px;
+  font-size: var(--mw-text-2xs);
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -612,10 +632,10 @@ textarea.mw-input {
   align-items: center;
   gap: 4px;
   border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 9.5px;
-  font-weight: 700;
-  line-height: 16px;
+  padding: 1px 6px;
+  font-size: var(--mw-text-2xs);
+  font-weight: 600;
+  line-height: 18px;
   white-space: nowrap;
 }
 
@@ -674,15 +694,15 @@ textarea.mw-input {
 }
 
 .mw-metric-label {
-  font-size: 9.5px;
+  font-size: var(--mw-text-xs);
   font-weight: 500;
   color: rgb(var(--wa-muted));
 }
 
 .mw-metric-value {
-  font-size: 16px;
+  font-size: var(--mw-text-lg);
   font-weight: 700;
-  line-height: 22px;
+  line-height: 24px;
   color: rgb(var(--wa-text));
   font-variant-numeric: tabular-nums;
 }
@@ -767,7 +787,7 @@ textarea.mw-input {
   border: 1px solid var(--wa-line);
   background: rgb(var(--wa-surface));
   color: rgb(var(--wa-text));
-  font-size: 18px;
+  font-size: var(--mw-text-xl);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition: background 100ms ease;
@@ -801,8 +821,12 @@ textarea.mw-input {
   }
 }
 
+/* Entrance animations use fill-mode "backwards", never "both": a transform
+   kept after the animation turns the element into the containing block for
+   position:fixed children, and dialogs would center inside the tab content
+   (possibly off-screen) instead of the viewport. */
 .mw-fade-enter {
-  animation: mw-fade 140ms ease-out both;
+  animation: mw-fade 140ms ease-out backwards;
 }
 
 @keyframes mw-fade {
@@ -817,7 +841,7 @@ textarea.mw-input {
 }
 
 .mw-drawer-in {
-  animation: mw-drawer-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: mw-drawer-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
 @keyframes mw-drawer-in {
@@ -858,10 +882,11 @@ textarea.mw-input {
   background: rgb(var(--wa-brand-strong));
 }
 
+/* Locale-formatted values (times, dates, counts). The run takes its direction
+   from its own first strong character, so "9:28 ص" and "9:28 AM" both read
+   correctly; forcing LTR scrambled Arabic dates. */
 .mw-lang-pill {
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
-  direction: ltr;
-  unicode-bidi: isolate;
+  unicode-bidi: plaintext;
   font-variant-numeric: tabular-nums;
 }
 
@@ -884,9 +909,19 @@ textarea.mw-input {
   .mw-nav-item {
     width: auto;
     flex: 0 0 auto;
-    min-height: 28px;
-    padding: 5px 8px;
-    font-size: 10px;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: var(--mw-text-xs);
+  }
+
+  /* Narrow screens: only the current step keeps its label, and its group
+     sizes to that label instead of an equal third of the row. */
+  .mw-step:not([data-state="active"]) .mw-step-label {
+    display: none;
+  }
+
+  .mw-step-group {
+    flex: 1 1 auto;
   }
 
   .mw-nav-item[aria-current="page"]::before {
@@ -901,17 +936,110 @@ textarea.mw-input {
   }
 }
 
+/* Connection banner: one line of state plus the single action that fixes it. */
+.mw-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wa-line);
+  background: rgb(var(--wa-surface));
+}
+
+.mw-banner .mw-status-dot {
+  margin-top: 6px;
+}
+
+.mw-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 180px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: rgb(var(--wa-muted));
+  font-size: var(--mw-text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.mw-segmented {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: rgb(var(--wa-input));
+}
+
+.mw-segmented > button {
+  height: 24px;
+  min-width: 36px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: rgb(var(--wa-muted));
+  font-size: var(--mw-text-xs);
+  font-weight: 600;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.mw-segmented > button:hover {
+  color: rgb(var(--wa-text));
+}
+
+.mw-segmented > button[aria-pressed="true"] {
+  background: rgb(var(--wa-surface));
+  color: rgb(var(--wa-text));
+}
+
+/* Message preview uses WhatsApp's own chat surfaces for each theme. */
+.mw-chat-surface {
+  background: var(--wa-chat-bg);
+}
+
+.mw-bubble-out {
+  background: var(--wa-bubble-out);
+  color: rgb(var(--wa-text));
+}
+
+.mw-media-overlay {
+  background: var(--wa-media-backdrop);
+  color: #fff;
+}
+
+.mw-media-frame {
+  background: var(--wa-media-backdrop);
+}
+
+/* Visually hidden but announced (status icons that also carry text). */
+.mw-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* One rule for every animation and transition in the panel. */
 @media (prefers-reduced-motion: reduce) {
-  .mw-nav-item,
-  .mw-btn,
-  .mw-toggle,
-  .mw-toggle > span,
-  .mw-progress > span,
-  .mw-fade-enter,
-  .mw-drawer-in,
-  .mw-shake,
+  .mw-app *,
+  .mw-app *::before,
+  .mw-app *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .mw-status-dot[data-state="live"]::after {
     animation: none !important;
-    transition: none !important;
   }
 }

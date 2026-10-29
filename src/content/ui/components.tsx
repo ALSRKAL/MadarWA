@@ -1,10 +1,15 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useId,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type RefObject,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
@@ -12,6 +17,58 @@ import { AlertTriangle, Check, ChevronDown, Copy, Loader2, Settings, X } from "l
 
 export function cn(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(" ");
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** The focused element, looking through open shadow roots (the launcher lives in one). */
+function deepActiveElement(): HTMLElement | null {
+  let active: Element | null = document.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  return active instanceof HTMLElement ? active : null;
+}
+
+/**
+ * Modal focus contract: focus moves into the dialog when it opens, Tab and
+ * Shift+Tab cycle inside it, and focus returns to the opener when it closes.
+ */
+export function useDialogFocus(ref: RefObject<HTMLElement | null>, active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const node = ref.current;
+    if (!node) return;
+    const opener = deepActiveElement();
+    const initial = node.querySelector<HTMLElement>("[data-autofocus]") ?? node;
+    initial.focus({ preventScroll: true });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || event.defaultPrevented) return;
+      const items = [...node.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        node.focus({ preventScroll: true });
+        return;
+      }
+      const root = node.getRootNode() as Document | ShadowRoot;
+      const current = root.activeElement;
+      if (event.shiftKey && (current === first || current === node)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    node.addEventListener("keydown", onKeyDown);
+    return () => {
+      node.removeEventListener("keydown", onKeyDown);
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [active, ref]);
 }
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "dangerGhost" | "success";
@@ -54,9 +111,10 @@ export function Button({
       type="button"
       className={cn("mw-btn", BUTTON_VARIANTS[variant], BUTTON_SIZES[size], className)}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : icon}
       {children}
     </button>
   );
@@ -75,8 +133,10 @@ export function IconButton({
   );
 }
 
+/** Surface with the default 12px inset; pass a p-* class (e.g. p-0 for row lists) to override it. */
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("mw-card", className)}>{children}</div>;
+  const customPadding = /(^|\s)p-\d/.test(className ?? "");
+  return <div className={cn("mw-card", !customPadding && "p-3", className)}>{children}</div>;
 }
 
 export function SectionTitle({
@@ -93,10 +153,14 @@ export function SectionTitle({
   return (
     <div className="mb-2 flex items-start justify-between gap-3">
       <div className="flex min-w-0 items-start gap-2">
-        {icon ? <span className="mt-0.5 shrink-0 text-wa-muted">{icon}</span> : null}
+        {icon ? (
+          <span className="mt-0.5 shrink-0 text-wa-muted" aria-hidden="true">
+            {icon}
+          </span>
+        ) : null}
         <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold leading-5 text-wa-text">{title}</h2>
-          {subtitle ? <p className="mt-0.5 text-[10.5px] leading-4 text-wa-muted">{subtitle}</p> : null}
+          <h2 className="text-mw-base font-semibold leading-5 text-wa-text">{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-mw-xs leading-5 text-wa-muted">{subtitle}</p> : null}
         </div>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
@@ -104,6 +168,27 @@ export function SectionTitle({
   );
 }
 
+/** Small muted label that names a group of rows inside a card. */
+export function GroupLabel({ icon, children, action }: { icon?: ReactNode; children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
+      {icon ? (
+        <span className="shrink-0 text-wa-muted" aria-hidden="true">
+          {icon}
+        </span>
+      ) : null}
+      <h3 className="min-w-0 flex-1 truncate text-mw-xs font-semibold text-wa-muted">{children}</h3>
+      {action}
+    </div>
+  );
+}
+
+/**
+ * Setting row with a switch. The whole row is a mouse target; the switch is
+ * the single keyboard/AT control, named by the label and described by the hint.
+ * The label is deliberately not a <label>: a <label for> inside a clickable
+ * row fires twice (row click + synthetic control click) and cancels itself.
+ */
 export function Toggle({
   checked,
   onChange,
@@ -122,6 +207,8 @@ export function Toggle({
   action?: ReactNode;
 }) {
   const id = useId();
+  const labelId = `${id}-label`;
+  const hintId = `${id}-hint`;
   return (
     <div
       className={cn(
@@ -134,12 +221,16 @@ export function Toggle({
     >
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <label htmlFor={id} className="cursor-pointer text-[12px] font-medium leading-5 text-wa-text">
+          <span id={labelId} className="text-mw-sm font-medium leading-5 text-wa-text">
             {label}
-          </label>
-          {warning ? <AlertTriangle className="h-3 w-3 text-wa-warning" /> : null}
+          </span>
+          {warning ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-wa-warning" aria-hidden="true" /> : null}
         </div>
-        {hint ? <p className="mt-0.5 text-[10.5px] leading-[1.55] text-wa-muted">{hint}</p> : null}
+        {hint ? (
+          <p id={hintId} className="mt-0.5 text-mw-xs leading-5 text-wa-muted">
+            {hint}
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {action ? (
@@ -152,7 +243,8 @@ export function Toggle({
           type="button"
           role="switch"
           aria-checked={checked}
-          aria-label={label}
+          aria-labelledby={labelId}
+          aria-describedby={hint ? hintId : undefined}
           disabled={disabled}
           onClick={(event) => {
             event.stopPropagation();
@@ -183,13 +275,12 @@ export function ConfigureButton({
       type="button"
       onClick={onClick}
       aria-expanded={open}
-      aria-label={label}
       title={title ?? label}
       className={cn("mw-configure", open && "is-open")}
     >
-      <Settings className="h-3 w-3" />
+      <Settings className="h-3.5 w-3.5" aria-hidden="true" />
       <span>{label}</span>
-      <ChevronDown className="h-3 w-3 transition-transform" aria-hidden="true" />
+      <ChevronDown className="h-3.5 w-3.5 transition-transform" aria-hidden="true" />
     </button>
   );
 }
@@ -235,7 +326,7 @@ export function Stepper({
               aria-current={state === "active" ? "step" : undefined}
               className="mw-step"
             >
-              <span className="mw-step-index">
+              <span className="mw-step-index" aria-hidden="true">
                 {state === "done" ? <Check className="h-3 w-3" /> : step.id}
               </span>
               <span className="mw-step-label">{step.label}</span>
@@ -259,13 +350,12 @@ export function FilterChips<T extends string>({
   ariaLabel: string;
 }) {
   return (
-    <div className="mw-chips" role="tablist" aria-label={ariaLabel}>
+    <div className="mw-chips" role="group" aria-label={ariaLabel}>
       {options.map((option) => (
         <button
           key={option.id}
           type="button"
-          role="tab"
-          aria-selected={value === option.id}
+          aria-pressed={value === option.id}
           onClick={() => onChange(option.id)}
           className="mw-chip"
           data-active={value === option.id ? "1" : "0"}
@@ -276,6 +366,24 @@ export function FilterChips<T extends string>({
       ))}
     </div>
   );
+}
+
+interface FieldContextValue {
+  id: string;
+  describedBy?: string;
+  invalid: boolean;
+}
+
+const FieldContext = createContext<FieldContextValue | null>(null);
+
+/** Inputs inside a Field pick up its id, description and error state automatically. */
+function useFieldControl(id: string | undefined, describedBy: string | undefined) {
+  const field = useContext(FieldContext);
+  return {
+    id: id ?? field?.id,
+    "aria-describedby": describedBy ?? field?.describedBy,
+    "aria-invalid": field?.invalid ? true : undefined,
+  };
 }
 
 export function Field({
@@ -293,36 +401,101 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  const autoId = useId();
+  const id = htmlFor ?? autoId;
+  const messageId = `${id}-message`;
+  const hasMessage = Boolean(error || hint);
   return (
-    <div className={cn("space-y-1", className)}>
-      {label ? (
-        <label htmlFor={htmlFor} className="block text-[10.5px] font-semibold text-wa-muted">
-          {label}
-        </label>
-      ) : null}
-      {children}
-      {error ? (
-        <p className="text-[10px] font-medium text-wa-danger">{error}</p>
-      ) : hint ? (
-        <p className="text-[10px] leading-[1.5] text-wa-muted">{hint}</p>
-      ) : null}
-    </div>
+    <FieldContext.Provider value={{ id, describedBy: hasMessage ? messageId : undefined, invalid: Boolean(error) }}>
+      <div className={cn("space-y-1", className)}>
+        {label ? (
+          <label htmlFor={id} className="block text-mw-xs font-semibold text-wa-muted">
+            {label}
+          </label>
+        ) : null}
+        {children}
+        {error ? (
+          <p id={messageId} role="alert" className="text-mw-xs font-medium leading-5 text-wa-danger">
+            {error}
+          </p>
+        ) : hint ? (
+          <p id={messageId} className="text-mw-xs leading-5 text-wa-muted">
+            {hint}
+          </p>
+        ) : null}
+      </div>
+    </FieldContext.Provider>
   );
 }
 
-export function TextInput({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn("mw-input", className)} {...rest} />;
+export function TextInput({ className, id, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
+  const control = useFieldControl(id, rest["aria-describedby"]);
+  return <input className={cn("mw-input", className)} {...rest} {...control} />;
 }
 
-export function TextArea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn("mw-input", className)} {...rest} />;
+export function TextArea({ className, id, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const control = useFieldControl(id, rest["aria-describedby"]);
+  return <textarea className={cn("mw-input", className)} {...rest} {...control} />;
 }
 
-export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className, children, id, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+  const control = useFieldControl(id, rest["aria-describedby"]);
   return (
-    <select className={cn("mw-input appearance-none pe-7", className)} {...rest}>
+    <select className={cn("mw-input appearance-none pe-7", className)} {...rest} {...control}>
       {children}
     </select>
+  );
+}
+
+/**
+ * Number input that lets people type freely and only clamps when they leave
+ * the field or press Enter (clamping on every keystroke turns "1500" into 50).
+ */
+export function NumberInput({
+  value,
+  min,
+  max,
+  onCommit,
+  className,
+  disabled,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (value: number) => void;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const control = useFieldControl(undefined, undefined);
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Number(draft);
+    const next = Number.isFinite(parsed) && draft.trim() !== "" ? Math.min(max, Math.max(min, Math.round(parsed))) : value;
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={min}
+      max={max}
+      value={draft}
+      disabled={disabled}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") commit();
+      }}
+      className={cn("mw-input", className)}
+      {...control}
+    />
   );
 }
 
@@ -352,15 +525,23 @@ export function Progress({
   value,
   max,
   className,
+  label,
 }: {
   value: number;
   max: number;
-  striped?: boolean;
   className?: string;
+  label?: string;
 }) {
   const percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   return (
-    <div className={cn("mw-progress", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}>
+    <div
+      className={cn("mw-progress", className)}
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(percent)}
+    >
       <span style={{ width: `${percent}%` }} />
     </div>
   );
@@ -379,9 +560,13 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-      {icon ? <div className="mb-2 text-wa-muted">{icon}</div> : null}
-      <p className="text-[12px] font-medium text-wa-text">{title}</p>
-      {body ? <p className="mt-1 max-w-sm text-[10.5px] leading-5 text-wa-muted">{body}</p> : null}
+      {icon ? (
+        <div className="mb-2 text-wa-muted" aria-hidden="true">
+          {icon}
+        </div>
+      ) : null}
+      <p className="text-mw-sm font-medium text-wa-text">{title}</p>
+      {body ? <p className="mt-1 max-w-sm text-mw-xs leading-5 text-wa-muted">{body}</p> : null}
       {action ? <div className="mt-3">{action}</div> : null}
     </div>
   );
@@ -414,7 +599,7 @@ export function Alert({
     success: "border-wa-brand/30 bg-wa-brand/10 text-wa-brand",
   }[tone];
   return (
-    <div className={cn("rounded-md border px-2.5 py-2 text-[10.5px] leading-5", styles)}>
+    <div className={cn("rounded-md border px-2.5 py-2 text-mw-xs leading-5", styles)} role={tone === "danger" ? "alert" : undefined}>
       {title ? <p className="mb-0.5 font-semibold">{title}</p> : null}
       <div className="opacity-90">{children}</div>
     </div>
@@ -456,15 +641,20 @@ export function CopyButton({ text, label, copiedLabel }: { text: string; label: 
     <button
       type="button"
       onClick={() => void copy()}
-      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium text-wa-muted transition-colors hover:bg-wa-hover hover:text-wa-text"
-      title={copied ? copiedLabel : label}
+      className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-mw-xs font-medium text-wa-muted transition-colors hover:bg-wa-hover hover:text-wa-text"
+      aria-live="polite"
     >
-      {copied ? <Check className="h-3 w-3 text-wa-brand" /> : <Copy className="h-3 w-3" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-wa-brand" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
       {copied ? copiedLabel : label}
     </button>
   );
 }
 
+/**
+ * Dialog on top of the drawer. Escape closes only the dialog (the drawer
+ * beneath stays open with its state), focus is held inside, and the opener
+ * gets focus back on close.
+ */
 export function Modal({
   open,
   onClose,
@@ -480,15 +670,36 @@ export function Modal({
   footer?: ReactNode;
   closeLabel: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogFocus(ref, open);
   if (!open) return null;
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-[2147483200] flex items-center justify-center p-4" style={{ pointerEvents: "auto" }}>
-      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
-      <div className="mw-card-strong relative z-10 w-full max-w-md p-3.5 shadow-2xl">
+      <div className="absolute inset-0 bg-black/55" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+        className="mw-card-strong relative z-10 w-full max-w-md p-3.5 shadow-2xl outline-none"
+      >
         <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-wa-line pb-2">
-          <h3 className="text-[12.5px] font-semibold">{title}</h3>
+          <h3 id={titleId} className="text-mw-base font-semibold">
+            {title}
+          </h3>
           <IconButton label={closeLabel} onClick={onClose} className="h-7 w-7">
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </IconButton>
         </div>
         <div className="mw-scroll max-h-[60vh] overflow-y-auto">{children}</div>

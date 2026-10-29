@@ -1,56 +1,20 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  --wa-bg: 17 27 33;
-  --wa-panel: 32 44 51;
-  --wa-surface: 24 34 41;
-  --wa-input: 42 57 66;
-  --wa-text: 233 237 239;
-  --wa-muted: 134 150 160;
-  --wa-brand: 0 168 132;
-  --wa-brand-strong: 6 207 156;
-  --wa-danger: 241 92 109;
-  --wa-warning: 245 158 11;
-  --wa-line: rgba(134, 150, 160, 0.15);
-  --wa-on-brand: #0b141a;
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --wa-bg: 240 242 245;
-    --wa-panel: 240 242 245;
-    --wa-surface: 255 255 255;
-    --wa-input: 240 242 245;
-    --wa-text: 17 27 33;
-    --wa-muted: 102 119 129;
-    --wa-brand: 0 128 105;
-    --wa-brand-strong: 0 168 132;
-    --wa-danger: 241 92 109;
-    --wa-warning: 180 83 9;
-    --wa-line: #e9edef;
-    --wa-on-brand: #ffffff;
-    color-scheme: light;
-  }
-}
+/* The popup shares the panel's design system: same tokens, type scale and controls. */
+@import "../content/styles/shadow.css";
 
 html,
 body {
   width: 340px;
   margin: 0;
   padding: 0;
-  background: rgb(var(--wa-bg));
-  color: rgb(var(--wa-text));
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
-  font-size: 12px;
-  -webkit-font-smoothing: antialiased;
 }
 
-html[dir="rtl"],
-body[dir="rtl"] {
-  font-family: Tajawal, Cairo, "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+html.mw-app,
+html.mw-app body {
+  /* Surface tone, so secondary buttons (input tone) stay visible in light mode. */
+  background: rgb(var(--wa-surface));
+  font-size: var(--mw-text-sm);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -59,59 +23,4 @@ body[dir="rtl"] {
 
 button {
   font-family: inherit;
-}
-
-.popup-surface {
-  background: rgb(var(--wa-surface));
-  border: 1px solid var(--wa-line);
-  border-radius: 8px;
-}
-
-.popup-primary {
-  background: rgb(var(--wa-brand));
-  color: var(--wa-on-brand);
-}
-
-.popup-primary:hover {
-  background: rgb(var(--wa-brand-strong));
-}
-
-.popup-secondary {
-  background: rgb(var(--wa-input));
-  color: rgb(var(--wa-text));
-}
-
-.popup-secondary:hover {
-  background: rgb(var(--wa-muted) / 0.18);
-}
-
-.popup-status-dot {
-  position: relative;
-  display: inline-flex;
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: rgb(var(--wa-muted));
-}
-
-.popup-status-dot[data-state="live"] {
-  background: rgb(var(--wa-brand-strong));
-}
-
-.popup-status-dot[data-state="waiting"] {
-  background: rgb(var(--wa-warning));
-}
-
-.popup-status-dot[data-state="offline"] {
-  background: rgb(var(--wa-danger));
-}
-
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-:focus-visible {
-  outline: 2px solid rgb(var(--wa-brand));
-  outline-offset: 2px;
 }

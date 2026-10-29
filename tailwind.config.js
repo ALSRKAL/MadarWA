@@ -53,11 +53,23 @@ export default {
           warning: "rgb(var(--wa-warning) / <alpha-value>)",
           line: "var(--wa-line)",
           hover: "var(--wa-hover)",
+          "on-brand": "var(--wa-on-brand)",
+          "on-danger": "var(--wa-on-danger)",
         },
       },
       fontFamily: {
         sans: ["Inter", "Segoe UI", "system-ui", "sans-serif"],
         arabic: ["Tajawal", "Cairo", "IBM Plex Sans Arabic", "Segoe UI", "Tahoma", "sans-serif"],
+      },
+      // One type scale for the panel and the popup (values live in shadow.css).
+      // Size only: line height stays with the leading-* utilities.
+      fontSize: {
+        "mw-2xs": "var(--mw-text-2xs)",
+        "mw-xs": "var(--mw-text-xs)",
+        "mw-sm": "var(--mw-text-sm)",
+        "mw-base": "var(--mw-text-base)",
+        "mw-lg": "var(--mw-text-lg)",
+        "mw-xl": "var(--mw-text-xl)",
       },
     },
   },

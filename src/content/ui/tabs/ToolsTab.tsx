@@ -10,7 +10,8 @@ import {
   Trash2,
   Webhook,
 } from "lucide-react";
-import { BRIDGE_COMMANDS, EXTENSION_VERSION } from "../../../shared/constants";
+import { BRIDGE_COMMANDS, EXTENSION_VERSION, PROJECT_DOCS_URL, PROJECT_URL } from "../../../shared/constants";
+import { describeError } from "../../../shared/errors";
 import { formatDateTime } from "../../../shared/format";
 import { sanitizePhone } from "../../../shared/utils/phone";
 import { validateWebhookUrl } from "../../../shared/utils/security";
@@ -31,6 +32,9 @@ import {
   Toggle,
 } from "../components";
 
+/** URL validation codes that mean "local or private address", not a typo. */
+const PRIVATE_URL_CODES = new Set(["private-host", "single-label", "private-ip"]);
+
 export function ToolsTab() {
   const t = useT();
   const settings = useSettings();
@@ -49,6 +53,7 @@ export function ToolsTab() {
   const [forwardRevoked, setForwardRevoked] = useState(settings.webhook.forwardRevoked);
   const [webhookError, setWebhookError] = useState("");
   const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; status: number; error: string } | null>(null);
 
@@ -88,10 +93,45 @@ export function ToolsTab() {
     return true;
   };
 
+  // The switch commits at once like every other switch in the panel. Turning
+  // it on needs a valid saved URL; until then the form opens and explains.
+  const setWebhookEnabled = (value: boolean) => {
+    setEnabled(value);
+    const current = useAppStore.getState().settings;
+    if (!value) {
+      setWebhookError("");
+      if (current.webhook.enabled) {
+        setSettings({ ...current, webhook: { ...current.webhook, enabled: false } });
+        pushToast({ kind: "info", title: t("tools.webhookDisabled"), body: "" });
+      }
+      return;
+    }
+    if (validateWebhookUrl(current.webhook.url).ok) {
+      setSettings({ ...current, webhook: { ...current.webhook, enabled: true } });
+      return;
+    }
+    setConfigOpen(true);
+    setWebhookError(t("tools.webhookNeedsUrl"));
+  };
+
   const saveWebhook = async () => {
-    if (!applyWebhook()) return;
-    await contentController.saveNow();
-    pushToast({ kind: "success", title: t("tools.saved"), body: "" });
+    if (saving || !applyWebhook()) return;
+    setSaving(true);
+    try {
+      const saved = await contentController.saveNow();
+      pushToast(
+        saved
+          ? { kind: "success", title: t("tools.saved"), body: "" }
+          : { kind: "error", title: t("errors.saveFailed"), body: "" },
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clearLog = async () => {
+    await contentController.clearWebhookLog();
+    pushToast({ kind: "info", title: t("tools.logCleared"), body: "" });
   };
 
   const testWebhook = async () => {
@@ -117,7 +157,7 @@ export function ToolsTab() {
   const startChat = async (send: boolean) => {
     const sanitized = sanitizePhone(phone, settings.broadcaster.defaultCountryCode);
     if (!sanitized.valid) {
-      pushToast({ kind: "error", title: t("tools.invalidPhone"), body: sanitized.reason });
+      pushToast({ kind: "error", title: t("tools.invalidPhone"), body: "" });
       return;
     }
     setChatBusy(send ? "send" : "open");
@@ -134,14 +174,11 @@ export function ToolsTab() {
       pushToast({
         kind: "success",
         title: result.sent ? t("tools.messageSent") : t("tools.chatOpened"),
-        body: result.chatId,
+        body: `+${sanitized.digits}`,
       });
     } catch (error) {
-      pushToast({
-        kind: "error",
-        title: t("errors.generic"),
-        body: error instanceof Error ? error.message.slice(0, 200) : "",
-      });
+      const { title, detail } = describeError(error, t);
+      pushToast({ kind: "error", title, body: detail });
     } finally {
       setChatBusy("");
     }
@@ -179,7 +216,7 @@ export function ToolsTab() {
         icon={<Webhook className="h-4 w-4" />}
         title={t("tools.title")}
         subtitle={t("tools.subtitle")}
-        action={<Badge tone="neutral">v{EXTENSION_VERSION}</Badge>}
+        action={<Badge tone="neutral">{t("popup.version", { version: EXTENSION_VERSION })}</Badge>}
       />
 
       <Card>
@@ -229,21 +266,27 @@ export function ToolsTab() {
         </div>
       </Card>
 
-      <Card>
-        <SectionTitle
-          icon={<Link2 className="h-4 w-4" />}
-          title={t("tools.webhook")}
-          subtitle={t("tools.webhookHint")}
-          action={<Badge tone={enabled ? "success" : "neutral"}>{enabled ? t("common.on") : t("common.off")}</Badge>}
-        />
+      <Card className="p-0">
+        <div className="px-3 pt-3">
+          <SectionTitle
+            icon={<Link2 className="h-4 w-4" />}
+            title={t("tools.webhook")}
+            subtitle={t("tools.webhookHint")}
+            action={
+              <Badge tone={settings.webhook.enabled ? "success" : "neutral"}>
+                {settings.webhook.enabled ? t("common.on") : t("common.off")}
+              </Badge>
+            }
+          />
+        </div>
 
-        <Toggle checked={enabled} onChange={setEnabled} label={t("tools.webhookEnable")} />
+        <Toggle checked={enabled} onChange={setWebhookEnabled} label={t("tools.webhookEnable")} />
 
         {enabled ? (
           <div className="px-3 pb-2">
             <div className="flex items-center justify-between gap-2 border-t border-wa-line pt-2">
-              <span className="mw-code min-w-0 truncate text-[9.5px] text-wa-muted" dir="ltr">
-                {url.trim() || t("tools.webhookUrlPlaceholder")}
+              <span className="mw-code min-w-0 truncate text-mw-xs text-wa-muted" dir="ltr">
+                {settings.webhook.url || t("tools.webhookUrl")}
               </span>
               <ConfigureButton
                 open={configOpen}
@@ -270,7 +313,9 @@ export function ToolsTab() {
                     }}
                   />
                 </Field>
-                {urlCheck && !urlCheck.ok ? <Alert tone="warning">{t("tools.privateBlocked")}</Alert> : null}
+                {urlCheck && !urlCheck.ok && PRIVATE_URL_CODES.has(urlCheck.code) ? (
+                  <Alert tone="warning">{t("tools.privateBlocked")}</Alert>
+                ) : null}
                 <Field label={t("tools.webhookToken")} hint={t("tools.webhookTokenHint")}>
                   <TextInput
                     dir="ltr"
@@ -289,7 +334,7 @@ export function ToolsTab() {
                   labels={{ messages: t("tools.forwardMessages"), revoked: t("tools.forwardRevoked") }}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => void saveWebhook()}>
+                  <Button size="sm" variant="secondary" loading={saving} onClick={() => void saveWebhook()}>
                     {t("common.save")}
                   </Button>
                   <Button
@@ -312,63 +357,68 @@ export function ToolsTab() {
 
                 <div className="border-t border-wa-line pt-2">
                   <div className="mb-1 flex items-center justify-between">
-                    <h4 className="text-[10.5px] font-semibold">{t("tools.payloadTitle")}</h4>
+                    <h4 className="text-mw-xs font-semibold">{t("tools.payloadTitle")}</h4>
                     <CopyButton text={samplePayload} label={t("common.copy")} copiedLabel={t("common.copied")} />
                   </div>
-                  <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-[9.5px] leading-5">
+                  <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-mw-2xs leading-5">
                     {samplePayload}
                   </pre>
                 </div>
               </div>
             </Disclosure>
           </div>
-        ) : (
-          <p className="text-wa-muted px-3 pb-2 text-[10px] leading-5">{t("tools.webhookHint")}</p>
-        )}
+        ) : null}
 
         {webhookLog.length > 0 ? (
           <div className="border-t border-wa-line px-3 py-2.5">
             <div className="mb-1.5 flex items-center justify-between">
-              <h4 className="text-[11px] font-bold">{t("tools.logs")}</h4>
+              <h4 className="text-mw-sm font-semibold">{t("tools.logs")}</h4>
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
                   onClick={() => void contentController.refreshWebhookLog()}
-                  className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
                 >
-                  <RefreshCw className="h-3 w-3" />
                   {t("common.refresh")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void contentController.clearWebhookLog()}
-                  className="text-wa-muted inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold hover:bg-wa-hover hover:text-wa-text"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                  onClick={() => void clearLog()}
                 >
-                  <Trash2 className="h-3 w-3" />
                   {t("common.clear")}
-                </button>
+                </Button>
               </div>
             </div>
 
-            <div className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-md border border-wa-line bg-wa-input p-1.5">
+            <ul className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-md border border-wa-line bg-wa-input p-1.5">
               {webhookLog.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-[10px]">
+                <li key={entry.id} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-mw-xs">
                   {entry.ok ? (
-                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-brand" />
+                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-brand" aria-hidden="true" />
                   ) : (
-                    <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-danger" />
+                    <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-danger" aria-hidden="true" />
                   )}
+                  <span className="mw-sr-only">{entry.ok ? t("tools.logOk") : t("tools.logFailed")}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="mw-code truncate text-[9.5px]" dir="ltr">
+                    <p className="mw-code truncate" dir="ltr">
                       {entry.url}
                     </p>
-                    {entry.error ? <p className="text-wa-muted truncate text-[9px]">{entry.error}</p> : null}
+                    {entry.error || (entry.attempts ?? 1) > 1 ? (
+                      <p className="text-wa-muted truncate text-mw-2xs">
+                        {[entry.error, (entry.attempts ?? 1) > 1 ? t("tools.attempts", { count: entry.attempts }) : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
                   </div>
-                  <span className="mw-lang-pill shrink-0 text-[9px]">{entry.status || "—"}</span>
-                  <span className="text-wa-muted mw-lang-pill shrink-0 text-[9px]">{formatDateTime(entry.at, settings.language)}</span>
-                </div>
+                  <span className="mw-lang-pill shrink-0 text-mw-2xs">{entry.status || "—"}</span>
+                  <span className="text-wa-muted mw-lang-pill shrink-0 text-mw-2xs">{formatDateTime(entry.at, settings.language)}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         ) : null}
       </Card>
@@ -377,22 +427,22 @@ export function ToolsTab() {
         <SectionTitle icon={<ExternalLink className="h-4 w-4" />} title={t("tools.quickLinks")} />
         <div className="mw-card divide-y divide-wa-line">
           <a
-            href="https://github.com/ALSRKAL/MadarWA"
+            href={PROJECT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between px-3 py-2 text-[10.5px] font-medium hover:bg-wa-hover"
+            className="flex items-center justify-between px-3 py-2.5 text-mw-sm font-medium hover:bg-wa-hover"
           >
             {t("tools.repo")}
-            <ExternalLink className="h-3.5 w-3.5 text-wa-brand" />
+            <ExternalLink className="h-3.5 w-3.5 text-wa-muted" aria-hidden="true" />
           </a>
           <a
-            href="https://github.com/ALSRKAL/MadarWA#readme"
+            href={PROJECT_DOCS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between px-3 py-2 text-[10.5px] font-medium hover:bg-wa-hover"
+            className="flex items-center justify-between px-3 py-2.5 text-mw-sm font-medium hover:bg-wa-hover"
           >
             {t("tools.docs")}
-            <ExternalLink className="h-3.5 w-3.5 text-wa-brand" />
+            <ExternalLink className="h-3.5 w-3.5 text-wa-muted" aria-hidden="true" />
           </a>
         </div>
       </Card>

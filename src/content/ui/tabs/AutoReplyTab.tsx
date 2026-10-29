@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Bot, Pencil, Plus, Send, Trash2, Type } from "lucide-react";
 import type { AutoReplyRule, QuickTemplate, RuleMatchType, RuleScope } from "../../../shared/types";
+import { describeError } from "../../../shared/errors";
 import { uid } from "../../../shared/format";
 import { isValidRegex } from "../../../shared/utils/rules";
 import { personalizeMessage } from "../../../shared/utils/template";
@@ -16,6 +17,7 @@ import {
   Field,
   IconButton,
   Modal,
+  NumberInput,
   SectionTitle,
   Select,
   TextArea,
@@ -60,6 +62,7 @@ export function AutoReplyTab() {
   const [templateDraft, setTemplateDraft] = useState<QuickTemplate | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<QuickTemplate | null>(null);
   const [templateError, setTemplateError] = useState("");
+  const [templateBusy, setTemplateBusy] = useState<{ id: string; mode: "send" | "insert" } | null>(null);
 
   const patchAutoReply = (patch: Partial<typeof settings.autoReply>) => {
     setSettings({ ...settings, autoReply: { ...settings.autoReply, ...patch } });
@@ -68,7 +71,7 @@ export function AutoReplyTab() {
   const saveRule = () => {
     if (!draft) return;
     if (!draft.name.trim()) {
-      setEditorError(t("autoreply.ruleName"));
+      setEditorError(t("autoreply.missingName"));
       return;
     }
     if (draft.matchType !== "fallback" && !draft.pattern.trim()) {
@@ -111,7 +114,7 @@ export function AutoReplyTab() {
   const saveTemplate = () => {
     if (!templateDraft) return;
     if (!templateDraft.label.trim() || !templateDraft.text.trim()) {
-      setTemplateError(t("autoreply.templateText"));
+      setTemplateError(t("autoreply.missingTemplate"));
       return;
     }
     const normalized: QuickTemplate = {
@@ -133,14 +136,19 @@ export function AutoReplyTab() {
     if (!deleteTemplate) return;
     patchAutoReply({ templates: settings.autoReply.templates.filter((template) => template.id !== deleteTemplate.id) });
     setDeleteTemplate(null);
+    pushToast({ kind: "info", title: t("autoreply.templateDeleted"), body: "" });
   };
 
+  // One template action at a time: a second click while a send is in flight
+  // would deliver the same message twice.
   const dispatchTemplate = async (template: QuickTemplate, mode: "send" | "insert") => {
+    if (templateBusy) return;
     const text = personalizeMessage(template.text, { variables: { name: "" }, enableSpintax: true });
     if (!text) {
       pushToast({ kind: "error", title: t("autoreply.missingResponse"), body: "" });
       return;
     }
+    setTemplateBusy({ id: template.id, mode });
     try {
       if (mode === "send") {
         await contentController.sendTemplateToActiveChat(text);
@@ -150,12 +158,10 @@ export function AutoReplyTab() {
         pushToast({ kind: "success", title: t("autoreply.templateInserted"), body: template.label });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      pushToast({
-        kind: "error",
-        title: message === t("errors.noChat") ? t("autoreply.noActiveChat") : t("errors.bridgeUnavailable"),
-        body: message.slice(0, 180),
-      });
+      const { title, detail } = describeError(error, t);
+      pushToast({ kind: "error", title, body: detail });
+    } finally {
+      setTemplateBusy(null);
     }
   };
 
@@ -180,7 +186,7 @@ export function AutoReplyTab() {
       {settings.autoReply.enabled ? (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.rules")}</h3>
+            <h3 className="text-mw-sm font-semibold text-wa-text">{t("autoreply.rules")}</h3>
             <Button
               size="sm"
               variant="secondary"
@@ -213,15 +219,15 @@ export function AutoReplyTab() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate text-[11.5px] font-semibold">{rule.name || t("common.unnamed")}</p>
-                        <Badge tone={rule.matchType === "fallback" ? "warning" : "brand"}>{matchLabel(t, rule.matchType)}</Badge>
+                        <p className="truncate text-mw-sm font-semibold">{rule.name || t("common.unnamed")}</p>
+                        <Badge tone="neutral">{matchLabel(t, rule.matchType)}</Badge>
                         {!rule.enabled ? <Badge tone="neutral">{t("common.off")}</Badge> : null}
                       </div>
                       {rule.matchType !== "fallback" ? (
-                        <p className="mw-code mt-1 truncate text-[10px] text-wa-muted">{rule.pattern}</p>
+                        <p className="mw-code mt-1 truncate text-mw-xs text-wa-muted">{rule.pattern}</p>
                       ) : null}
-                      <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{rule.response}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-wa-muted">
+                      <p className="mt-1 line-clamp-2 text-mw-xs leading-5 text-wa-muted">{rule.response}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-mw-2xs text-wa-muted">
                         <span>{scopeLabel(t, rule.scope)}</span>
                         <span>
                           {t("autoreply.cooldown")}: <span className="mw-num">{rule.cooldownMinutes}</span>
@@ -247,7 +253,7 @@ export function AutoReplyTab() {
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between border-t border-wa-line pt-2">
-                    <span className="text-[9px] text-wa-muted">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
+                    <span className="text-mw-2xs text-wa-muted">{rule.enabled ? t("common.active") : t("common.inactive")}</span>
                     <button
                       type="button"
                       role="switch"
@@ -281,7 +287,7 @@ export function AutoReplyTab() {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[11px] font-semibold text-wa-text">{t("autoreply.templates")}</h3>
+          <h3 className="text-mw-sm font-semibold text-wa-text">{t("autoreply.templates")}</h3>
           <Button
             size="sm"
             variant="secondary"
@@ -296,15 +302,15 @@ export function AutoReplyTab() {
         </div>
 
         {settings.autoReply.templates.length === 0 ? (
-          <EmptyState title={t("autoreply.templates")} icon={<Type className="h-5 w-5" />} />
+          <EmptyState title={t("autoreply.noTemplates")} body={t("autoreply.noTemplatesHint")} icon={<Type className="h-5 w-5" />} />
         ) : (
           <div className="mw-card divide-y divide-wa-line">
             {settings.autoReply.templates.map((template) => (
               <div key={template.id} className="p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-[11.5px] font-semibold">{template.label}</p>
-                    <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-wa-muted">{template.text}</p>
+                    <p className="truncate text-mw-sm font-semibold">{template.label}</p>
+                    <p className="mt-1 line-clamp-2 text-mw-xs leading-5 text-wa-muted">{template.text}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
                     <IconButton label={t("common.edit")} onClick={() => setTemplateDraft({ ...template })}>
@@ -316,10 +322,24 @@ export function AutoReplyTab() {
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-wa-line pt-2">
-                  <Button size="sm" variant="secondary" icon={<Send className="h-3 w-3" />} onClick={() => void dispatchTemplate(template, "send")}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={<Send className="h-3.5 w-3.5 rtl:-scale-x-100" />}
+                    loading={templateBusy?.id === template.id && templateBusy.mode === "send"}
+                    disabled={templateBusy !== null}
+                    onClick={() => void dispatchTemplate(template, "send")}
+                  >
                     {t("autoreply.sendTemplate")}
                   </Button>
-                  <Button size="sm" variant="ghost" icon={<Type className="h-3 w-3" />} onClick={() => void dispatchTemplate(template, "insert")}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<Type className="h-3.5 w-3.5" />}
+                    loading={templateBusy?.id === template.id && templateBusy.mode === "insert"}
+                    disabled={templateBusy !== null}
+                    onClick={() => void dispatchTemplate(template, "insert")}
+                  >
                     {t("autoreply.insertTemplate")}
                   </Button>
                   <CopyButton text={template.text} label={t("common.copy")} copiedLabel={t("common.copied")} />
@@ -328,13 +348,13 @@ export function AutoReplyTab() {
             ))}
           </div>
         )}
-        <p className="mt-2 text-[9.5px] leading-5 text-wa-muted">{t("autoreply.variables", { name: "{{name}}" })}</p>
+        <p className="mt-2 text-mw-xs leading-5 text-wa-muted">{t("autoreply.variables", { name: "{{name}}" })}</p>
       </div>
 
       <Modal
         open={draft !== null}
         onClose={() => setDraft(null)}
-        title={draft && settings.autoReply.rules.some((rule) => rule.id === draft.id) ? t("common.edit") : t("autoreply.addRule")}
+        title={draft && settings.autoReply.rules.some((rule) => rule.id === draft.id) ? t("autoreply.editRule") : t("autoreply.addRule")}
         closeLabel={t("common.close")}
         footer={
           <>
@@ -362,7 +382,7 @@ export function AutoReplyTab() {
               </Select>
             </Field>
             {draft.matchType !== "fallback" ? (
-              <Field label={t("autoreply.pattern")} hint={draft.matchType === "regex" ? t("autoreply.invalidRegex") : undefined}>
+              <Field label={t("autoreply.pattern")} hint={draft.matchType === "regex" ? t("autoreply.regexHint") : undefined}>
                 <TextInput
                   dir="ltr"
                   className="mw-code text-left"
@@ -391,21 +411,19 @@ export function AutoReplyTab() {
                 </Select>
               </Field>
               <Field label={t("autoreply.cooldown")}>
-                <TextInput
-                  type="number"
+                <NumberInput
                   min={0}
                   max={10080}
                   value={draft.cooldownMinutes}
-                  onChange={(event) => setDraft({ ...draft, cooldownMinutes: Number(event.target.value) || 0 })}
+                  onCommit={(value) => setDraft((current) => (current ? { ...current, cooldownMinutes: value } : current))}
                 />
               </Field>
               <Field label={t("autoreply.typing")}>
-                <TextInput
-                  type="number"
+                <NumberInput
                   min={0}
                   max={30}
                   value={draft.typingSeconds}
-                  onChange={(event) => setDraft({ ...draft, typingSeconds: Number(event.target.value) || 0 })}
+                  onCommit={(value) => setDraft((current) => (current ? { ...current, typingSeconds: value } : current))}
                 />
               </Field>
               <div className="flex items-end pb-1">
@@ -424,7 +442,11 @@ export function AutoReplyTab() {
       <Modal
         open={templateDraft !== null}
         onClose={() => setTemplateDraft(null)}
-        title={t("autoreply.addTemplate")}
+        title={
+          templateDraft && settings.autoReply.templates.some((template) => template.id === templateDraft.id)
+            ? t("autoreply.editTemplate")
+            : t("autoreply.addTemplate")
+        }
         closeLabel={t("common.close")}
         footer={
           <>
@@ -470,7 +492,7 @@ export function AutoReplyTab() {
           </>
         }
       >
-        <p className="text-[12px] leading-6">{deleteRule?.name}</p>
+        <p className="text-mw-sm leading-6">{t("autoreply.deleteRuleConfirm", { name: deleteRule?.name || t("common.unnamed") })}</p>
       </Modal>
 
       <Modal
@@ -489,7 +511,7 @@ export function AutoReplyTab() {
           </>
         }
       >
-        <p className="text-[12px] leading-6">{deleteTemplate?.label}</p>
+        <p className="text-mw-sm leading-6">{t("autoreply.deleteTemplateConfirm", { name: deleteTemplate?.label ?? "" })}</p>
       </Modal>
     </div>
   );

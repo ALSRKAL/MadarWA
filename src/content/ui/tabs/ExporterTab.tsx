@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileJson, FileSpreadsheet, RefreshCw, Search, Users } from "lucide-react";
 import { BRIDGE_COMMANDS } from "../../../shared/constants";
+import { describeError } from "../../../shared/errors";
 import { formatNumber } from "../../../shared/format";
 import { downloadText } from "../../../shared/storage";
 import type { ContactRow, GroupParticipantRow, GroupSummary } from "../../../shared/types";
@@ -8,7 +9,6 @@ import { toCsv, toJson } from "../../../shared/utils/csv";
 import { contentController } from "../../controller";
 import { useAppStore, useSettings, useT } from "../../store";
 import {
-  Alert,
   Badge,
   Button,
   Card,
@@ -65,11 +65,8 @@ export function ExporterTab() {
         pushToast({ kind: "info", title: t("exporter.noGroups"), body: "" });
       }
     } catch (error) {
-      pushToast({
-        kind: "error",
-        title: t("errors.generic"),
-        body: error instanceof Error ? error.message.slice(0, 200) : "",
-      });
+      const { title, detail } = describeError(error, t);
+      pushToast({ kind: "error", title, body: detail });
     } finally {
       setLoadingGroups(false);
     }
@@ -97,6 +94,9 @@ export function ExporterTab() {
       return;
     }
     setExtracting(true);
+    // Never show the previous source's rows under a new extraction.
+    setRows([]);
+    setHasExtracted(false);
     try {
       if (source === "groupMembers") {
         const result = await contentController.request<{ participants: GroupParticipantRow[] }>(
@@ -122,15 +122,19 @@ export function ExporterTab() {
       }
       setHasExtracted(true);
     } catch (error) {
-      pushToast({
-        kind: "error",
-        title: t("errors.generic"),
-        body: error instanceof Error ? error.message.slice(0, 200) : "",
-      });
+      const { title, detail } = describeError(error, t);
+      pushToast({ kind: "error", title, body: detail });
     } finally {
       setExtracting(false);
     }
   };
+
+  const notifyExport = (saved: boolean, count: number) =>
+    pushToast(
+      saved
+        ? { kind: "success", title: t("exporter.exported", { count: formatNumber(count, settings.language) }), body: "" }
+        : { kind: "error", title: t("errors.generic"), body: "" },
+    );
 
   const filtered = useMemo(() => {
     const code = countryCode.replace(/\D/g, "");
@@ -157,8 +161,7 @@ export function ExporterTab() {
         : [row.phone, row.formattedPhone, row.name, row.isMyContact ? "yes" : "no", row.id],
     );
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-    downloadText(`madarwa-${source}-${stamp}.csv`, toCsv(headers, data), "text/csv;charset=utf-8");
-    pushToast({ kind: "success", title: t("exporter.exported", { count: filtered.length }), body: "" });
+    notifyExport(downloadText(`madarwa-${source}-${stamp}.csv`, toCsv(headers, data), "text/csv;charset=utf-8"), filtered.length);
   };
 
   const exportJson = () => {
@@ -167,12 +170,10 @@ export function ExporterTab() {
       return;
     }
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-    downloadText(
-      `madarwa-${source}-${stamp}.json`,
-      toJson(filtered),
-      "application/json;charset=utf-8",
+    notifyExport(
+      downloadText(`madarwa-${source}-${stamp}.json`, toJson(filtered), "application/json;charset=utf-8"),
+      filtered.length,
     );
-    pushToast({ kind: "success", title: t("exporter.exported", { count: filtered.length }), body: "" });
   };
 
   const preview = filtered.slice(0, 200);
@@ -183,12 +184,14 @@ export function ExporterTab() {
         icon={<Users className="h-4 w-4" />}
         title={t("exporter.title")}
         subtitle={t("exporter.subtitle")}
-        action={hasExtracted ? <Badge tone="success">{formatNumber(filtered.length, settings.language)}</Badge> : null}
+        action={hasExtracted ? <Badge tone="neutral">{formatNumber(filtered.length, settings.language)}</Badge> : null}
       />
 
       <Card>
-        <h3 className="mb-2 text-[11px] font-semibold">{t("exporter.source")}</h3>
-        <div className="grid grid-cols-3 gap-1 rounded-md bg-wa-input p-0.5">
+        <h3 id="mw-exporter-source" className="mb-2 text-mw-xs font-semibold text-wa-muted">
+          {t("exporter.source")}
+        </h3>
+        <div className="grid grid-cols-3 gap-1 rounded-md bg-wa-input p-0.5" role="group" aria-labelledby="mw-exporter-source">
           {(
             [
               { id: "groupMembers" as const, label: t("exporter.groupMembers") },
@@ -199,12 +202,11 @@ export function ExporterTab() {
             <button
               key={item.id}
               type="button"
+              aria-pressed={source === item.id}
               onClick={() => setSource(item.id)}
               className={cn(
-                "rounded-lg px-2 py-1.5 text-[11px] font-semibold transition-colors",
-                source === item.id
-                  ? "bg-wa-brand/10 text-wa-brand"
-                  : "text-wa-muted hover:text-wa-text",
+                "h-8 rounded-[5px] px-2 text-mw-sm font-semibold transition-colors",
+                source === item.id ? "bg-wa-surface text-wa-text" : "text-wa-muted hover:text-wa-text",
               )}
             >
               {item.label}
@@ -216,11 +218,22 @@ export function ExporterTab() {
           <div className="mt-3 space-y-2">
             <Field label={t("exporter.selectGroup")}>
               <div className="flex gap-2">
-                <Select value={selectedGroup} onChange={(event) => setSelectedGroup(event.target.value)} className="flex-1">
+                <Select
+                  value={selectedGroup}
+                  onChange={(event) => {
+                    // Results belong to one group; switching groups must not keep them.
+                    setSelectedGroup(event.target.value);
+                    setRows([]);
+                    setHasExtracted(false);
+                  }}
+                  className="flex-1"
+                >
                   {groups.length === 0 ? <option value="">{t("exporter.noGroups")}</option> : null}
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
-                      {group.name} {group.participantsCount > 0 ? `(${group.participantsCount})` : ""}
+                      {group.participantsCount > 0
+                        ? `${group.name} (${formatNumber(group.participantsCount, settings.language)})`
+                        : group.name}
                     </option>
                   ))}
                 </Select>
@@ -236,12 +249,12 @@ export function ExporterTab() {
                 </Button>
               </div>
             </Field>
-            {loadingGroups ? <p className="text-[10px] text-wa-muted">{t("exporter.loadingGroups")}</p> : null}
+            {loadingGroups ? <p className="text-mw-xs text-wa-muted">{t("exporter.loadingGroups")}</p> : null}
           </div>
         ) : null}
 
         {source === "contacts" ? (
-          <div className="mt-2">
+          <div className="-mx-3 mt-2">
             <Toggle
               checked={onlyMyContacts}
               onChange={setOnlyMyContacts}
@@ -262,8 +275,8 @@ export function ExporterTab() {
       </Card>
 
       <Card>
-        <h3 className="mb-2 text-[11px] font-semibold">{t("exporter.filters")}</h3>
-        <div className="space-y-0.5">
+        <h3 className="mb-2 text-mw-xs font-semibold text-wa-muted">{t("exporter.filters")}</h3>
+        <div className="-mx-3 space-y-0.5">
           {source === "groupMembers" ? (
             <Toggle checked={excludeAdmins} onChange={setExcludeAdmins} label={t("exporter.excludeAdmins")} />
           ) : null}
@@ -283,7 +296,7 @@ export function ExporterTab() {
 
       <Card>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-[11px] font-semibold">{t("exporter.preview")}</h3>
+          <h3 className="text-mw-sm font-semibold">{t("exporter.preview")}</h3>
           <div className="flex gap-1.5">
             <Button
               variant="secondary"
@@ -313,9 +326,9 @@ export function ExporterTab() {
         ) : (
           <>
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <Badge tone="success">
+              <Badge tone="neutral">
                 {t(source === "groupMembers" ? "exporter.membersCount" : "exporter.contactsCount", {
-                  count: filtered.length,
+                  count: formatNumber(filtered.length, settings.language),
                 })}
               </Badge>
               {filtered.length > preview.length ? <Badge tone="neutral">{t("exporter.truncation")}</Badge> : null}
@@ -327,27 +340,22 @@ export function ExporterTab() {
                   className="flex items-center justify-between gap-2 rounded-md border border-wa-line px-2.5 py-1.5"
                 >
                   <div className="min-w-0">
-                    <p className="mw-code truncate text-[11px] font-semibold" dir="ltr">
+                    <p className="mw-code truncate text-mw-sm font-semibold" dir="ltr">
                       {row.formattedPhone || row.phone || row.id}
                     </p>
-                    <p className="truncate text-[10px] text-wa-muted">
+                    <p className="truncate text-mw-xs text-wa-muted">
                       {row.name || t("common.unnamed")}
                       {isParticipant(row) ? ` · ${row.groupName}` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    {isParticipant(row) && row.isAdmin ? <Badge tone="warning">{t("exporter.adminColumn")}</Badge> : null}
+                    {isParticipant(row) && row.isAdmin ? <Badge tone="neutral">{t("exporter.adminColumn")}</Badge> : null}
                     {!row.isMyContact ? <Badge tone="neutral">{t("exporter.notSaved")}</Badge> : null}
                   </div>
                 </div>
               ))}
             </div>
           </>
-        )}
-        {bridgeConnected ? null : (
-          <div className="mt-2">
-            <Alert tone="warning">{t("errors.bridgeUnavailable")}</Alert>
-          </div>
         )}
       </Card>
     </div>
