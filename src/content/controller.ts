@@ -3,14 +3,17 @@ import { BRIDGE_COMMANDS, RUNTIME_MESSAGES, STORAGE_KEYS } from "../shared/const
 import { mergeSettings } from "../shared/defaults";
 import { initI18n, tFor } from "../shared/i18n";
 import {
+  asSeenAt,
   isExtensionContextValid,
   loadSettings,
   loadVault,
+  loadVaultSeenAt,
   loadWebhookLog,
   onStorageChanged,
   readStorage,
   removeStorage,
   saveVault,
+  saveVaultSeenAt,
   saveSettings,
   saveWebhookLog,
   writeStorage,
@@ -40,7 +43,7 @@ import { InlineRestorer } from "./inline-restore";
 import { LauncherManager } from "./launcher";
 import { applyPrivacyAttributes, detectTheme, PresenceScrubber, watchTheme } from "./privacy-runtime";
 import { PrivacyTagger } from "./privacyTagger";
-import { emptyCampaign, useAppStore } from "./store";
+import { emptyCampaign, selectUnseenVault, useAppStore } from "./store";
 
 function signature(settings: AppSettings): string {
   return JSON.stringify({ ...settings, updatedAt: 0 });
@@ -124,6 +127,7 @@ export class ContentController {
   private syncAgain = false;
   private preindexRequested = false;
   private revokedIndexBusy = false;
+  private lastBadgeCount = -1;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -133,24 +137,28 @@ export class ContentController {
     this.lastSaved = signature(settings);
     initI18n(settings.language);
     useAppStore.getState().setSettings(settings);
-    const initialTheme = settings.theme === "auto" ? detectTheme() : settings.theme;
+    // The panel is light only. The launcher and the in-chat restore pills sit
+    // inside WhatsApp's own chrome, so they follow WhatsApp's theme.
+    const initialTheme = detectTheme();
     useAppStore.getState().setTheme(initialTheme);
     document.body?.setAttribute("data-madarwa-theme", initialTheme);
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping, settings.privacy.hideRecording);
     this.privacyTagger.setActive(settings.privacy);
 
-    const [vault, webhookLog, rawCache, rawReport] = await Promise.all([
+    const [vault, vaultSeenAt, webhookLog, rawCache, rawReport] = await Promise.all([
       loadVault(),
+      loadVaultSeenAt(),
       loadWebhookLog(),
       readStorage<unknown>(STORAGE_KEYS.messageCache, []),
       readStorage<unknown>(STORAGE_KEYS.campaignReport, null),
     ]);
     useAppStore.getState().setVault(vault);
+    useAppStore.getState().setVaultSeenAt(vaultSeenAt);
     useAppStore.getState().setWebhookLog(webhookLog);
     this.messageCache = new Map(asMessageCache(rawCache).map((entry) => [entry.id, entry]));
     this.trimCache(settings.antiDelete.maxCache);
-    this.updateBadge(vault.length);
+    this.updateBadge();
     this.inlineRestorer.setLanguage(settings.language);
     this.inlineRestorer.setMode(settings.antiDelete.inlineMode);
     this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
@@ -170,8 +178,7 @@ export class ContentController {
     this.cleanups.push(
       watchTheme((theme) => {
         useAppStore.getState().setTheme(theme);
-        const current = useAppStore.getState().settings;
-        document.body?.setAttribute("data-madarwa-theme", current.theme === "auto" ? theme : current.theme);
+        document.body?.setAttribute("data-madarwa-theme", theme);
       }),
     );
 
@@ -197,6 +204,15 @@ export class ContentController {
         if (state.campaign !== previous.campaign || state.recipients !== previous.recipients) {
           this.scheduleCampaignPersist();
         }
+        if (
+          state.vault !== previous.vault ||
+          state.panelOpen !== previous.panelOpen ||
+          state.activeTab !== previous.activeTab ||
+          state.locked !== previous.locked
+        ) {
+          this.markVaultSeenIfVisible();
+        }
+        if (state.vault !== previous.vault || state.vaultSeenAt !== previous.vaultSeenAt) this.updateBadge();
       }),
     );
 
@@ -218,7 +234,12 @@ export class ContentController {
           );
           useAppStore.getState().setVault(nextVault);
           this.inlineRestorer.setRecords(nextVault);
-          this.updateBadge(nextVault.length);
+        }
+        // Another WhatsApp tab (or this one) marked the vault as seen.
+        const seenChange = changes[STORAGE_KEYS.vaultSeenAt];
+        if (seenChange) {
+          const seenAt = asSeenAt(seenChange.newValue);
+          if (seenAt !== useAppStore.getState().vaultSeenAt) useAppStore.getState().setVaultSeenAt(seenAt);
         }
         const logChange = changes[STORAGE_KEYS.webhookLog];
         if (logChange && Array.isArray(logChange.newValue)) {
@@ -337,10 +358,6 @@ export class ContentController {
     this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
     if (settings.antiDelete.enabled) void this.requestPreindex();
     if (!settings.pin.enabled) useAppStore.getState().setLocked(false);
-    document.body?.setAttribute(
-      "data-madarwa-theme",
-      settings.theme === "auto" ? useAppStore.getState().theme : settings.theme,
-    );
 
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     this.settingsTimer = window.setTimeout(() => {
@@ -644,7 +661,6 @@ export class ContentController {
     this.inlineRestorer.setRecords(nextVault);
     this.inlineRestorer.restoreForRevoke(entry, event.revokeMessageId);
     await saveVault(nextVault);
-    this.updateBadge(nextVault.length);
 
     const t = tFor(settings.language);
     const sender = entry.senderName || entry.sender || entry.revokedBy || t("common.unknown");
@@ -683,8 +699,23 @@ export class ContentController {
     });
   }
 
-  private updateBadge(count: number): void {
+  /** The toolbar badge counts only deleted messages the user has not looked at. */
+  private updateBadge(): void {
+    const count = selectUnseenVault(useAppStore.getState());
+    if (count === this.lastBadgeCount) return;
+    this.lastBadgeCount = count;
     this.postRuntime({ type: RUNTIME_MESSAGES.badgeSet, count });
+  }
+
+  /** While the vault is on screen, everything in it counts as seen. */
+  private markVaultSeenIfVisible(): void {
+    const state = useAppStore.getState();
+    if (!state.panelOpen || state.locked || state.activeTab !== "vault") return;
+    if (selectUnseenVault(state) === 0) return;
+    const newest = state.vault.reduce((latest, entry) => Math.max(latest, entry.revokedAt), 0);
+    const seenAt = Math.max(Date.now(), newest);
+    state.setVaultSeenAt(seenAt);
+    void saveVaultSeenAt(seenAt);
   }
 
   private postRuntime(message: Record<string, unknown>): void {

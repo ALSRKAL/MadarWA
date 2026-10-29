@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { connectionPhase, type ConnectionPhase } from "../shared/connection";
 import { tFor } from "../shared/i18n";
 import { createDefaultSettings } from "../shared/defaults";
+import { countUnseen } from "../shared/storage";
 import type {
   AppSettings,
   CampaignLogEntry,
@@ -69,6 +70,8 @@ interface AppState {
   locked: boolean;
   launcherFallback: boolean;
   vault: DeletedMessage[];
+  /** Entries with a later revokedAt are unseen; set when the vault is on screen. */
+  vaultSeenAt: number;
   webhookLog: WebhookLogEntry[];
   campaign: CampaignState;
   recipients: CampaignRecipient[];
@@ -86,6 +89,7 @@ interface AppState {
   setLocked: (locked: boolean) => void;
   setLauncherFallback: (fallback: boolean) => void;
   setVault: (vault: DeletedMessage[]) => void;
+  setVaultSeenAt: (at: number) => void;
   addVaultEntry: (entry: DeletedMessage) => void;
   clearVault: () => void;
   setWebhookLog: (log: WebhookLogEntry[]) => void;
@@ -114,6 +118,7 @@ export const useAppStore = create<AppState>((set) => ({
   locked: false,
   launcherFallback: false,
   vault: [],
+  vaultSeenAt: 0,
   webhookLog: [],
   campaign: emptyCampaign(),
   recipients: [],
@@ -133,6 +138,7 @@ export const useAppStore = create<AppState>((set) => ({
   setLocked: (locked) => set({ locked }),
   setLauncherFallback: (launcherFallback) => set({ launcherFallback }),
   setVault: (vault) => set({ vault }),
+  setVaultSeenAt: (vaultSeenAt) => set({ vaultSeenAt }),
   addVaultEntry: (entry) =>
     set((state) => {
       if (state.vault.some((item) => item.id === entry.id)) return state;
@@ -177,6 +183,13 @@ export function selectConnectionPhase(
 }
 
 export const useConnectionPhase = (): ConnectionPhase => useAppStore(selectConnectionPhase);
+
+/** New deleted messages the user has not looked at yet (launcher, rail and toolbar badge). */
+export function selectUnseenVault(state: Pick<AppState, "vault" | "vaultSeenAt">): number {
+  return countUnseen(state.vault, state.vaultSeenAt);
+}
+
+export const useUnseenVault = (): number => useAppStore(selectUnseenVault);
 
 export const useT = (): ((key: string, variables?: Record<string, unknown>) => string) => {
   const language = useAppStore((state) => state.settings.language);

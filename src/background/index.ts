@@ -1,5 +1,14 @@
-import { EXTENSION_VERSION, RUNTIME_MESSAGES, STORAGE_KEYS, WEBHOOK, WHATSAPP_TAB_PATTERN, WHATSAPP_URL } from "../shared/constants";
+import {
+  BRAND_COLORS,
+  EXTENSION_VERSION,
+  RUNTIME_MESSAGES,
+  STORAGE_KEYS,
+  WEBHOOK,
+  WHATSAPP_TAB_PATTERN,
+  WHATSAPP_URL,
+} from "../shared/constants";
 import { mergeSettings } from "../shared/defaults";
+import { asSeenAt, countUnseen } from "../shared/storage";
 import { isRetryableStatus, retryDelayMs } from "../shared/utils/retry";
 import { buildWebhookHeaders, validateWebhookUrl } from "../shared/utils/security";
 import type { AppSettings, WebhookLogEntry, WebhookPayload } from "../shared/types";
@@ -82,15 +91,17 @@ async function updateBadge(count: number): Promise<void> {
   const text = count > 99 ? "99+" : count > 0 ? String(count) : "";
   await chrome.action.setBadgeText({ text });
   if (count > 0) {
-    await chrome.action.setBadgeBackgroundColor({ color: "#059669" });
+    await chrome.action.setBadgeBackgroundColor({ color: BRAND_COLORS.accent });
+    await chrome.action.setBadgeTextColor({ color: BRAND_COLORS.onAccent });
   }
 }
 
+/** The badge counts deleted messages captured since the vault was last opened. */
 async function refreshBadge(): Promise<void> {
-  const stored = await chrome.storage.local.get(STORAGE_KEYS.vault);
+  const stored = await chrome.storage.local.get([STORAGE_KEYS.vault, STORAGE_KEYS.vaultSeenAt]);
   const raw = stored[STORAGE_KEYS.vault];
   const vault = Array.isArray(raw) ? raw : [];
-  await updateBadge(vault.length);
+  await updateBadge(countUnseen(vault, asSeenAt(stored[STORAGE_KEYS.vaultSeenAt])));
 }
 
 async function postWebhook(
@@ -258,10 +269,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes[STORAGE_KEYS.vault]) {
-    const vault = changes[STORAGE_KEYS.vault]?.newValue;
-    runQuietly(updateBadge(Array.isArray(vault) ? vault.length : 0));
-  }
+  if (changes[STORAGE_KEYS.vault] || changes[STORAGE_KEYS.vaultSeenAt]) runQuietly(refreshBadge());
 });
 
 chrome.notifications.onClicked.addListener((notificationId) => {

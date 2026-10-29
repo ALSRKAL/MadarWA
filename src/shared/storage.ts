@@ -71,6 +71,28 @@ export async function saveVault(entries: DeletedMessage[]): Promise<boolean> {
   return writeStorage(STORAGE_KEYS.vault, entries.slice(0, 1000));
 }
 
+/** Deleted messages captured after the user last opened the vault. */
+export function countUnseen(entries: readonly unknown[], seenAt: number): number {
+  let count = 0;
+  for (const entry of entries) {
+    const revokedAt = (entry as Partial<DeletedMessage> | null)?.revokedAt;
+    if (typeof revokedAt === "number" && revokedAt > seenAt) count += 1;
+  }
+  return count;
+}
+
+export function asSeenAt(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+export async function loadVaultSeenAt(): Promise<number> {
+  return asSeenAt(await readStorage<unknown>(STORAGE_KEYS.vaultSeenAt, 0));
+}
+
+export async function saveVaultSeenAt(at: number): Promise<boolean> {
+  return writeStorage(STORAGE_KEYS.vaultSeenAt, asSeenAt(at));
+}
+
 export async function loadWebhookLog(): Promise<WebhookLogEntry[]> {
   const raw = await readStorage<unknown>(STORAGE_KEYS.webhookLog, []);
   return Array.isArray(raw) ? raw.filter(isWebhookLog).slice(0, 60) : [];

@@ -1,48 +1,45 @@
 import { connectionLabelKey, connectionTone } from "../shared/connection";
+import { BRAND_COLORS } from "../shared/constants";
+import { UI_FONT_FAMILY } from "../shared/fonts";
 import { tFor } from "../shared/i18n";
-import { selectConnectionPhase, useAppStore } from "./store";
+import { selectConnectionPhase, selectUnseenVault, useAppStore } from "./store";
 
 const HOST_ID = "madarwa-launcher-host";
 
+// The launcher sits in WhatsApp's own header, so it borrows WhatsApp's icon
+// colour (--mw-ink, read from the neighbouring icon button) instead of a brand
+// colour. The dot appears only when MadarWA is not working; the badge only
+// for deleted messages the user has not looked at yet.
 const LAUNCHER_CSS = `
 :host { all: initial; }
 .host { display: flex; align-items: center; justify-content: center; }
 button {
   width: 40px; height: 40px; border: 0; padding: 0; cursor: pointer;
   border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: #00a884; position: relative; outline: none;
-  transition: background .12s ease, color .12s ease;
+  background: transparent; color: var(--mw-ink, #54656f); position: relative; outline: none;
+  transition: background .12s ease;
 }
-button:hover { background: rgba(134, 150, 160, .18); }
-button[data-active="true"] { background: rgba(0, 168, 132, .12); }
-button:focus-visible { outline: 2px solid #00a884; outline-offset: 2px; }
-svg { width: 20px; height: 20px; display: block; }
+button[data-theme="dark"] { color: var(--mw-ink, #e9edef); }
+button:hover, button[data-active="true"] { background: rgba(11, 20, 26, .08); }
+button[data-theme="dark"]:hover, button[data-theme="dark"][data-active="true"] { background: rgba(255, 255, 255, .1); }
+button:focus-visible { outline: 2px solid ${BRAND_COLORS.accent}; outline-offset: 2px; }
+svg { width: 22px; height: 22px; display: block; }
 .dot {
-  position: absolute; inset-inline-end: 8px; bottom: 7px; width: 6px; height: 6px;
-  border-radius: 999px; background: #8696a0; box-shadow: 0 0 0 2px #202c33;
+  position: absolute; inset-inline-end: 7px; bottom: 7px; width: 8px; height: 8px;
+  border-radius: 999px; box-shadow: 0 0 0 2px var(--mw-ring, #ffffff); display: none;
 }
-button[data-theme="light"] .dot { box-shadow: 0 0 0 2px #f0f2f5; }
-button[data-state="live"] .dot { background: #06cf9c; }
-button[data-state="waiting"] .dot { background: #f59e0b; }
-button[data-state="offline"] .dot { background: #f15c6d; }
-button[data-state="live"] .dot::after {
-  content: ""; position: absolute; inset: -3px; border-radius: 999px;
-  border: 1px solid rgba(0, 168, 132, .55); animation: madar-live 2.4s ease-out infinite;
-}
-@keyframes madar-live {
-  0% { transform: scale(.7); opacity: .8; }
-  70% { transform: scale(1.35); opacity: 0; }
-  100% { transform: scale(1.35); opacity: 0; }
-}
+button[data-state="waiting"] .dot { display: block; background: ${BRAND_COLORS.waiting}; }
+button[data-state="offline"] .dot { display: block; background: ${BRAND_COLORS.offline}; }
 .badge {
-  position: absolute; top: 1px; inset-inline-end: 1px; min-width: 14px; height: 14px;
-  border-radius: 999px; background: #f15c6d; color: #1b1013;
-  font: 700 9px/14px Inter, "Segoe UI", sans-serif; text-align: center; padding: 0 3px;
-  box-sizing: border-box; display: none;
+  position: absolute; top: 1px; inset-inline-end: 0; min-width: 18px; height: 18px;
+  border-radius: 999px; background: ${BRAND_COLORS.accent}; color: ${BRAND_COLORS.onAccent};
+  box-shadow: 0 0 0 2px var(--mw-ring, #ffffff);
+  font: 600 11px/18px "${UI_FONT_FAMILY}", "Segoe UI", system-ui, sans-serif; text-align: center; padding: 0 5px;
+  box-sizing: border-box; display: none; font-variant-numeric: tabular-nums;
 }
 .badge[data-visible="true"] { display: block; }
 @media (prefers-reduced-motion: reduce) {
-  button, .dot, .dot::after { transition: none !important; animation: none !important; }
+  button { transition: none !important; }
 }
 `;
 
@@ -52,34 +49,66 @@ const ORBIT_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
   <circle cx="19.1" cy="7.4" r="1.5" fill="currentColor"/>
 </svg>`;
 
-function findHeaderMount(): HTMLElement | null {
-  const headers = Array.from(document.querySelectorAll<HTMLElement>("#side header, header"))
-    .map((header) => ({ header, rect: header.getBoundingClientRect() }))
-    .filter(({ rect }) => rect.width > 0 && rect.height > 0);
+const TRANSPARENT = /^(transparent|rgba\(0,\s*0,\s*0,\s*0\))$/;
 
-  // WhatsApp's new shell has a narrow full-height app rail plus a wide chat-list
-  // header. The launcher belongs in the wide top header, not in the rail.
-  const wide = headers
-    .filter(({ rect }) => rect.width >= 180 && rect.height <= 140)
-    .sort((a, b) => b.rect.width - a.rect.width)[0];
-  if (!wide) return null;
+function isVisible(element: Element): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
 
-  const target = wide.header;
-  const buttons = Array.from(target.querySelectorAll<HTMLElement>('[role="button"], button'));
-  const last = buttons[buttons.length - 1];
-  const toolbar = last?.parentElement;
-  if (toolbar && toolbar !== target) {
-    const rect = toolbar.getBoundingClientRect();
-    if (rect.width >= 60 && rect.height > 0) return toolbar;
-  }
-  return target;
+function iconButtons(scope: Element): HTMLElement[] {
+  return Array.from(scope.querySelectorAll<HTMLElement>('[role="button"], button')).filter(
+    (button) => !button.closest(`#${HOST_ID}`) && isVisible(button),
+  );
+}
+
+function isRow(element: HTMLElement): boolean {
+  const style = getComputedStyle(element);
+  return style.display.includes("flex") && !style.flexDirection.startsWith("column");
 }
 
 /**
- * Mounts the launcher inside WhatsApp's own sidebar header. The host is a
- * single 40px circular icon button so it inherits the native rhythm; a
- * floating draggable fallback is rendered by React only when the header is
- * absent (QR/login screens).
+ * WhatsApp's chat-list title row (the "WhatsApp" heading with the menu and
+ * new-chat buttons). Its icon buttons share one flex row; the launcher joins
+ * that row. Returns null on screens without it (QR, loading), where React
+ * renders the floating launcher instead.
+ */
+function findToolbar(): HTMLElement | null {
+  const headers = Array.from(document.querySelectorAll<HTMLElement>("#side header, header")).filter((header) => {
+    if (header.closest("#main")) return false; // the open conversation's header
+    const rect = header.getBoundingClientRect();
+    return rect.width >= 180 && rect.height > 0 && rect.height <= 140 && iconButtons(header).length > 0;
+  });
+  // The innermost header is the title row; an outer one also wraps the search box.
+  const titleRow = headers.find((header) => !headers.some((other) => other !== header && header.contains(other)));
+  if (!titleRow) return null;
+
+  const buttons = iconButtons(titleRow);
+  if (buttons.length === 0) return null;
+  let toolbar: HTMLElement | null = buttons[0]?.parentElement ?? null;
+  while (toolbar && toolbar !== titleRow && !buttons.every((button) => toolbar?.contains(button))) {
+    toolbar = toolbar.parentElement;
+  }
+  while (toolbar && toolbar !== titleRow && !isRow(toolbar)) toolbar = toolbar.parentElement;
+  if (!toolbar || toolbar === titleRow) return null;
+  return toolbar;
+}
+
+/** WhatsApp's own icon colour and header ground, so the launcher looks native in either theme. */
+function readNativeColours(toolbar: HTMLElement): { ink: string; ring: string } {
+  const plain = iconButtons(toolbar).find((button) => TRANSPARENT.test(getComputedStyle(button).backgroundColor));
+  const ink = plain ? getComputedStyle(plain).color : "";
+  let ring = "";
+  for (let node: HTMLElement | null = toolbar; node && !ring; node = node.parentElement) {
+    const background = getComputedStyle(node).backgroundColor;
+    if (!TRANSPARENT.test(background)) ring = background;
+  }
+  return { ink, ring };
+}
+
+/**
+ * Mounts the launcher as one more 40px icon button in WhatsApp's chat-list
+ * toolbar, before the menu, so WhatsApp's own new-chat button keeps the end.
  */
 export class LauncherManager {
   private host: HTMLElement | null = null;
@@ -88,6 +117,7 @@ export class LauncherManager {
   private button: HTMLButtonElement | null = null;
   private badge: HTMLSpanElement | null = null;
   private mountTarget: HTMLElement | null = null;
+  private colourTheme = "";
 
   start(): void {
     if (this.interval) return;
@@ -96,28 +126,30 @@ export class LauncherManager {
     this.unsubscribe = useAppStore.subscribe(() => this.syncState());
   }
 
+  private detach(): void {
+    this.host?.remove();
+    this.host = null;
+    this.button = null;
+    this.badge = null;
+    this.mountTarget = null;
+    this.colourTheme = "";
+  }
+
   private ensureMounted(): void {
-    const mount = findHeaderMount();
+    const toolbar = findToolbar();
 
-    if (this.host?.isConnected) {
-      if (mount && (this.mountTarget === mount || this.mountTarget?.contains(this.host))) {
-        useAppStore.getState().setLauncherFallback(false);
-        this.syncState();
-        return;
-      }
-      this.host.remove();
-      this.host = null;
-      this.button = null;
-      this.badge = null;
-      this.mountTarget = null;
+    if (this.host?.isConnected && toolbar && this.mountTarget === toolbar && toolbar.contains(this.host)) {
+      useAppStore.getState().setLauncherFallback(false);
+      this.syncState();
+      return;
     }
+    this.detach();
 
-    if (!mount) {
+    if (!toolbar) {
       useAppStore.getState().setLauncherFallback(true);
       return;
     }
 
-    this.host?.remove();
     const host = document.createElement("span");
     host.id = HOST_ID;
     host.setAttribute("data-madarwa-launcher", "1");
@@ -127,7 +159,6 @@ export class LauncherManager {
       "justify-content:center",
       "flex:0 0 auto",
       "align-self:center",
-      "margin-inline-start:2px",
       "z-index:5",
       "pointer-events:auto",
     ].join(";");
@@ -151,15 +182,11 @@ export class LauncherManager {
 
     wrap.appendChild(button);
     shadow.append(style, wrap);
-    mount.appendChild(host);
+    toolbar.insertBefore(host, toolbar.firstChild);
 
     const rect = host.getBoundingClientRect();
     if (rect.width < 20 || rect.height < 20) {
       host.remove();
-      this.host = null;
-      this.button = null;
-      this.badge = null;
-      this.mountTarget = null;
       useAppStore.getState().setLauncherFallback(true);
       return;
     }
@@ -167,9 +194,19 @@ export class LauncherManager {
     this.host = host;
     this.button = button;
     this.badge = button.querySelector<HTMLSpanElement>(".badge");
-    this.mountTarget = mount;
+    this.mountTarget = toolbar;
     useAppStore.getState().setLauncherFallback(false);
     this.syncState();
+  }
+
+  private syncColours(theme: string): void {
+    if (!this.host || !this.mountTarget || this.colourTheme === theme) return;
+    const { ink, ring } = readNativeColours(this.mountTarget);
+    if (ink) this.host.style.setProperty("--mw-ink", ink);
+    else this.host.style.removeProperty("--mw-ink");
+    if (ring) this.host.style.setProperty("--mw-ring", ring);
+    else this.host.style.removeProperty("--mw-ring");
+    this.colourTheme = theme;
   }
 
   private syncState(): void {
@@ -186,9 +223,10 @@ export class LauncherManager {
     this.button.dataset.active = String(state.panelOpen);
     this.button.dataset.theme = state.theme;
     this.button.dataset.state = connectionTone(phase);
+    this.syncColours(state.theme);
 
     if (this.badge) {
-      const count = state.vault.length;
+      const count = selectUnseenVault(state);
       this.badge.textContent = count > 99 ? "99+" : String(count);
       this.badge.dataset.visible = String(count > 0);
     }
@@ -199,10 +237,6 @@ export class LauncherManager {
     this.interval = 0;
     this.unsubscribe?.();
     this.unsubscribe = null;
-    this.host?.remove();
-    this.host = null;
-    this.button = null;
-    this.badge = null;
-    this.mountTarget = null;
+    this.detach();
   }
 }

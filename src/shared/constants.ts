@@ -15,9 +15,23 @@ export const LANGUAGE_LABELS = { ar: "عربي", en: "EN" } as const;
 export const STORAGE_KEYS = {
   settings: "madarwa:settings",
   vault: "madarwa:vault",
+  /** When the user last looked at the vault; newer entries count as unseen. */
+  vaultSeenAt: "madarwa:vault-seen-at",
   messageCache: "madarwa:message-cache",
   webhookLog: "madarwa:webhook-log",
   campaignReport: "madarwa:campaign-report",
+} as const;
+
+/**
+ * Colours needed outside the panel's CSS tokens (src/content/styles/shadow.css):
+ * the toolbar badge and the launcher inside WhatsApp's header. Same values as
+ * --wa-accent and the state tokens.
+ */
+export const BRAND_COLORS = {
+  accent: "#19694f",
+  onAccent: "#ffffff",
+  waiting: "#b45309",
+  offline: "#c4242a",
 } as const;
 
 export const RUNTIME_MESSAGES = {
