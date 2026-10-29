@@ -275,7 +275,10 @@ export interface RevokedMessageEvent extends MediaMetadata {
   author: string;
   revokedBy: string;
   revokeType: string;
+  /** When the engine saw the deletion. */
   timestamp: number;
+  /** When the deleted message was sent, if known (also for deletions whose text never arrived). */
+  messageTimestamp?: number;
   isGroup: boolean;
   senderName?: string;
   originalSenderPhone?: string;

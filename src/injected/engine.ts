@@ -305,7 +305,9 @@ class MadarEngine {
         const protocol = model.protocolMessageKey;
         const revokeFull = msgKeyToId(model.id);
         const revokeStanza = String(model.id?.id ?? extractStanzaId(revokeFull));
-        const originalFull = msgKeyToId(protocol);
+        // Some builds turn the original model into the placeholder in place:
+        // then the model's own key is the original message's key.
+        const originalFull = msgKeyToId(protocol) || (model.type === "revoked" ? revokeFull : "");
         const originalStanza = String(protocol?.id ?? extractStanzaId(originalFull));
         const chatId =
           widToId(model.id?.remote) || widToId(model.from) || widToId(protocol?.remote);
@@ -478,6 +480,8 @@ class MadarEngine {
       authorRaw,
       revokeType: String(msg.subtype ?? "revoke"),
       revokeMessageId: msgKeyToId(msg.id),
+      // A revoked placeholder keeps the original message's place and time.
+      messageAt: typeof msg.t === "number" ? msg.t * 1000 : 0,
     });
   }
 
@@ -593,6 +597,7 @@ class MadarEngine {
       revokeType: String(data.type ?? "revoke"),
       revokeMessageId: msgKeyToId(data.id),
       beforeMsg: before,
+      messageAt: typeof before?.t === "number" ? before.t * 1000 : 0,
     });
   };
 
@@ -603,6 +608,8 @@ class MadarEngine {
     revokeType: string;
     revokeMessageId: string;
     beforeMsg?: WppMsg;
+    /** When the deleted message was sent (ms), from the store model; 0 if unknown. */
+    messageAt?: number;
   }): Promise<void> {
     if (!this.wpp || !this.antiDeleteEnabled) return;
 
@@ -695,6 +702,7 @@ class MadarEngine {
       revokedBy: revokedBy || phoneFromChatId(authorRaw),
       revokeType: request.revokeType,
       timestamp: Date.now(),
+      messageTimestamp: original?.timestamp || request.messageAt || 0,
       isGroup,
       senderName,
       originalSenderPhone: originalPhone || normalizedOriginal?.sender || "",

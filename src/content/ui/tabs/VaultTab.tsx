@@ -3,7 +3,8 @@ import { Download, ExternalLink, FileText, Play, Search, Trash2 } from "lucide-r
 import { describeError } from "../../../shared/errors";
 import { formatDateTime, formatTime } from "../../../shared/format";
 import { MediaVaultCache, type MediaVaultRecord } from "../../../shared/media-vault";
-import { saveVault } from "../../../shared/storage";
+import { STORAGE_KEYS } from "../../../shared/constants";
+import { saveTimestamp, saveVault } from "../../../shared/storage";
 import type { AntiDeleteSettings, DeletedMessage, InlineRestoreMode } from "../../../shared/types";
 import {
   extensionForMimetype,
@@ -274,6 +275,8 @@ export function VaultTab() {
         pushToast({ kind: "error", title: t("errors.saveFailed"), body: "" });
         return;
       }
+      // Lets the chat explain why a deleted message no longer has a copy.
+      await saveTimestamp(STORAGE_KEYS.vaultClearedAt, Date.now());
       await mediaVault.clear();
       clearVault();
       setClearOpen(false);

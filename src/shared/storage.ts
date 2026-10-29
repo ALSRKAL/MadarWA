@@ -81,16 +81,71 @@ export function countUnseen(entries: readonly unknown[], seenAt: number): number
   return count;
 }
 
-export function asSeenAt(value: unknown): number {
+/** A stored time in ms, or 0 when it is missing or invalid. */
+export function asTimestamp(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+export async function loadTimestamp(key: string): Promise<number> {
+  return asTimestamp(await readStorage<unknown>(key, 0));
+}
+
+export async function saveTimestamp(key: string, at: number): Promise<boolean> {
+  return writeStorage(key, asTimestamp(at));
+}
+
 export async function loadVaultSeenAt(): Promise<number> {
-  return asSeenAt(await readStorage<unknown>(STORAGE_KEYS.vaultSeenAt, 0));
+  return loadTimestamp(STORAGE_KEYS.vaultSeenAt);
 }
 
 export async function saveVaultSeenAt(at: number): Promise<boolean> {
-  return writeStorage(STORAGE_KEYS.vaultSeenAt, asSeenAt(at));
+  return saveTimestamp(STORAGE_KEYS.vaultSeenAt, at);
+}
+
+/**
+ * Two deletions are the same when they share an id or a stanza; WhatsApp
+ * reports an old deletion again after every reload.
+ */
+export function sameDeletion(a: DeletedMessage, b: DeletedMessage): boolean {
+  if (a.id && a.id === b.id) return true;
+  const stanzaA = a.stanzaId && !a.stanzaId.includes("@") ? a.stanzaId : "";
+  const stanzaB = b.stanzaId && !b.stanzaId.includes("@") ? b.stanzaId : "";
+  return Boolean(stanzaA && stanzaA === stanzaB);
+}
+
+/**
+ * Fills what an earlier record of the same deletion lacked (its revoke id,
+ * or content found later) without touching what it already had. Returns the
+ * existing record unchanged when there is nothing to add.
+ */
+export function mergeDeletion(existing: DeletedMessage, incoming: DeletedMessage): DeletedMessage {
+  const patch: Partial<DeletedMessage> = {};
+  if (!existing.revokeMessageId && incoming.revokeMessageId) patch.revokeMessageId = incoming.revokeMessageId;
+  // Older versions stored the detection time for deletions whose text never
+  // arrived; the store model now reports when the message was really sent.
+  if (!existing.recoveredFromCache && incoming.timestamp > 0 && incoming.timestamp < existing.timestamp - 60_000) {
+    patch.timestamp = incoming.timestamp;
+  }
+  const existingEmpty = !existing.text && !existing.caption && !existing.previewDataUrl && !existing.hasFullMedia;
+  const incomingHasContent = Boolean(incoming.text || incoming.caption || incoming.previewDataUrl || incoming.hasFullMedia);
+  if (existingEmpty && incomingHasContent) {
+    Object.assign(patch, {
+      text: incoming.text,
+      caption: incoming.caption,
+      previewDataUrl: incoming.previewDataUrl,
+      hasFullMedia: incoming.hasFullMedia,
+      messageType: incoming.messageType || existing.messageType,
+      mediaType: incoming.mediaType || existing.mediaType,
+      mimetype: incoming.mimetype || existing.mimetype,
+      filename: incoming.filename || existing.filename,
+      fileSize: incoming.fileSize || existing.fileSize,
+      duration: incoming.duration || existing.duration,
+      width: incoming.width || existing.width,
+      height: incoming.height || existing.height,
+      recoveredFromCache: true,
+    });
+  }
+  return Object.keys(patch).length > 0 ? { ...existing, ...patch } : existing;
 }
 
 export async function loadWebhookLog(): Promise<WebhookLogEntry[]> {

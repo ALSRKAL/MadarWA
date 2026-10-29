@@ -17,6 +17,10 @@ export const STORAGE_KEYS = {
   vault: "madarwa:vault",
   /** When the user last looked at the vault; newer entries count as unseen. */
   vaultSeenAt: "madarwa:vault-seen-at",
+  /** When MadarWA started (or restarted) keeping copies in this browser. */
+  captureSince: "madarwa:capture-since",
+  /** When the user last cleared the vault. */
+  vaultClearedAt: "madarwa:vault-cleared-at",
   messageCache: "madarwa:message-cache",
   webhookLog: "madarwa:webhook-log",
   campaignReport: "madarwa:campaign-report",

@@ -3,15 +3,19 @@ import { BRIDGE_COMMANDS, RUNTIME_MESSAGES, STORAGE_KEYS } from "../shared/const
 import { mergeSettings } from "../shared/defaults";
 import { initI18n, tFor } from "../shared/i18n";
 import {
-  asSeenAt,
+  asTimestamp,
   isExtensionContextValid,
   loadSettings,
+  loadTimestamp,
   loadVault,
   loadVaultSeenAt,
   loadWebhookLog,
+  mergeDeletion,
   onStorageChanged,
   readStorage,
   removeStorage,
+  sameDeletion,
+  saveTimestamp,
   saveVault,
   saveVaultSeenAt,
   saveSettings,
@@ -39,7 +43,7 @@ import { truncate, uid } from "../shared/format";
 import { extractStanzaId } from "../shared/utils/revoke";
 import type { Attachment, StartCampaignInput } from "./broadcast";
 import { BroadcastManager } from "./broadcast";
-import { InlineRestorer } from "./inline-restore";
+import { hasRestorableContent, InlineRestorer } from "./inline-restore";
 import { LauncherManager } from "./launcher";
 import { applyPrivacyAttributes, detectTheme, PresenceScrubber, watchTheme } from "./privacy-runtime";
 import { PrivacyTagger } from "./privacyTagger";
@@ -101,6 +105,9 @@ export class ContentController {
     getLanguage: () => useAppStore.getState().settings.language,
     getMode: () => useAppStore.getState().settings.antiDelete.inlineMode,
     onOpenVault: () => useAppStore.getState().openPanel("vault"),
+    // A chat that opens or loads older messages may hold deletions the index lacks.
+    onRowsAdded: () => this.scheduleRevokedIndex(),
+    getCaptureInfo: () => ({ since: this.captureSince, clearedAt: this.vaultClearedAt }),
   });
 
   private initialized = false;
@@ -127,7 +134,13 @@ export class ContentController {
   private syncAgain = false;
   private preindexRequested = false;
   private revokedIndexBusy = false;
+  private revokedIndexAgain = false;
+  private revokedIndexTimer = 0;
   private lastBadgeCount = -1;
+  /** When MadarWA started keeping copies here, and when the vault was last cleared (ms). */
+  private captureSince = 0;
+  private vaultClearedAt = 0;
+  private lastCaptureEnabled: boolean | null = null;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -146,9 +159,11 @@ export class ContentController {
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping, settings.privacy.hideRecording);
     this.privacyTagger.setActive(settings.privacy);
 
-    const [vault, vaultSeenAt, webhookLog, rawCache, rawReport] = await Promise.all([
+    const [vault, vaultSeenAt, captureSince, vaultClearedAt, webhookLog, rawCache, rawReport] = await Promise.all([
       loadVault(),
       loadVaultSeenAt(),
+      loadTimestamp(STORAGE_KEYS.captureSince),
+      loadTimestamp(STORAGE_KEYS.vaultClearedAt),
       loadWebhookLog(),
       readStorage<unknown>(STORAGE_KEYS.messageCache, []),
       readStorage<unknown>(STORAGE_KEYS.campaignReport, null),
@@ -156,13 +171,22 @@ export class ContentController {
     useAppStore.getState().setVault(vault);
     useAppStore.getState().setVaultSeenAt(vaultSeenAt);
     useAppStore.getState().setWebhookLog(webhookLog);
+    this.vaultClearedAt = vaultClearedAt;
+    this.captureSince = captureSince;
+    this.lastCaptureEnabled = settings.antiDelete.enabled;
+    if (settings.antiDelete.enabled && !captureSince) {
+      // First run of this version: saving has been on at least since the
+      // oldest deletion in the vault.
+      this.captureSince = vault.reduce((oldest, entry) => Math.min(oldest, entry.revokedAt || oldest), Date.now());
+      void saveTimestamp(STORAGE_KEYS.captureSince, this.captureSince);
+    }
     this.messageCache = new Map(asMessageCache(rawCache).map((entry) => [entry.id, entry]));
     this.trimCache(settings.antiDelete.maxCache);
     this.updateBadge();
     this.inlineRestorer.setLanguage(settings.language);
     this.inlineRestorer.setMode(settings.antiDelete.inlineMode);
-    this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
     this.inlineRestorer.setRecords(vault);
+    this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
 
     const report = asCampaignReport(rawReport);
     if (report && report.campaign.total > 0) {
@@ -238,8 +262,16 @@ export class ContentController {
         // Another WhatsApp tab (or this one) marked the vault as seen.
         const seenChange = changes[STORAGE_KEYS.vaultSeenAt];
         if (seenChange) {
-          const seenAt = asSeenAt(seenChange.newValue);
+          const seenAt = asTimestamp(seenChange.newValue);
           if (seenAt !== useAppStore.getState().vaultSeenAt) useAppStore.getState().setVaultSeenAt(seenAt);
+        }
+        // The vault was cleared, or saving restarted: the notes in the chat say so.
+        const clearedChange = changes[STORAGE_KEYS.vaultClearedAt];
+        const sinceChange = changes[STORAGE_KEYS.captureSince];
+        if (clearedChange || sinceChange) {
+          if (clearedChange) this.vaultClearedAt = asTimestamp(clearedChange.newValue);
+          if (sinceChange) this.captureSince = asTimestamp(sinceChange.newValue);
+          this.inlineRestorer.scan();
         }
         const logChange = changes[STORAGE_KEYS.webhookLog];
         if (logChange && Array.isArray(logChange.newValue)) {
@@ -280,8 +312,8 @@ export class ContentController {
         this.forwardWebhook("message", data as Record<string, unknown>);
         break;
       case "message.revoked":
+        // Forwarded from handleRevoked, and only for deletions not seen before.
         void this.handleRevoked(data as RevokedMessageEvent);
-        this.forwardWebhook("revoked", data as Record<string, unknown>);
         break;
       case "presence.change":
         this.scrubber.schedule(200);
@@ -353,6 +385,12 @@ export class ContentController {
     applyPrivacyAttributes(settings.privacy);
     this.scrubber.setEnabled(settings.privacy.hidePresence, settings.privacy.hideTyping, settings.privacy.hideRecording);
     this.privacyTagger.setActive(settings.privacy);
+    if (settings.antiDelete.enabled && (this.lastCaptureEnabled === false || !this.captureSince)) {
+      // Saving (re)started now: anything older was not watched.
+      this.captureSince = Date.now();
+      void saveTimestamp(STORAGE_KEYS.captureSince, this.captureSince);
+    }
+    this.lastCaptureEnabled = settings.antiDelete.enabled;
     this.inlineRestorer.setLanguage(settings.language);
     this.inlineRestorer.setMode(settings.antiDelete.inlineMode);
     this.inlineRestorer.setEnabled(settings.antiDelete.enabled && settings.antiDelete.inlineRestore);
@@ -590,8 +628,22 @@ export class ContentController {
     }
   }
 
+  /** Coalesces bursts of new rows (a chat opening) into one index refresh. */
+  private scheduleRevokedIndex(delay = 250): void {
+    if (this.revokedIndexTimer) return;
+    this.revokedIndexTimer = window.setTimeout(() => {
+      this.revokedIndexTimer = 0;
+      void this.requestRevokedIndex();
+    }, delay);
+  }
+
   private async requestRevokedIndex(): Promise<void> {
-    if (this.revokedIndexBusy || !this.engineReady || !this.bridge.isConnected()) return;
+    if (!this.engineReady || !this.bridge.isConnected()) return;
+    if (this.revokedIndexBusy) {
+      // A refresh is running; run once more after it, with what loaded since.
+      this.revokedIndexAgain = true;
+      return;
+    }
     this.revokedIndexBusy = true;
     try {
       const result = await this.bridge.request<{ rows?: RevokedRowIndexEntry[] }>(
@@ -604,6 +656,10 @@ export class ContentController {
       // WhatsApp may be re-rendering; the next interval pass retries.
     } finally {
       this.revokedIndexBusy = false;
+      if (this.revokedIndexAgain) {
+        this.revokedIndexAgain = false;
+        this.scheduleRevokedIndex();
+      }
     }
   }
 
@@ -615,6 +671,11 @@ export class ContentController {
     return undefined;
   }
 
+  /**
+   * Saves a deletion once. WhatsApp reports old deletions again after every
+   * reload (and when a chat loads its history): those only fill in what the
+   * first record lacked, with no second toast, notification or webhook.
+   */
   private async handleRevoked(event: RevokedMessageEvent): Promise<void> {
     const settings = useAppStore.getState().settings;
     if (!settings.antiDelete.enabled || !event?.refId) return;
@@ -641,7 +702,7 @@ export class ContentController {
       duration: event.duration || original?.duration || cached?.duration,
       width: event.width || original?.width || cached?.width,
       height: event.height || original?.height || cached?.height,
-      timestamp: original?.timestamp || cached?.timestamp || event.timestamp,
+      timestamp: original?.timestamp || cached?.timestamp || event.messageTimestamp || event.timestamp,
       isGroup: original?.isGroup ?? cached?.isGroup ?? event.isGroup,
       revokedAt: Date.now(),
       revokedBy: event.revokedBy,
@@ -655,12 +716,35 @@ export class ContentController {
     this.scheduleCacheFlush();
 
     const store = useAppStore.getState();
+    const existing = store.vault.find((item) => sameDeletion(item, entry));
+    if (existing) {
+      const merged = mergeDeletion(existing, entry);
+      if (merged !== existing) {
+        const updated = store.vault.map((item) => (item === existing ? merged : item));
+        store.setVault(updated);
+        this.inlineRestorer.setRecords(updated);
+        await saveVault(updated);
+      }
+      this.inlineRestorer.restoreForRevoke(merged, event.revokeMessageId);
+      return;
+    }
+
+    // Nothing to show and older than saving (or than the last vault clear):
+    // this is history WhatsApp re-sends, not a new deletion. The note in the
+    // chat explains it; the vault and the toasts stay quiet.
+    const messageAt = event.messageTimestamp || original?.timestamp || cached?.timestamp || 0;
+    const historic =
+      messageAt > 0 &&
+      ((this.captureSince > 0 && messageAt < this.captureSince) ||
+        (this.vaultClearedAt > 0 && messageAt < this.vaultClearedAt));
+    if (historic && !hasRestorableContent(entry)) return;
+
     store.addVaultEntry(entry);
     const nextVault = useAppStore.getState().vault;
-    this.inlineRestorer.register(entry);
     this.inlineRestorer.setRecords(nextVault);
     this.inlineRestorer.restoreForRevoke(entry, event.revokeMessageId);
     await saveVault(nextVault);
+    this.forwardWebhook("revoked", event as unknown as Record<string, unknown>);
 
     const t = tFor(settings.language);
     const sender = entry.senderName || entry.sender || entry.revokedBy || t("common.unknown");
@@ -936,6 +1020,7 @@ export class ContentController {
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     if (this.cacheFlushTimer) window.clearTimeout(this.cacheFlushTimer);
     if (this.campaignPersistTimer) window.clearTimeout(this.campaignPersistTimer);
+    if (this.revokedIndexTimer) window.clearTimeout(this.revokedIndexTimer);
     this.launcher.stop();
     this.privacyTagger.stop();
     this.inlineRestorer.dispose();

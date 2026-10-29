@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { InlineRestorer } from "../src/content/inline-restore";
+import { InlineRestorer, type InlineRestorerOptions } from "../src/content/inline-restore";
 import { initI18n } from "../src/shared/i18n";
 import { MediaVaultCache } from "../src/shared/media-vault";
 import type { DeletedMessage, InlineRestoreMode, Language } from "../src/shared/types";
@@ -61,9 +61,31 @@ function mountRow(dataId = full, withBubble = true): HTMLElement {
   return row;
 }
 
-function restorer(mediaVault = new MediaVaultCache({ factory: null })): InlineRestorer {
-  return new InlineRestorer({ getLanguage: () => language, getMode: () => mode, mediaVault });
+function restorer(
+  mediaVault = new MediaVaultCache({ factory: null }),
+  options: Partial<InlineRestorerOptions> = {},
+): InlineRestorer {
+  return new InlineRestorer({ getLanguage: () => language, getMode: () => mode, mediaVault, ...options });
 }
+
+const DELETED_ROW = `<div data-testid="msg-container"><div><span>This message was deleted</span></div></div>`;
+
+function revokedRow(revokeStanza: string, originalFull: string, timestamp = base.timestamp) {
+  return {
+    revokeFull: `false_966501234567@c.us_${revokeStanza}`,
+    revokeStanza,
+    originalFull,
+    originalStanza: originalFull.split("_")[2] ?? "",
+    chatId: base.chatId,
+    timestamp,
+  };
+}
+
+function note(): HTMLElement | null {
+  return document.querySelector<HTMLElement>("[data-madarwa-inline-missing]");
+}
+
+const settle = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function block(): HTMLElement {
   const node = document.querySelector<HTMLElement>("[data-madarwa-inline-restore]");
@@ -438,6 +460,232 @@ describe("interactive inline restored message", () => {
     widget.setEnabled(false);
     expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
     expect(document.querySelector("[data-madarwa-restored-id]")).toBeNull();
+    widget.dispose();
+  });
+});
+
+describe("keeping pills on screen", () => {
+  it("starts watching the chat when enabled, even if it was never switched off", () => {
+    const widget = restorer();
+    expect(widget.isRunning()).toBe(false);
+    widget.setEnabled(true);
+    expect(widget.isRunning()).toBe(true);
+    widget.dispose();
+  });
+
+  it("puts the pill back after WhatsApp renders the chat again", async () => {
+    const widget = restorer();
+    mountRow();
+    widget.setRecords([base]);
+    widget.setEnabled(true);
+    expect(document.querySelectorAll("[data-madarwa-inline-restore]")).toHaveLength(1);
+
+    // Leaving and reopening the chat: WhatsApp rebuilds every row from scratch.
+    document.querySelector("#main")?.remove();
+    await settle(30);
+    const main = document.createElement("div");
+    main.id = "main";
+    main.innerHTML = `<div data-id="${full}">${DELETED_ROW}</div>`;
+    document.body.appendChild(main);
+    await settle();
+
+    expect(document.querySelectorAll("[data-madarwa-inline-restore]")).toHaveLength(1);
+    widget.dispose();
+  });
+
+  it("re-opens a pill the user had expanded after a re-render", async () => {
+    const widget = restorer();
+    mountRow();
+    widget.setRecords([base]);
+    widget.setEnabled(true);
+    pill().click();
+    expect(block().getAttribute("data-expanded")).toBe("1");
+
+    block().remove();
+    await settle();
+    expect(block().getAttribute("data-expanded")).toBe("1");
+    expect(block().textContent).toContain(base.text);
+    widget.dispose();
+  });
+
+  it("drops the pill when WhatsApp reuses the row for another message", () => {
+    const widget = restorer();
+    const row = mountRow();
+    widget.setRecords([base]);
+    widget.scan();
+    expect(document.querySelector("[data-madarwa-inline-restore]")).not.toBeNull();
+
+    row.setAttribute("data-id", "false_966501234567@c.us_SOMETHINGELSE");
+    widget.scan();
+    expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    widget.dispose();
+  });
+
+  it("closes auto-expanded pills when the mode goes back to click-to-reveal", () => {
+    mode = "expanded";
+    const widget = restorer();
+    mountRow();
+    widget.setRecords([base]);
+    widget.scan();
+    expect(block().getAttribute("data-expanded")).toBe("1");
+
+    mode = "interactive";
+    widget.setMode("interactive");
+    expect(block().getAttribute("data-expanded")).toBe("0");
+    widget.dispose();
+  });
+
+  it("reports newly rendered rows so the revoke index can refresh", () => {
+    const onRowsAdded = vi.fn();
+    const widget = restorer(undefined, { onRowsAdded });
+    mountRow();
+    widget.scan();
+    widget.scan();
+    expect(onRowsAdded).toHaveBeenCalledTimes(1);
+    widget.dispose();
+  });
+
+  it("only marks the deleted row in a group, not every message by the same person", () => {
+    const author = "966501234567@c.us";
+    const group = "120363000000000000@g.us";
+    const entry: DeletedMessage = {
+      ...base,
+      id: `false_${group}_GSTANZA1_${author}`,
+      stanzaId: "GSTANZA1",
+      chatId: group,
+      isGroup: true,
+    };
+    document.body.innerHTML = `<div id="main">
+      <div data-id="false_${group}_REVOKEG1_${author}">${DELETED_ROW}</div>
+      <div data-id="false_${group}_OTHERMSG_${author}"><div data-testid="msg-container"><span>hello</span></div></div>
+    </div>`;
+    const widget = restorer();
+    widget.restoreForRevoke(entry, `false_${group}_REVOKEG1_${author}`);
+
+    const [deletedRow, otherRow] = [...document.querySelectorAll<HTMLElement>("#main > div[data-id]")];
+    expect(deletedRow?.querySelector("[data-madarwa-inline-restore]")).not.toBeNull();
+    expect(otherRow?.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    widget.scan();
+    expect(otherRow?.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    widget.dispose();
+  });
+});
+
+describe("deleted messages without a saved copy", () => {
+  it("explains a deleted message MadarWA never received", () => {
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE777" data-testid="conv-msg-REVOKE777">${DELETED_ROW}</div></div>`;
+    const widget = restorer();
+    widget.setRevokeIndex([revokedRow("REVOKE777", "false_966501234567@c.us_NEVERSEEN")]);
+
+    expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    expect(note()?.getAttribute("data-madarwa-inline-missing")).toBe("notReceived:0");
+    expect(note()?.textContent).toContain("لا توجد نسخة محفوظة");
+    expect(note()?.textContent).toContain("حُذفت قبل أن يستلمها مدار");
+    expect(note()?.getAttribute("title")).toContain("واتساب ويب");
+    expect(note()?.getAttribute("dir")).toBe("rtl");
+    // WhatsApp's own deleted text stays.
+    expect(document.querySelector("#main")?.textContent).toContain("This message was deleted");
+    widget.dispose();
+  });
+
+  it("says when a message is older than when saving started", () => {
+    const since = base.timestamp + 24 * 60 * 60_000;
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE778">${DELETED_ROW}</div></div>`;
+    const widget = restorer(undefined, { getCaptureInfo: () => ({ since, clearedAt: 0 }) });
+    widget.setRevokeIndex([revokedRow("REVOKE778", "false_966501234567@c.us_OLDMSG")]);
+
+    expect(note()?.getAttribute("data-madarwa-inline-missing")).toBe(`beforeCapture:${since}`);
+    expect(note()?.textContent).toContain("أقدم من بدء الحفظ");
+    expect(note()?.textContent).toMatch(/2023/);
+    widget.dispose();
+  });
+
+  it("says when the copy was removed by clearing the vault", () => {
+    const clearedAt = base.timestamp + 60 * 60_000;
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE779">${DELETED_ROW}</div></div>`;
+    const widget = restorer(undefined, { getCaptureInfo: () => ({ since: 0, clearedAt }) });
+    widget.setRecords([]);
+    widget.setRevokeIndex([revokedRow("REVOKE779", base.id)]);
+
+    expect(note()?.getAttribute("data-madarwa-inline-missing")).toBe(`cleared:${clearedAt}`);
+    expect(note()?.textContent).toContain("مسح الخزنة");
+    widget.dispose();
+  });
+
+  it("shows the note instead of an empty pill when only the deletion notice arrived", () => {
+    const widget = restorer();
+    mountRow();
+    widget.setRecords([{ ...base, text: "", messageType: "", recoveredFromCache: false }]);
+    widget.scan();
+
+    expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    expect(note()?.getAttribute("data-madarwa-inline-missing")).toBe("notReceived:0");
+    widget.dispose();
+  });
+
+  it("replaces the note with the pill once the saved copy is linked", () => {
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE999">${DELETED_ROW}</div></div>`;
+    const widget = restorer();
+    widget.setRevokeIndex([revokedRow("REVOKE999", base.id)]);
+    expect(note()).not.toBeNull();
+
+    widget.setRecords([base]);
+    expect(note()).toBeNull();
+    expect(block().getAttribute("data-madarwa-inline-restore")).toBe(base.id);
+    widget.dispose();
+  });
+
+  it("turns the pill into a note when the vault is cleared", () => {
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE999">${DELETED_ROW}</div></div>`;
+    const clearedAt = Date.now();
+    const widget = restorer(undefined, { getCaptureInfo: () => ({ since: 0, clearedAt }) });
+    widget.setRecords([base]);
+    widget.setRevokeIndex([revokedRow("REVOKE999", base.id)]);
+    expect(block()).not.toBeNull();
+
+    widget.setRecords([]);
+    expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
+    expect(note()?.getAttribute("data-madarwa-inline-missing")).toBe(`cleared:${clearedAt}`);
+    widget.dispose();
+  });
+
+  it("writes the note in English for an English panel and removes it when disabled", () => {
+    language = "en";
+    initI18n("en");
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE780">${DELETED_ROW}</div></div>`;
+    const widget = restorer();
+    widget.setRevokeIndex([revokedRow("REVOKE780", "false_966501234567@c.us_NEVERSEEN")]);
+
+    expect(note()?.getAttribute("dir")).toBe("ltr");
+    expect(note()?.textContent).toContain("No saved copy");
+    expect(note()?.textContent).toContain("Deleted before MadarWA received it");
+
+    widget.setEnabled(false);
+    expect(note()).toBeNull();
+    widget.dispose();
+  });
+
+  it("sits inside the bubble, under WhatsApp's own text, when the bubble can be found", () => {
+    document.body.innerHTML = `<div id="main"><div data-id="REVOKE782">
+      <div data-testid="msg-container"><span data-testid="tail-in"></span>
+        <div class="bubble"><div><span>This message was deleted</span><div><div data-testid="msg-meta">7:49</div></div></div></div>
+      </div>
+    </div></div>`;
+    const widget = restorer();
+    widget.setRevokeIndex([revokedRow("REVOKE782", "false_966501234567@c.us_NEVERSEEN")]);
+
+    expect(note()?.parentElement?.className).toBe("bubble");
+    expect(note()?.classList.contains("madarwa-inline-inside")).toBe(true);
+    widget.dispose();
+  });
+
+  it("leaves ordinary messages alone", () => {
+    document.body.innerHTML = `<div id="main"><div data-id="NORMAL1"><div data-testid="msg-container"><span>hi</span></div></div></div>`;
+    const widget = restorer();
+    widget.setRecords([base]);
+    widget.setRevokeIndex([revokedRow("REVOKE781", "false_966501234567@c.us_ELSEWHERE")]);
+    expect(note()).toBeNull();
+    expect(document.querySelector("[data-madarwa-inline-restore]")).toBeNull();
     widget.dispose();
   });
 });

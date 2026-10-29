@@ -1,5 +1,5 @@
 import type { DeletedMessage, InlineRestoreMode, Language, RevokedRowIndexEntry } from "../shared/types";
-import { formatTime } from "../shared/format";
+import { formatDate, formatTime } from "../shared/format";
 import { tFor } from "../shared/i18n";
 import { MediaVaultCache, type MediaVaultRecord } from "../shared/media-vault";
 import {
@@ -11,16 +11,46 @@ import {
 } from "../shared/utils/media";
 import { extractStanzaId } from "../shared/utils/revoke";
 
+/** What the note under an unrecoverable deleted message can say about it. */
+export interface CaptureInfo {
+  /** When MadarWA started keeping copies in this browser (ms; 0 = unknown). */
+  since: number;
+  /** When the vault was last cleared (ms; 0 = never). */
+  clearedAt: number;
+}
+
 export interface InlineRestorerOptions {
   getLanguage?: () => Language;
   getMode?: () => InlineRestoreMode;
   onOpenVault?: () => void;
+  /** New message rows appeared in the open chat, so the revoke index may be stale. */
+  onRowsAdded?: () => void;
+  getCaptureInfo?: () => CaptureInfo;
   mediaVault?: MediaVaultCache;
 }
 
+/** Why no copy exists for a deleted message shown in the chat. */
+export type MissingReason = "notReceived" | "beforeCapture" | "cleared";
+
+type RowPlan =
+  | { kind: "pill"; entry: DeletedMessage }
+  | { kind: "missing"; reason: MissingReason; date: number }
+  | null;
+
 const RESTORE_ATTR = "data-madarwa-inline-restore";
+const MISSING_ATTR = "data-madarwa-inline-missing";
+/** On a block: the row data-id it was built for, so a recycled row is rebuilt. */
+const BLOCK_ROW_ATTR = "data-madarwa-row-key";
 const ROW_ATTR = "data-madarwa-restored-id";
+const ROW_KEY_ATTR = "data-madarwa-restored-key";
 const ENTRY_ATTR = "data-madarwa-entry-key";
+/** Rescan this long after WhatsApp changes the open chat (it renders in bursts). */
+const SCAN_DELAY_MS = 120;
+/** Safety net in case a change slipped past the observer. */
+const RESCAN_INTERVAL_MS = 4000;
+/** A media lookup that found nothing is retried after this (the engine may still be saving it). */
+const MEDIA_RETRY_MS = 10_000;
+const MAX_ROWS = 500;
 
 const SVG = {
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.66 7.6 7.5 4.5 12 4.5s8.34 3.1 9.94 7.15a1 1 0 0 1 0 .7C20.34 16.4 16.5 19.5 12 19.5s-8.34-3.1-9.94-7.15Z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -33,12 +63,32 @@ const SVG = {
   play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"/></svg>',
   document:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>',
 } as const;
 
 interface MediaState {
   status: "loading" | "ready" | "missing";
   record?: MediaVaultRecord;
   url?: string;
+  /** When a lookup last found nothing. */
+  checkedAt?: number;
+}
+
+/** A JID is never a stanza; entries saved by older versions could hold one. */
+function stanzaOf(entry: DeletedMessage): string {
+  const stored = entry.stanzaId && !entry.stanzaId.includes("@") ? entry.stanzaId : "";
+  return stored || extractStanzaId(entry.id);
+}
+
+/** True when the entry holds something to show: text, a caption, a preview or a media type. */
+export function hasRestorableContent(entry: DeletedMessage): boolean {
+  return Boolean(
+    entry.text ||
+      entry.caption ||
+      entry.previewDataUrl ||
+      entry.hasFullMedia ||
+      normalizeMediaKind(entry.mediaType || entry.messageType),
+  );
 }
 
 function svgNode(markup: string, className: string): HTMLSpanElement {
@@ -80,10 +130,16 @@ export class InlineRestorer {
   private readonly getLanguage: () => Language;
   private readonly getMode: () => InlineRestoreMode;
   private readonly onOpenVault: () => void;
+  private readonly onRowsAdded: () => void;
+  private readonly getCaptureInfo: () => CaptureInfo;
   private readonly mediaVault: MediaVaultCache;
   private readonly byId = new Map<string, DeletedMessage>();
   private readonly byStanza = new Map<string, DeletedMessage>();
   private readonly byRevoke = new Map<string, DeletedMessage>();
+  /** Revoked rows WhatsApp knows about, keyed by every id their DOM row can carry. */
+  private readonly revokedRows = new Map<string, RevokedRowIndexEntry>();
+  /** Row data-ids already seen, to notice when WhatsApp renders new rows. */
+  private readonly seenRowIds = new Set<string>();
   private readonly media = new Map<string, MediaState>();
   private readonly mediaTasks = new Map<string, Promise<void>>();
   private readonly pending = new Set<Promise<unknown>>();
@@ -105,16 +161,24 @@ export class InlineRestorer {
     this.getLanguage = options.getLanguage ?? (() => this.language);
     this.getMode = options.getMode ?? (() => this.mode);
     this.onOpenVault = options.onOpenVault ?? (() => undefined);
+    this.onRowsAdded = options.onRowsAdded ?? (() => undefined);
+    this.getCaptureInfo = options.getCaptureInfo ?? (() => ({ since: 0, clearedAt: 0 }));
     this.mediaVault = options.mediaVault ?? new MediaVaultCache();
     this.language = this.getLanguage();
     this.mode = this.getMode();
   }
 
+  /**
+   * Watches the open chat and re-applies pills and notes whenever WhatsApp
+   * renders it again: opening a chat, scrolling, or replacing a bubble.
+   * Safe to call repeatedly.
+   */
   start(): void {
-    if (this.observer) return;
-    this.observer = new MutationObserver(() => this.schedule());
-    this.observer.observe(document.body, { childList: true, subtree: true });
-    this.interval = window.setInterval(() => this.scan(), 4000);
+    if (!this.observer && typeof MutationObserver === "function" && document.body) {
+      this.observer = new MutationObserver((records) => this.onMutations(records));
+      this.observer.observe(document.body, { childList: true, subtree: true });
+    }
+    if (!this.interval) this.interval = window.setInterval(() => this.scan(), RESCAN_INTERVAL_MS);
     this.scan();
   }
 
@@ -128,17 +192,21 @@ export class InlineRestorer {
   }
 
   setEnabled(enabled: boolean): void {
-    if (this.enabled === enabled) {
-      if (enabled) this.scan();
-      return;
-    }
-    this.enabled = enabled;
     if (!enabled) {
+      if (!this.enabled) return;
+      this.enabled = false;
       this.clearBlocks();
       this.stop();
       return;
     }
+    // Starting here (not only on an off→on change) is what keeps pills
+    // coming back after WhatsApp re-renders a chat.
+    this.enabled = true;
     this.start();
+  }
+
+  isRunning(): boolean {
+    return this.observer !== null;
   }
 
   isEnabled(): boolean {
@@ -155,6 +223,8 @@ export class InlineRestorer {
     if (this.mode === mode) return;
     this.mode = mode;
     this.collapsedByUser.clear();
+    // Back to click-to-reveal: pills opened by the auto-expanded mode close again.
+    if (mode === "interactive") this.expanded.clear();
     this.rebuild();
   }
 
@@ -178,11 +248,17 @@ export class InlineRestorer {
   setRevokeIndex(rows: RevokedRowIndexEntry[]): void {
     const next = Array.isArray(rows) ? rows.slice(-1000) : [];
     const signature = next
-      .map((row) => `${row.revokeFull}|${row.originalFull}|${row.originalStanza}`)
+      .map((row) => `${row.revokeFull}|${row.revokeStanza}|${row.originalFull}|${row.originalStanza}|${row.timestamp}`)
       .join("~");
     if (signature === this.revokeIndexSignature) return;
     this.revokeIndexSignature = signature;
     this.revokeIndexRows = next;
+    this.revokedRows.clear();
+    for (const row of next) {
+      for (const key of [row.revokeFull, row.revokeStanza, extractStanzaId(row.revokeFull)]) {
+        if (key) this.revokedRows.set(key, row);
+      }
+    }
     this.applyRevokeIndex();
     if (this.enabled) this.scan();
   }
@@ -193,13 +269,15 @@ export class InlineRestorer {
         (row.originalFull ? this.byId.get(row.originalFull) : undefined) ??
         (row.originalStanza ? this.byStanza.get(row.originalStanza) : undefined);
       if (!entry) continue;
-      this.register(entry, row.revokeFull || row.revokeStanza);
+      // WhatsApp's row may carry either id of the revoked placeholder.
+      if (row.revokeFull) this.register(entry, row.revokeFull);
+      if (row.revokeStanza && row.revokeStanza !== row.revokeFull) this.register(entry, row.revokeStanza);
     }
   }
 
   register(entry: DeletedMessage, revokeMessageId = ""): void {
     if (entry.id) this.byId.set(entry.id, entry);
-    const stanza = entry.stanzaId || extractStanzaId(entry.id);
+    const stanza = stanzaOf(entry);
     if (stanza) this.byStanza.set(stanza, entry);
     const revoke = revokeMessageId || entry.revokeMessageId || "";
     if (revoke) {
@@ -214,15 +292,16 @@ export class InlineRestorer {
     this.register(entry, revoke);
     if (!this.enabled) return;
 
-    const rows = this.messageRows();
-    let injected = false;
-    for (const row of rows) {
+    const plan = this.planForEntry(entry);
+    let applied = false;
+    for (const row of this.messageRows()) {
       if (this.rowMatches(row, entry, revoke)) {
-        this.inject(row, entry);
-        injected = true;
+        this.applyPlan(row, plan);
+        applied = true;
       }
     }
-    if (!injected) this.schedule(500);
+    // The row may not be rendered yet; the observer also catches it later.
+    if (!applied) this.schedule(SCAN_DELAY_MS);
   }
 
   async whenIdle(): Promise<void> {
@@ -231,20 +310,33 @@ export class InlineRestorer {
     }
   }
 
+  /**
+   * Brings every message row of the open chat in line with what is known:
+   * a pill for a saved copy, a note explaining a missing one, or nothing.
+   * Idempotent: rows that are already right are left alone.
+   */
   scan(): void {
     if (!this.enabled) return;
-    const rows = this.messageRows();
-    for (const row of rows) {
-      if (row.querySelector(`[${RESTORE_ATTR}]`)) continue;
-      const entry = this.entryForRow(row);
-      if (entry) this.inject(row, entry);
+    let added = false;
+    for (const row of this.messageRows()) {
+      const dataId = row.getAttribute("data-id") ?? "";
+      if (dataId && !this.seenRowIds.has(dataId)) {
+        this.seenRowIds.add(dataId);
+        added = true;
+      }
+      this.applyPlan(row, this.planFor(row));
     }
+    if (this.seenRowIds.size > 5000) this.seenRowIds.clear();
+    if (added) this.onRowsAdded();
   }
 
   clearBlocks(): void {
     this.closeLightbox();
-    document.querySelectorAll(`[${RESTORE_ATTR}]`).forEach((node) => node.remove());
-    document.querySelectorAll(`[${ROW_ATTR}]`).forEach((node) => node.removeAttribute(ROW_ATTR));
+    document.querySelectorAll(`[${RESTORE_ATTR}], [${MISSING_ATTR}]`).forEach((node) => node.remove());
+    document.querySelectorAll(`[${ROW_ATTR}]`).forEach((node) => {
+      node.removeAttribute(ROW_ATTR);
+      node.removeAttribute(ROW_KEY_ATTR);
+    });
   }
 
   dispose(): void {
@@ -257,6 +349,8 @@ export class InlineRestorer {
     this.byId.clear();
     this.byStanza.clear();
     this.byRevoke.clear();
+    this.revokedRows.clear();
+    this.seenRowIds.clear();
     this.expanded.clear();
     this.collapsedByUser.clear();
   }
@@ -266,7 +360,7 @@ export class InlineRestorer {
     if (this.enabled) this.scan();
   }
 
-  private schedule(delay = 500): void {
+  private schedule(delay = SCAN_DELAY_MS): void {
     if (!this.enabled || this.timer) return;
     this.timer = window.setTimeout(() => {
       this.timer = 0;
@@ -274,33 +368,106 @@ export class InlineRestorer {
     }, delay);
   }
 
+  /** Reacts only to changes in (or around) the open chat, not the chat list. */
+  private onMutations(records: MutationRecord[]): void {
+    if (!this.enabled || this.timer) return;
+    const main = document.querySelector("#main");
+    for (const record of records) {
+      const target = record.target;
+      const relevant = main ? main.contains(target) || target.contains(main) : record.addedNodes.length > 0;
+      if (relevant) {
+        this.schedule();
+        return;
+      }
+    }
+  }
+
   private messageRows(): HTMLElement[] {
     const main = document.querySelector("#main");
     if (!main) return [];
-    return Array.from(main.querySelectorAll<HTMLElement>("div[data-id]")).slice(-500);
+    // A quoted message inside a bubble can carry its own data-id; only top-level rows count.
+    return Array.from(main.querySelectorAll<HTMLElement>("div[data-id]"))
+      .filter((row) => !row.parentElement?.closest("div[data-id]"))
+      .slice(-MAX_ROWS);
+  }
+
+  private planFor(row: HTMLElement): RowPlan {
+    const entry = this.entryForRow(row);
+    if (entry) return this.planForEntry(entry);
+    const revoked = this.revokedRowFor(row);
+    return revoked ? this.missingPlan(revoked.timestamp) : null;
+  }
+
+  /** A saved deletion with nothing to show (only its notice arrived) gets the note, not an empty pill. */
+  private planForEntry(entry: DeletedMessage): RowPlan {
+    return hasRestorableContent(entry)
+      ? { kind: "pill", entry }
+      : { kind: "missing", reason: "notReceived", date: 0 };
+  }
+
+  private missingPlan(messageAt: number): RowPlan {
+    const { since, clearedAt } = this.getCaptureInfo();
+    if (since > 0 && messageAt > 0 && messageAt < since) return { kind: "missing", reason: "beforeCapture", date: since };
+    if (clearedAt > 0 && messageAt > 0 && messageAt < clearedAt) {
+      return { kind: "missing", reason: "cleared", date: clearedAt };
+    }
+    return { kind: "missing", reason: "notReceived", date: 0 };
+  }
+
+  private applyPlan(row: HTMLElement, plan: RowPlan): void {
+    const dataId = row.getAttribute("data-id") ?? "";
+    const current = row.querySelector<HTMLElement>(`[${RESTORE_ATTR}], [${MISSING_ATTR}]`);
+    const wanted = plan
+      ? plan.kind === "pill"
+        ? `pill:${plan.entry.id}`
+        : `missing:${plan.reason}:${plan.date}`
+      : "";
+    const have = current
+      ? current.hasAttribute(RESTORE_ATTR)
+        ? `pill:${current.getAttribute(RESTORE_ATTR) ?? ""}`
+        : `missing:${current.getAttribute(MISSING_ATTR) ?? ""}`
+      : "";
+    if (wanted === have && (!current || current.getAttribute(BLOCK_ROW_ATTR) === dataId)) return;
+
+    current?.remove();
+    if (!plan) {
+      row.removeAttribute(ROW_ATTR);
+      row.removeAttribute(ROW_KEY_ATTR);
+      return;
+    }
+    if (plan.kind === "pill") this.inject(row, plan.entry);
+    else this.injectMissing(row, plan.reason, plan.date);
   }
 
   private entryForRow(row: HTMLElement): DeletedMessage | undefined {
     const dataId = row.getAttribute("data-id") ?? "";
     const testId = row.getAttribute("data-testid") ?? "";
     const domKey = testId.startsWith("conv-msg-") ? testId.slice("conv-msg-".length) : "";
-    if (dataId) {
-      const direct = this.byId.get(dataId) || this.byRevoke.get(dataId);
+    for (const key of [dataId, domKey]) {
+      if (!key) continue;
+      const direct = this.byId.get(key) || this.byRevoke.get(key);
       if (direct) return direct;
-      const stanza = extractStanzaId(dataId);
+      const stanza = extractStanzaId(key);
       if (stanza) {
-        const byStanza = this.byStanza.get(stanza);
+        const byStanza = this.byRevoke.get(stanza) || this.byStanza.get(stanza);
         if (byStanza) return byStanza;
       }
-      const tagged = row.getAttribute(ROW_ATTR);
-      if (tagged) {
-        const byTag = this.byId.get(tagged);
-        if (byTag) return byTag;
-      }
     }
-    if (domKey) {
-      const direct = this.byRevoke.get(domKey) || this.byId.get(domKey);
-      if (direct) return direct;
+    // A tag from an earlier match only counts while the row still shows the same message.
+    const tagged = row.getAttribute(ROW_ATTR);
+    if (tagged && dataId && row.getAttribute(ROW_KEY_ATTR) === dataId) return this.byId.get(tagged);
+    return undefined;
+  }
+
+  private revokedRowFor(row: HTMLElement): RevokedRowIndexEntry | undefined {
+    if (this.revokedRows.size === 0) return undefined;
+    const dataId = row.getAttribute("data-id") ?? "";
+    const testId = row.getAttribute("data-testid") ?? "";
+    const domKey = testId.startsWith("conv-msg-") ? testId.slice("conv-msg-".length) : "";
+    for (const key of [dataId, domKey]) {
+      if (!key) continue;
+      const found = this.revokedRows.get(key) ?? this.revokedRows.get(extractStanzaId(key));
+      if (found) return found;
     }
     return undefined;
   }
@@ -320,22 +487,71 @@ export class InlineRestorer {
         if (testId === `conv-msg-${revokeStanza}` || testId.endsWith(revokeStanza)) return true;
       }
     }
-    const stanza = entry.stanzaId || extractStanzaId(entry.id);
+    const stanza = stanzaOf(entry);
     if (stanza && (dataId === stanza || dataId.endsWith(`_${stanza}`))) return true;
-    return row.getAttribute(ROW_ATTR) === entry.id;
+    return row.getAttribute(ROW_ATTR) === entry.id && row.getAttribute(ROW_KEY_ATTR) === dataId;
   }
 
-  private inject(row: HTMLElement, entry: DeletedMessage): void {
-    if (!this.enabled || row.querySelector(`[${RESTORE_ATTR}]`)) return;
-
+  /**
+   * Where blocks go. Preferably inside the bubble itself (the part of the
+   * message container that holds the time), so the block reads as part of
+   * that message instead of floating between two messages. Falls back to the
+   * container, then the row, on builds without those markers.
+   */
+  private placementFor(row: HTMLElement): { host: HTMLElement; inside: boolean } {
+    const container = row.querySelector<HTMLElement>('[data-testid="msg-container"]');
+    const meta = container?.querySelector<HTMLElement>('[data-testid="msg-meta"]') ?? null;
+    if (container && meta) {
+      let body: HTMLElement | null = meta;
+      while (body && body.parentElement !== container) body = body.parentElement;
+      if (body) return { host: body, inside: true };
+    }
     const textContainer =
       row.querySelector<HTMLElement>('[data-testid="msg-text"]') ??
       row.querySelector<HTMLElement>(".copyable-text") ??
       row;
-    const bubble =
-      row.querySelector<HTMLElement>('[data-testid="msg-container"]') ??
-      (textContainer !== row ? textContainer.parentElement : null) ??
-      row;
+    return {
+      host: container ?? (textContainer !== row ? textContainer.parentElement : null) ?? row,
+      inside: false,
+    };
+  }
+
+  private place(row: HTMLElement, block: HTMLElement): void {
+    const { host, inside } = this.placementFor(row);
+    if (inside) block.classList.add("madarwa-inline-inside");
+    host.appendChild(block);
+  }
+
+  /** One quiet line under a deleted message that MadarWA has no copy of, saying why. */
+  private injectMissing(row: HTMLElement, reason: MissingReason, date: number): void {
+    if (!this.enabled || row.querySelector(`[${MISSING_ATTR}]`)) return;
+    const language = this.getLanguage();
+    const t = tFor(language);
+    const why =
+      reason === "beforeCapture"
+        ? t("inlineRestored.missingBeforeCapture", { date: formatDate(date, language) })
+        : reason === "cleared"
+          ? t("inlineRestored.missingCleared", { date: formatDate(date, language) })
+          : t("inlineRestored.missingNotReceived");
+
+    const note = element("div", "madarwa-inline-missing");
+    note.setAttribute(MISSING_ATTR, `${reason}:${date}`);
+    note.setAttribute(BLOCK_ROW_ATTR, row.getAttribute("data-id") ?? "");
+    note.setAttribute("dir", language === "ar" ? "rtl" : "ltr");
+    note.setAttribute("lang", language);
+    note.setAttribute("role", "note");
+    note.title = t("inlineRestored.missingHelp");
+
+    const text = element("span", "madarwa-inline-missing-text");
+    text.append(element("span", "madarwa-inline-missing-title", t("inlineRestored.missingTitle")), document.createTextNode(` · ${why}`));
+    note.append(svgNode(SVG.info, "madarwa-inline-missing-icon"), text);
+    // Selecting or double-clicking the note must not act on WhatsApp's message.
+    note.addEventListener("dblclick", (event) => event.stopPropagation());
+    this.place(row, note);
+  }
+
+  private inject(row: HTMLElement, entry: DeletedMessage): void {
+    if (!this.enabled || row.querySelector(`[${RESTORE_ATTR}]`)) return;
 
     const language = this.getLanguage();
     const t = tFor(language);
@@ -345,6 +561,7 @@ export class InlineRestorer {
     const block = element("div", "madarwa-inline-restore");
     block.setAttribute(RESTORE_ATTR, entry.id);
     block.setAttribute(ENTRY_ATTR, key);
+    block.setAttribute(BLOCK_ROW_ATTR, row.getAttribute("data-id") ?? "");
     block.setAttribute("dir", dir);
     block.setAttribute("lang", language);
     block.setAttribute("role", "note");
@@ -378,7 +595,8 @@ export class InlineRestorer {
     });
 
     row.setAttribute(ROW_ATTR, entry.id);
-    bubble.appendChild(block);
+    row.setAttribute(ROW_KEY_ATTR, row.getAttribute("data-id") ?? "");
+    this.place(row, block);
 
     const defaultExpanded =
       (this.mode === "expanded" && !this.collapsedByUser.has(key)) || this.expanded.has(key);
@@ -658,19 +876,22 @@ export class InlineRestorer {
   private ensureMedia(entry: DeletedMessage): Promise<void> | null {
     const key = entryKey(entry);
     if (!key) return null;
+    // Text has nothing in the media vault.
+    if (!normalizeMediaKind(entry.mediaType || entry.messageType)) return null;
     const current = this.media.get(key);
     if (current && current.status === "ready") return null;
-    if (current && current.status === "missing") return null;
+    // A miss is not final: the engine may still be saving the file.
+    if (current && current.status === "missing" && Date.now() - (current.checkedAt ?? 0) < MEDIA_RETRY_MS) return null;
     const inFlight = this.mediaTasks.get(key);
     if (inFlight) return inFlight;
 
     this.media.set(key, { status: "loading" });
+    const stanza = stanzaOf(entry);
     const task = (async () => {
       const record =
-        (await this.mediaVault.get(entry.id)) ??
-        (entry.stanzaId ? await this.mediaVault.get(entry.stanzaId) : null);
+        (await this.mediaVault.get(entry.id)) ?? (stanza ? await this.mediaVault.get(stanza) : null);
       if (!record) {
-        this.media.set(key, { status: "missing" });
+        this.media.set(key, { status: "missing", checkedAt: Date.now() });
         return;
       }
       const url = URL.createObjectURL(record.blob);
@@ -678,7 +899,7 @@ export class InlineRestorer {
       this.refreshMedia(key);
     })()
       .catch(() => {
-        this.media.set(key, { status: "missing" });
+        this.media.set(key, { status: "missing", checkedAt: Date.now() });
       })
       .finally(() => {
         this.mediaTasks.delete(key);

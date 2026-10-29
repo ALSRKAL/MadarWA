@@ -16,6 +16,22 @@ export function formatDateTime(timestamp: number, language: Language): string {
   }
 }
 
+/** A day in words ("29 أكتوبر 2026", "29 October 2026"), for sentences. */
+export function formatDate(timestamp: number, language: Language): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "—";
+  try {
+    return new Intl.DateTimeFormat(localeFor(language), {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      calendar: "gregory",
+      numberingSystem: "latn",
+    }).format(new Date(timestamp));
+  } catch {
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+}
+
 export function formatTime(timestamp: number, language: Language): string {
   try {
     return new Intl.DateTimeFormat(localeFor(language), {

@@ -8,7 +8,7 @@ import {
   WHATSAPP_URL,
 } from "../shared/constants";
 import { mergeSettings } from "../shared/defaults";
-import { asSeenAt, countUnseen } from "../shared/storage";
+import { asTimestamp, countUnseen } from "../shared/storage";
 import { isRetryableStatus, retryDelayMs } from "../shared/utils/retry";
 import { buildWebhookHeaders, validateWebhookUrl } from "../shared/utils/security";
 import type { AppSettings, WebhookLogEntry, WebhookPayload } from "../shared/types";
@@ -101,7 +101,7 @@ async function refreshBadge(): Promise<void> {
   const stored = await chrome.storage.local.get([STORAGE_KEYS.vault, STORAGE_KEYS.vaultSeenAt]);
   const raw = stored[STORAGE_KEYS.vault];
   const vault = Array.isArray(raw) ? raw : [];
-  await updateBadge(countUnseen(vault, asSeenAt(stored[STORAGE_KEYS.vaultSeenAt])));
+  await updateBadge(countUnseen(vault, asTimestamp(stored[STORAGE_KEYS.vaultSeenAt])));
 }
 
 async function postWebhook(
