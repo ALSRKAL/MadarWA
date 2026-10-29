@@ -4,10 +4,10 @@
 **Manifest V3 · TypeScript · React 18 · Tailwind · Local-only runtime.**
 
 <p align="center">
-  <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-10b981?style=flat-square" />
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-19694f?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-153%20passing-10b981?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-153%20passing-19694f?style=flat-square" />
   <a href="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
@@ -56,7 +56,7 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 | **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. تظهر القواعد فقط عند تفعيل الرد الآلي؛ والقوالب جاهزة للإرسال أو الإدراج في حقل الكتابة. |
 | **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
 | **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، إعادة محاولة تلقائية للأعطال المؤقتة (الشبكة، 429، 5xx) مع معرّف ثابت في `X-MadarWA-Delivery` لمنع التكرار، اختبار اتصال وسجل تسليم يبيّن عدد المحاولات. إعدادات Webhook التقنية داخل درج «تخصيص». |
-| **واجهة موحّدة** | 6 أقسام في شريط تنقل عمودي، رأس 40px، تبديل AR/EN فوري، RTL/LTR تلقائي، ثيم داكن/فاتح. كشف تدريجي: صفوف تبديل نظيفة، وكل خيار متقدم داخل درج «تخصيص» أو لا يظهر إلا بعد تفعيل الميزة. وضع خصوصية كامل/إيقاف الكل بضغطة، ومرشحات خزنة (الكل/نصوص/صور/فيديو/صوتيات). |
+| **واجهة موحّدة** | واجهة فاتحة فقط بأسلوب «الورقة داخل الإطار»: إطار رمادي مخضر يضم الرأس (48px) وشريط تنقل بستة أقسام، والعمل على ورقة بيضاء واحدة. خط IBM Plex Sans Arabic مضمّن داخل الإضافة (لا شيء يُحمَّل من الإنترنت). تبديل AR/EN فوري وRTL/LTR تلقائي. زر مدار يجلس داخل شريط أدوات واتساب نفسه ويأخذ لون أيقوناته، والعدّاد يظهر فقط للرسائل المحذوفة الجديدة ويختفي بعد فتح الخزنة. كشف تدريجي: صفوف تبديل نظيفة، والخيارات المتقدمة داخل «تخصيص» أو بعد تفعيل الميزة. التفاصيل في [DESIGN.md](DESIGN.md). |
 
 
 #### مطابقة Private Mode
@@ -228,6 +228,8 @@ npm run verify
 
 **تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 153 على حساب واتساب مسجّل. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2`، واتصال محرك MAIN والجسر (`live`)، وتركيب الواجهة. أُرسلت أربع رسائل تجريبية عبر `WPP.emit` (نص، صورة، فيديو WebM، صورة بمعاينة فقط) ثم أُلغيت: ظهرت أربع فقاعات مستعادة بجانب «تم حذف هذه الرسالة»، والتوسيع أظهر النص والأوقات وزر النسخ؛ صورة PNG كاملة مع Lightbox وتكبير وتنزيل؛ فيديو WebM قابل للتشغيل مع تنزيل؛ ومعاينة `data:image/jpeg;base64,...` مع ملاحظة «معاينة فقط». اختُبرت الخزنة الحقيقية: 5 مرشحات (الكل/نصوص/صور/فيديو/صوتيات) وتنزيل `deleted-photo.png` من معاينة الوسائط. عند تفعيل «وضع الخصوصية الكامل» وُسمت عناصر واتساب الحقيقية (اسم/رقم/معاينة/صورة/نص/وسائط)، وتمرير المؤشر على اسم أزال التمويه عنه فقط (`blur(0px)`) بينما بقي الاسم الآخر `blur(4px)` والرسالة `blur(5px)`. كما اختُبر مسار الإلغاء الحقيقي `MsgStore change:type`: صف واتساب الذي يحمل `data-id` مجرّداً (32 حرفاً) استقبل الفقاعة والنص المستعاد، واختُبر ربط سجل خزنة قديم بصف إلغاء ظاهر بعد إعادة التحميل عبر `antidelete.revokedIndex`. الرسائل التي حُذفت قبل التقاطها لا يمكن إعادة بنائها لأن واتساب لا يحتفظ بنصها الأصلي.
 
+**تحقق الواجهة الفاتحة (Google Chrome 156، واتساب بالوضع الداكن):** حُمّلت الخطوط الستة المضمّنة (عربي ولاتيني × 400/500/600) رغم سياسة CSP في واتساب، وظهر زر مدار داخل شريط أدوات واتساب دون إزاحة مربع البحث، واستُعرضت الأقسام الستة بالعربية والإنجليزية. إضافة رسالة محذوفة جديدة أظهرت «1» على شارة المتصفح وزر واتساب وشريط التنقل، وفتح الخزنة أخفاها من الثلاثة. جُلبت 35 مجموعة خلال ثانية، واستخراج أعضاء مجموعة أظهر 36 صفاً وفعّل التصدير.
+
 ### الخصوصية والأمان
 
 - **لا خادم، لا تتبّع:** لا يوجد Analytics أو Telemetry. `preload.js` يضبط `disableGoogleAnalytics: true` قبل تحميل wa-js.
@@ -290,7 +292,7 @@ npm run verify
 | شريط «يلزم إعادة التحميل» | تم تحديث الإضافة وصفحة واتساب مفتوحة. أعد التحميل (بعد انتهاء أي حملة جارية). |
 | نسيت PIN | القفل في ذاكرة الجلسة؛ إعادة تحميل صفحة واتساب تزيل القفل. يمكن أيضاً مسح تخزين الإضافة من `chrome://extensions` (يفقد الإعدادات والخزنة). القفل ليس حماية تشفيرية. |
 | لا تظهر الرسائل المحذوفة | الخزنة تلتقط فقط بعد تفعيلها؛ قد تكون الرسالة أقدم من التفعيل أو الكاش. |
-| واجهة مشوّهة | ثيم واتساب غيّر بنيته؛ أعد التحميل وأبلغ عن المحدد. الواجهة داخل Shadow DOM ولا تتأثر بأنماط الصفحة. |
+| واجهة مشوّهة | غيّر واتساب بنية صفحته؛ أعد التحميل وأبلغ عن المحدد. الواجهة داخل Shadow DOM ولا تتأثر بأنماط الصفحة. |
 
 ### بنية المستودع
 
@@ -310,7 +312,7 @@ MadarWA/
 │   │   ├── privacy-runtime.ts    # CSS attributes + presence scrubber
 │   │   ├── privacyTagger.ts      # Semantic data-madarwa-el tagging
 │   │   ├── inline-restore.ts     # Interactive pill, media players, lightbox
-│   │   ├── styles/shadow.css     # Tailwind + theme variables
+│   │   ├── styles/shadow.css     # Tailwind + light design tokens
 │   │   └── ui/                   # App, LockScreen, Toasts, 6 tabs
 │   ├── injected/
 │   │   ├── preload.ts            # WPPConfig (analytics off)
@@ -343,7 +345,7 @@ MadarWA/
 - قبل أي Commit: `npm run typecheck && npm test && npm run build && npm run verify`.
 - لا تُضف كوداً بعيداً أو `eval`، ولا تكتب بيانات اعتماد حقيقية في المصدر أو الأمثلة أو الاختبارات.
 - الترخيص: **MIT** — راجع [LICENSE](LICENSE).
-- شكر خاص: WPPConnect/wa-js (Apache-2.0)، React، Vite، Tailwind CSS، i18next، Zustand، Lucide، read-excel-file.
+- شكر خاص: WPPConnect/wa-js (Apache-2.0)، React، Vite، Tailwind CSS، i18next، Zustand، Lucide، read-excel-file، وخط IBM Plex Sans Arabic (SIL Open Font License 1.1، مضمّن عبر `@fontsource/ibm-plex-sans-arabic`).
 
 ---
 
@@ -385,7 +387,7 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 | **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Rules appear only when auto-reply is enabled; templates can be sent or inserted into the composer. |
 | **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
 | **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations from the service worker with `X-MadarWA-Token`, retry transient failures (network, 429, 5xx) with a stable `X-MadarWA-Delivery` id for de-duplication, test delivery and inspect a delivery log with attempt counts. Technical webhook fields live behind the Configure drawer. |
-| **Unified UI** | Six-section vertical rail, 40px header, instant AR/EN switch, automatic RTL/LTR, dark/light theme. Progressive disclosure: clean toggle rows, advanced options behind Configure or hidden until the feature is on. One-click Full Stealth / Disable All, plus vault filter chips (All/Text/Photos/Videos/Audio). |
+| **Unified UI** | Light-only "framed sheet": one green-grey frame holds the 48px header and a six-section rail, and the work sits on a single white sheet. IBM Plex Sans Arabic is bundled with the extension (nothing is fetched). Instant AR/EN switch with automatic RTL/LTR. The MadarWA button sits inside WhatsApp's own toolbar and takes its icon colour; its count shows only new deleted messages and clears once the vault is opened. Progressive disclosure: clean toggle rows, advanced options behind Configure or hidden until the feature is on. Details in [DESIGN.md](DESIGN.md). |
 
 
 #### Private Mode parity
@@ -555,6 +557,8 @@ npm run verify
 
 **Real browser verification:** `dist/` was loaded as an unpacked extension in Chromium 153 against a signed-in WhatsApp account. Confirmed: local `@wppconnect/wa-js 4.7.2`, MAIN engine + bridge (`live`), and the Shadow DOM UI. Four synthetic messages were emitted through `WPP.emit` (text, photo, WebM video, preview-only photo) and then revoked: four restored pills appeared next to “This message was deleted”; expanding showed the text, timestamps and copy button; the full PNG opened a lightbox with zoom/download; the WebM played inline with a download; the preview-only photo rendered a normalized `data:image/jpeg;base64,...` with the preview-only note. The real vault was checked with five filters (all/text/photos/videos/audio) and `deleted-photo.png` downloaded from the media preview. With **Full Stealth Mode**, real WhatsApp elements were tagged (name/phone/preview/avatar/message/media); hovering one name removed its blur only (`blur(0px)`) while the other name stayed `blur(4px)` and the message `blur(5px)`. The real `MsgStore change:type` revoke path was also exercised: a WhatsApp row whose `data-id` is the bare 32-char revoke stanza received the pill and restored text, and an old vault entry was reconnected to an on-screen revoked row after reload through `antidelete.revokedIndex`. Messages deleted before they were captured cannot be reconstructed because WhatsApp does not retain their original text.
 
+**Light UI verification (Google Chrome 156, WhatsApp in its dark theme):** all six bundled font faces (Arabic and Latin × 400/500/600) loaded under WhatsApp's CSP; the MadarWA button sat inside WhatsApp's toolbar without pushing the search box down; all six sections were reviewed in Arabic and English. Adding one new deleted message showed "1" on the toolbar badge, the WhatsApp button and the rail, and opening the vault cleared all three. 35 groups loaded in about a second, and extracting one group's members rendered 36 rows and enabled export.
+
 ### Privacy & security
 
 - **No server, no telemetry.** `preload.js` sets `disableGoogleAnalytics: true` before wa-js loads.
@@ -632,7 +636,7 @@ MadarWA/
 │   │   ├── privacy-runtime.ts    # CSS attributes + presence scrubber
 │   │   ├── privacyTagger.ts      # Semantic data-madarwa-el tagging
 │   │   ├── inline-restore.ts     # Interactive pill, media players, lightbox
-│   │   ├── styles/shadow.css     # Tailwind + theme variables
+│   │   ├── styles/shadow.css     # Tailwind + light design tokens
 │   │   └── ui/                   # App, LockScreen, Toasts, 6 tabs
 │   ├── injected/
 │   │   ├── preload.ts            # WPPConfig (analytics off)
@@ -665,7 +669,7 @@ MadarWA/
 - Before committing: `npm run typecheck && npm test && npm run build && npm run verify`.
 - Never add remote code or `eval`, and never commit real credentials in source, examples or tests.
 - License: **MIT** — see [LICENSE](LICENSE).
-- Acknowledgements: WPPConnect/wa-js (Apache-2.0), React, Vite, Tailwind CSS, i18next, Zustand, Lucide, read-excel-file.
+- Acknowledgements: WPPConnect/wa-js (Apache-2.0), React, Vite, Tailwind CSS, i18next, Zustand, Lucide, read-excel-file, and the IBM Plex Sans Arabic typeface (SIL Open Font License 1.1, bundled through `@fontsource/ibm-plex-sans-arabic`).
 
 ---
 
