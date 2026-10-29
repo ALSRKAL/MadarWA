@@ -36,12 +36,36 @@ use `BRAND_COLORS` in `src/shared/constants.ts`.
 | Faint | `#6b6f73` | Placeholders (5.1:1 on white) |
 | Line / rule / control | `#e6e8ea` / `#eef0f1` / `#cfd2d6` | Card edges, row rules, input borders |
 | Switch off | `#858a90` outline, `#6b6f73` knob | Holds 3:1 against the panel |
-| Accent | `#19694f` | Logo, progress fill, focus ring, unseen count. Nothing else |
+| Accent | `#19694f` | The mark's tile, progress fill, focus ring. Nothing else |
+| Satellite | `#f2b33d` / ink `#131416` | The mark's satellite and the unseen count (ink numerals 9.9:1), so a count on the green tile still stands out |
 | Success / danger / warning | `#1e7b4f` / `#c4242a` / `#92400e` | State text and icons |
 | Pills | `#dcfae5`/`#04250e`, `#ffedea`/`#831c1e`, `#fffbeb`/`#92400e` + `#fde68a`, `#eceeef`/`#353736` | Positive, negative, notice, neutral |
 
 Radii step down from the sheet: **16** sheet · **8** panel and dialogs' inner blocks · **6**
 controls · **4** tags. Floating things (dialogs, toasts) use 12.
+
+## Mark
+
+MadarWA is مدار, "orbit". The mark is a white planet whose ring, tilted 27°, passes behind it at
+the top and in front of it at the bottom, with a gold satellite on the ring's raised end, on a flat
+accent tile (24-unit grid, 5.5 corner). Two colours on the tile and nothing else: no gradient, glow,
+outline or shadow, so it holds on light and dark toolbars and next to WhatsApp's own green. The
+satellite stands for what MadarWA keeps for you, which is why the unseen count wears its gold.
+
+`src/shared/brand.ts` is the only drawing. The icons, the launcher in WhatsApp's header and the React
+mark (`BrandMark`) are all built from it, at three optical sizes. It never mirrors, so in Arabic and
+English alike the unseen count covers the satellite (top right) and the state dot sits on the tile's
+empty bottom-right corner, clear of the ring.
+
+| Detail | Used for | Front of the ring |
+|---|---|---|
+| `tiny` | 16px toolbar icon | Runs into the planet; only the back of the ring and the satellite keep their cuts |
+| `small` | 32px toolbar icon; the 24px marks in WhatsApp's header, the panel and the popup | One groove above it |
+| `full` | 48px and 128px icons; the 48px lock screen and floating launcher | Cut on both sides; the planet's lower edge shows below it |
+
+`npm run icons` renders `icons/icon-{16,32,48,128}.png` and `icons/icon.svg` from the same code.
+16 and 32 are full-bleed, the largest tile Chrome's toolbar draws; 128 is 96px of artwork inside
+16px of transparent padding, as the Chrome Web Store asks; 48 keeps 2px.
 
 ## Type
 
@@ -60,7 +84,7 @@ controls · **4** tags. Floating things (dialogs, toasts) use 12.
 ## Shell
 
 - **Drawer:** `min(720px, 100vw)` at the inline-end edge, over a 25% ink backdrop.
-- **Header (48px):** logo in the accent, product name, connection status ("Connected" with a static
+- **Header (48px):** the 24px mark, product name, connection status ("Connected" with a static
   dot), عربي/EN segmented control, lock (only when a PIN is set), close.
 - **Rail (192px):** labelled items, 14px/500 muted; the active item is a neutral grey pill with the
   label in ink at 600. Labels never wrap. A count appears only for **unseen deleted messages**.
@@ -94,16 +118,20 @@ controls · **4** tags. Floating things (dialogs, toasts) use 12.
 `STORAGE_KEYS.vaultSeenAt` stores when the vault was last on screen. Deleted messages captured
 after it are **unseen**; `countUnseen()` (`src/shared/storage.ts`) is the one rule used by the
 toolbar badge (service worker), the WhatsApp header launcher, the floating launcher and the rail.
+Everywhere it is a gold pill with ink numerals; a green one would vanish into the green tile it
+sits on in the toolbar and the launchers.
 Opening the vault marks everything seen in every open tab. The popup still shows the total as a
 plain statistic.
 
 ## Inside WhatsApp's chrome
 
-- **Header launcher:** one more 40px icon button in WhatsApp's chat-list toolbar, before the menu.
-  It reads WhatsApp's own icon colour and header ground from the neighbouring button, so it looks
-  native in WhatsApp's light and dark themes. No dot while connected; an amber or red dot only when
-  something is wrong. The unseen count is an accent pill with a ring in the header colour.
-- **Floating launcher:** only on screens without that toolbar (QR, loading); draggable; never shown
+- **Header launcher:** one more 40px button in WhatsApp's chat-list toolbar, before the menu, with
+  WhatsApp's own size and hover. It carries the 24px mark, so MadarWA is found at a glance in
+  WhatsApp's light and dark themes. Rings in the header's colour (read from WhatsApp's header) cut
+  the dot and the count out of the tile. No dot while connected; an amber or red dot only when
+  something is wrong.
+- **Floating launcher:** only on screens without that toolbar (QR, loading): the 48px tile itself,
+  lifted by a soft shadow, with white rings around its dot and count; draggable; never shown
   together with the header launcher.
 - **In-chat blocks** follow WhatsApp's theme (`body[data-madarwa-theme]`), set from WhatsApp's own
   theme, not from a setting. They use WhatsApp's palette, the bundled typeface and an 11px floor.
@@ -191,8 +219,9 @@ only the top layer.
    copy exists, a note that says why instead of silence.
 2. **Surgical hover-to-reveal:** only the hovered name, number, preview, avatar, message or media
    unblurs (160ms), never the whole screen.
-3. **A launcher that belongs to WhatsApp:** same size, colour and hover as WhatsApp's own toolbar
-   buttons, with a count that only appears when there is something new to look at.
+3. **A launcher in WhatsApp's own toolbar:** the same size and hover as WhatsApp's buttons,
+   carrying the MadarWA tile, with a gold count that only appears when there is something new to
+   look at.
 
 ## Best-effort boundaries
 
@@ -202,6 +231,8 @@ cannot control the linked phone, so the option says "best effort" in its descrip
 ## Slop audit
 
 - No dark theme, no theme switch, no emerald washes; the old teal palette is gone from Tailwind.
+- The mark is flat: one tile colour, white and one gold. The old emerald gradient, glow and rim are
+  gone from the icons.
 - No gradients, glows, glass, pulsing dots, side stripes, icon tiles or tinted icon circles.
 - No pills next to page titles, no "Active"/"Supported" pills that repeat a switch, no red count
   that never goes away, no zero shown in a state colour.
@@ -212,6 +243,10 @@ cannot control the linked phone, so the option says "best effort" in its descrip
 
 ## Changelog
 
+- **Mark and icons:** a new mark (a planet with its ring in front, and a gold satellite) drawn once
+  in `src/shared/brand.ts` at three optical sizes; icons regenerated from it, with the store's 16px
+  padding at 128; the WhatsApp header launcher, panel, popup, lock screen and floating launcher show
+  the tile; unseen counts (toolbar badge, launcher, rail) are gold so they stand out on the tile.
 - **Deleted messages in the chat:** pills come back after WhatsApp re-renders a chat (the watcher
   never started before), sit inside the bubble, and stay open; a note with the reason replaces the
   empty "Text" pill and appears under deletions with no copy at all; old deletions no longer re-toast

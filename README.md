@@ -56,7 +56,7 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 | **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. تظهر القواعد فقط عند تفعيل الرد الآلي؛ والقوالب جاهزة للإرسال أو الإدراج في حقل الكتابة. |
 | **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
 | **أدوات وWebhook** | فتح محادثة برقم غير محفوظ فوراً دون إعادة تحميل، إرسال رسالة أولى، تمرير الرسائل وأحداث الحذف إلى Webhook عبر Service Worker مع ترويسة `X-MadarWA-Token`، إعادة محاولة تلقائية للأعطال المؤقتة (الشبكة، 429، 5xx) مع معرّف ثابت في `X-MadarWA-Delivery` لمنع التكرار، اختبار اتصال وسجل تسليم يبيّن عدد المحاولات. إعدادات Webhook التقنية داخل درج «تخصيص». |
-| **واجهة موحّدة** | واجهة فاتحة فقط بأسلوب «الورقة داخل الإطار»: إطار رمادي مخضر يضم الرأس (48px) وشريط تنقل بستة أقسام، والعمل على ورقة بيضاء واحدة. خط IBM Plex Sans Arabic مضمّن داخل الإضافة (لا شيء يُحمَّل من الإنترنت). تبديل AR/EN فوري وRTL/LTR تلقائي. زر مدار يجلس داخل شريط أدوات واتساب نفسه ويأخذ لون أيقوناته، والعدّاد يظهر فقط للرسائل المحذوفة الجديدة ويختفي بعد فتح الخزنة. كشف تدريجي: صفوف تبديل نظيفة، والخيارات المتقدمة داخل «تخصيص» أو بعد تفعيل الميزة. التفاصيل في [DESIGN.md](DESIGN.md). |
+| **واجهة موحّدة** | واجهة فاتحة فقط بأسلوب «الورقة داخل الإطار»: إطار رمادي مخضر يضم الرأس (48px) وشريط تنقل بستة أقسام، والعمل على ورقة بيضاء واحدة. خط IBM Plex Sans Arabic مضمّن داخل الإضافة (لا شيء يُحمَّل من الإنترنت). تبديل AR/EN فوري وRTL/LTR تلقائي. زر مدار يجلس داخل شريط أدوات واتساب نفسه بشعار مدار الأخضر، والعدّاد الذهبي يظهر فقط للرسائل المحذوفة الجديدة ويختفي بعد فتح الخزنة. كشف تدريجي: صفوف تبديل نظيفة، والخيارات المتقدمة داخل «تخصيص» أو بعد تفعيل الميزة. التفاصيل في [DESIGN.md](DESIGN.md). |
 
 
 #### مطابقة Private Mode
@@ -182,7 +182,7 @@ npm run verify
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
 | `npm run verify` | 99 فحصاً هيكلياً على `dist/` |
-| `npm run icons` | إعادة توليد أيقونات PNG 16/32/48/128 |
+| `npm run icons` | إعادة توليد أيقونات PNG 16/32/48/128 و`icon.svg` من الشعار في `src/shared/brand.ts` |
 | `npm run clean` | حذف `dist/` |
 
 ### الاختبارات والتحقق
@@ -326,6 +326,7 @@ MadarWA/
 │   ├── popup/                    # Quick control popup
 │   └── shared/
 │       ├── bridge/               # Encrypted envelope + client/engine
+│       ├── brand.ts              # The MadarWA mark: icons, launcher, UI
 │       ├── media-vault.ts        # IndexedDB media cache (LRU 150)
 │       ├── utils/                # phone, media, spintax, template, csv, rules, queue, security, pin
 │       ├── defaults.ts
@@ -334,7 +335,7 @@ MadarWA/
 │       └── types.ts
 ├── scripts/
 │   ├── build.mjs                 # Multi-target Vite build
-│   ├── generate-icons.mjs
+│   ├── generate-icons.mjs        # Icons from src/shared/brand.ts
 │   └── verify-build.mjs
 ├── tests/                        # 175 Vitest tests
 ├── tailwind.config.js
@@ -390,7 +391,7 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 | **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Rules appear only when auto-reply is enabled; templates can be sent or inserted into the composer. |
 | **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
 | **Webhooks & tools** | Open a chat with an unsaved number instantly, optionally send a first message, forward messages/revocations from the service worker with `X-MadarWA-Token`, retry transient failures (network, 429, 5xx) with a stable `X-MadarWA-Delivery` id for de-duplication, test delivery and inspect a delivery log with attempt counts. Technical webhook fields live behind the Configure drawer. |
-| **Unified UI** | Light-only "framed sheet": one green-grey frame holds the 48px header and a six-section rail, and the work sits on a single white sheet. IBM Plex Sans Arabic is bundled with the extension (nothing is fetched). Instant AR/EN switch with automatic RTL/LTR. The MadarWA button sits inside WhatsApp's own toolbar and takes its icon colour; its count shows only new deleted messages and clears once the vault is opened. Progressive disclosure: clean toggle rows, advanced options behind Configure or hidden until the feature is on. Details in [DESIGN.md](DESIGN.md). |
+| **Unified UI** | Light-only "framed sheet": one green-grey frame holds the 48px header and a six-section rail, and the work sits on a single white sheet. IBM Plex Sans Arabic is bundled with the extension (nothing is fetched). Instant AR/EN switch with automatic RTL/LTR. The MadarWA button sits inside WhatsApp's own toolbar as the green MadarWA tile; its gold count shows only new deleted messages and clears once the vault is opened. Progressive disclosure: clean toggle rows, advanced options behind Configure or hidden until the feature is on. Details in [DESIGN.md](DESIGN.md). |
 
 
 #### Private Mode parity
@@ -514,7 +515,7 @@ npm run verify
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
 | `npm run verify` | 99 structural assertions on `dist/` |
-| `npm run icons` | Regenerate 16/32/48/128 PNG icons |
+| `npm run icons` | Regenerate the 16/32/48/128 PNG icons and `icon.svg` from the mark in `src/shared/brand.ts` |
 | `npm run clean` | Remove `dist/` |
 
 ### Tests & verification
@@ -653,6 +654,7 @@ MadarWA/
 │   ├── popup/                    # Quick control popup
 │   └── shared/
 │       ├── bridge/               # Encrypted envelope + client/engine
+│       ├── brand.ts              # The MadarWA mark: icons, launcher, UI
 │       ├── media-vault.ts        # IndexedDB media cache (LRU 150)
 │       ├── utils/                # phone, media, spintax, template, csv, rules, queue, security, pin
 │       ├── defaults.ts
@@ -661,7 +663,7 @@ MadarWA/
 │       └── types.ts
 ├── scripts/
 │   ├── build.mjs                 # Multi-target Vite build
-│   ├── generate-icons.mjs
+│   ├── generate-icons.mjs        # Icons from src/shared/brand.ts
 │   └── verify-build.mjs
 ├── tests/                        # 175 Vitest tests
 ├── tailwind.config.js
