@@ -1,4 +1,5 @@
-import { BRIDGE_COMMANDS, UI_LIMITS } from "../shared/constants";
+import { BRIDGE_COMMANDS, CAMPAIGN, UI_LIMITS } from "../shared/constants";
+import { describeError, isTransportError } from "../shared/errors";
 import { tFor } from "../shared/i18n";
 import type {
   AppSettings,
@@ -36,7 +37,12 @@ interface ValidationResponse {
   error: string;
 }
 
-const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+type Translate = (key: string, variables?: Record<string, unknown>) => string;
+
+function failureReason(error: unknown, t: Translate): string {
+  const { title, detail } = describeError(error, t);
+  return detail ? `${title} (${detail})` : title;
+}
 
 export function parseManualRecipients(text: string, defaultCountryCode = ""): {
   recipients: CampaignRecipient[];
@@ -112,6 +118,8 @@ export class BroadcastManager {
   private consecutiveFailures = 0;
   private flushTimer = 0;
   private busy = false;
+  private stopRequested = false;
+  private userPaused = false;
 
   constructor(bridge: BroadcastBridge) {
     this.bridge = bridge;
@@ -130,12 +138,14 @@ export class BroadcastManager {
     if (!input.recipients.length) return { ok: false, error: t("broadcaster.noRecipients") };
     if (!message && !input.attachment) return { ok: false, error: t("broadcaster.noMessage") };
     if (message.length > 4096) return { ok: false, error: t("broadcaster.longMessage") };
-    if (input.attachment && attachmentSize(input.attachment.dataUrl) > MAX_ATTACHMENT_BYTES) {
-      return { ok: false, error: t("broadcaster.longMessage") };
+    if (input.attachment && attachmentSize(input.attachment.dataUrl) > CAMPAIGN.maxAttachmentBytes) {
+      return { ok: false, error: t("broadcaster.attachmentTooLarge", { size: "4 MB" }) };
     }
-    if (!this.bridge.isConnected()) return { ok: false, error: t("errors.bridgeUnavailable") };
+    if (!this.isUsable()) return { ok: false, error: t("errors.bridgeUnavailable") };
 
     this.busy = true;
+    this.stopRequested = false;
+    this.userPaused = false;
     this.validationAbort = false;
     this.validationInvalid = 0;
     this.validationFailed = 0;
@@ -270,37 +280,46 @@ export class BroadcastManager {
       const recipient = this.recipients[index];
       if (!recipient) continue;
       store.setValidation({ active: true, current: index + 1, total: this.recipients.length });
-      try {
-        const result = await this.bridge.request<ValidationResponse>(
-          BRIDGE_COMMANDS.validateContact,
-          { chatId: recipient.chatId },
-          25_000,
-        );
-        if (!result.exists) {
-          recipient.status = "invalid";
-          recipient.reason = "not-found";
-          this.validationInvalid += 1;
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          const result = await this.bridge.request<ValidationResponse>(
+            BRIDGE_COMMANDS.validateContact,
+            { chatId: recipient.chatId },
+            25_000,
+          );
+          if (!result.exists) {
+            recipient.status = "invalid";
+            recipient.reason = t("errors.numberNotOnWhatsapp");
+            this.validationInvalid += 1;
+            store.appendCampaignLog({
+              index,
+              phone: recipient.phone,
+              status: "invalid",
+              detail: recipient.reason,
+              at: Date.now(),
+            });
+          } else if (result.chatId) {
+            recipient.chatId = result.chatId;
+          }
+          break;
+        } catch (error) {
+          // A lookup is read-only, so retrying after an outage is always safe.
+          if (isTransportError(error) && attempt < CAMPAIGN.maxTransportRetries) {
+            if (!(await this.holdForConnection(t))) return false;
+            continue;
+          }
+          recipient.status = "failed";
+          recipient.reason = failureReason(error, t);
+          this.validationFailed += 1;
           store.appendCampaignLog({
             index,
             phone: recipient.phone,
-            status: "invalid",
-            detail: "not-found",
+            status: "failed",
+            detail: recipient.reason,
             at: Date.now(),
           });
-        } else if (result.chatId) {
-          recipient.chatId = result.chatId;
+          break;
         }
-      } catch (error) {
-        recipient.status = "failed";
-        recipient.reason = error instanceof Error ? error.message : String(error);
-        this.validationFailed += 1;
-        store.appendCampaignLog({
-          index,
-          phone: recipient.phone,
-          status: "failed",
-          detail: recipient.reason,
-          at: Date.now(),
-        });
       }
       if ((index + 1) % 10 === 0) this.flushRecipients(true);
     }
@@ -339,49 +358,134 @@ export class BroadcastManager {
       enableSpintax: input.settings.broadcaster.randomizeWithSpintax,
     });
 
-    try {
-      if (!this.bridge.isConnected()) throw new Error(t("errors.bridgeUnavailable"));
-      if (input.attachment) {
-        const supportsCaption = ["image", "video", "document"].includes(input.attachment.type);
-        await this.bridge.request(
-          BRIDGE_COMMANDS.sendFile,
-          {
-            chatId: recipient.chatId,
-            dataUrl: input.attachment.dataUrl,
-            type: input.attachment.type,
-            caption: supportsCaption ? text : "",
-            filename: input.attachment.name,
-            mimetype: input.attachment.mimetype,
-          },
-          120_000,
-        );
-      } else {
-        await this.bridge.request(
-          BRIDGE_COMMANDS.sendText,
-          { chatId: recipient.chatId, text },
-          60_000,
-        );
+    for (let attempt = 0; ; attempt += 1) {
+      // Never fire into a dead connection: hold the campaign until WhatsApp is back.
+      if (!(await this.holdForConnection(t))) {
+        recipient.status = "pending";
+        this.flushRecipients();
+        return { status: "skipped", detail: t("broadcaster.stopped") };
       }
-      recipient.status = "sent";
-      recipient.reason = "";
-      this.consecutiveFailures = 0;
-      this.flushRecipients();
-      return { status: "sent", detail: "ok" };
-    } catch (error) {
-      recipient.status = "failed";
-      recipient.reason = error instanceof Error ? error.message : String(error);
-      this.consecutiveFailures += 1;
-      this.flushRecipients();
-      if (this.consecutiveFailures >= 3) {
-        this.queue?.stop();
-        useAppStore.getState().pushToast({
-          kind: "error",
-          title: t("errors.bridgeUnavailable"),
-          body: "",
-        });
+      try {
+        if (input.attachment) {
+          const supportsCaption = ["image", "video", "document"].includes(input.attachment.type);
+          await this.bridge.request(
+            BRIDGE_COMMANDS.sendFile,
+            {
+              chatId: recipient.chatId,
+              dataUrl: input.attachment.dataUrl,
+              type: input.attachment.type,
+              caption: supportsCaption ? text : "",
+              filename: input.attachment.name,
+              mimetype: input.attachment.mimetype,
+            },
+            120_000,
+          );
+        } else {
+          await this.bridge.request(
+            BRIDGE_COMMANDS.sendText,
+            { chatId: recipient.chatId, text },
+            60_000,
+          );
+        }
+        recipient.status = "sent";
+        recipient.reason = "";
+        this.consecutiveFailures = 0;
+        this.flushRecipients();
+        return { status: "sent", detail: "ok" };
+      } catch (error) {
+        // The command never reached WhatsApp, so a retry cannot double-send.
+        // Timeouts are not retried: the message may already be on its way.
+        if (isTransportError(error) && attempt < CAMPAIGN.maxTransportRetries) continue;
+
+        recipient.status = "failed";
+        recipient.reason = failureReason(error, t);
+        this.consecutiveFailures += 1;
+        this.flushRecipients();
+        if (this.consecutiveFailures >= CAMPAIGN.maxConsecutiveFailures && this.queue?.status === "running") {
+          // A run of failures usually means a account-level problem; stop
+          // hammering WhatsApp and let the user review before resuming.
+          this.consecutiveFailures = 0;
+          this.userPaused = true;
+          this.queue.pause();
+          useAppStore.getState().pushToast({
+            kind: "error",
+            title: t("broadcaster.pausedAfterFailures", { count: CAMPAIGN.maxConsecutiveFailures }),
+            body: recipient.reason,
+          });
+        }
+        return { status: "failed", detail: recipient.reason };
       }
-      return { status: "failed", detail: recipient.reason };
     }
+  }
+
+  /** Bridge connected and WhatsApp loaded and logged in. */
+  private isUsable(): boolean {
+    const { engine } = useAppStore.getState();
+    return this.bridge.isConnected() && engine.ready && engine.connected;
+  }
+
+  private waitForUsable(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      let unsubscribe: () => void = () => undefined;
+      let timer = 0;
+      const finish = (value: boolean) => {
+        if (settled) return;
+        settled = true;
+        unsubscribe();
+        window.clearInterval(timer);
+        resolve(value);
+      };
+      const check = () => {
+        if (this.stopRequested || this.validationAbort) finish(false);
+        else if (this.isUsable()) finish(true);
+      };
+      unsubscribe = useAppStore.subscribe(check);
+      timer = window.setInterval(check, CAMPAIGN.connectionPollMs);
+      check();
+    });
+  }
+
+  /**
+   * Auto-pause while WhatsApp is unreachable and auto-resume when it is back,
+   * unless the user paused meanwhile. Resolves to false if the campaign was
+   * stopped while waiting.
+   */
+  private async holdForConnection(t: Translate): Promise<boolean> {
+    if (this.stopRequested || this.validationAbort) return false;
+    if (this.isUsable()) return true;
+
+    const queue = this.queue;
+    if (queue?.status === "running") queue.pause();
+    const store = useAppStore.getState();
+    store.patchCampaign({ waitingForConnection: true });
+    store.pushToast({ kind: "info", title: t("broadcaster.autoPaused"), body: t("broadcaster.autoPausedBody") });
+
+    const usable = await this.waitForUsable();
+    useAppStore.getState().patchCampaign({ waitingForConnection: false });
+    if (!usable) return false;
+
+    if (queue && queue === this.queue && queue.status === "paused") {
+      if (this.userPaused) return this.waitForUserResume();
+      queue.resume();
+    }
+    useAppStore.getState().pushToast({ kind: "success", title: t("broadcaster.autoResumed"), body: "" });
+    return true;
+  }
+
+  /** The user paused during an outage: send nothing until they resume or stop. */
+  private waitForUserResume(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const unsubscribe = useAppStore.subscribe((state) => {
+        if (this.stopRequested || state.campaign.status === "stopped") {
+          unsubscribe();
+          resolve(false);
+        } else if (state.campaign.status === "running") {
+          unsubscribe();
+          resolve(true);
+        }
+      });
+    });
   }
 
   private flushRecipients(force = false): void {
@@ -429,14 +533,19 @@ export class BroadcastManager {
   }
 
   pause(): void {
+    this.userPaused = true;
     this.queue?.pause();
   }
 
   resume(): void {
+    this.userPaused = false;
+    // While waiting for WhatsApp, the hold resumes the queue itself once it is back.
+    if (useAppStore.getState().campaign.waitingForConnection) return;
     this.queue?.resume();
   }
 
   stop(): void {
+    this.stopRequested = true;
     this.validationAbort = true;
     this.queue?.stop();
     if (!this.queue && this.isBusy()) {

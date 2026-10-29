@@ -181,6 +181,8 @@ export interface BridgeClientOptions {
   origin?: string;
   handshakeRetryMs?: number;
   steadyHandshakeMs?: number;
+  staleAfterMs?: number;
+  connectGraceMs?: number;
   requestTimeoutMs?: number;
   sessionFactory?: () => { sid: string; key: string };
 }
@@ -201,18 +203,28 @@ interface ReadyWaiter {
 /**
  * ISOLATED-world side of the bridge. Maintains a page-scoped session and
  * re-establishes it automatically if the MAIN engine or extension reloads.
+ *
+ * Liveness never depends on timer accuracy. Chrome throttles timers in hidden
+ * tabs to roughly one wake-up per minute, so a timestamp-only heartbeat would
+ * report false disconnects. Both worlds share one event loop, so the engine
+ * answers a handshake inside the same dispatch call. Every heartbeat is
+ * therefore a synchronous probe, and the connection is declared lost only
+ * when a probe gets no answer.
  */
 export class BridgeClient {
   private readonly target: Window;
   private readonly origin: string;
   private readonly retryMs: number;
   private readonly steadyMs: number;
+  private readonly staleMs: number;
+  private readonly graceMs: number;
   private readonly defaultTimeoutMs: number;
   private readonly sessionFactory: () => { sid: string; key: string };
   private session: { sid: string; key: string } | null = null;
   private seq = 0;
   private connected = false;
   private lastAckAt = 0;
+  private ackCount = 0;
   private started = false;
   private disposed = false;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -225,7 +237,9 @@ export class BridgeClient {
     this.target = options.target ?? window;
     this.origin = options.origin ?? this.target.location?.origin ?? "";
     this.retryMs = options.handshakeRetryMs ?? BRIDGE.handshakeRetryMs;
-    this.steadyMs = options.steadyHandshakeMs ?? 3000;
+    this.steadyMs = options.steadyHandshakeMs ?? BRIDGE.steadyHandshakeMs;
+    this.staleMs = options.staleAfterMs ?? BRIDGE.staleAfterMs;
+    this.graceMs = options.connectGraceMs ?? BRIDGE.connectGraceMs;
     this.defaultTimeoutMs = options.requestTimeoutMs ?? BRIDGE.requestTimeoutMs;
     this.sessionFactory = options.sessionFactory ?? (() => ({ sid: randomToken(16), key: randomToken(32) }));
     this.target.addEventListener(BRIDGE.handshakeAck, this.handleAck as EventListener);
@@ -251,15 +265,21 @@ export class BridgeClient {
 
   private tick(): void {
     if (this.disposed) return;
-    const now = Date.now();
-    if (this.connected && now - this.lastAckAt > 15_000) {
-      this.setConnected(false);
-    }
-    if (this.connected) {
-      if (now - this.lastAckAt > this.steadyMs) this.sendHandshake();
+    if (!this.connected) {
+      this.sendHandshake();
       return;
     }
+    const now = Date.now();
+    if (now - this.lastAckAt < this.steadyMs) return;
+    if (this.probe()) return;
+    if (now - this.lastAckAt > this.staleMs) this.setConnected(false);
+  }
+
+  /** Sends a handshake and reports whether the engine answered synchronously. */
+  private probe(): boolean {
+    const before = this.ackCount;
     this.sendHandshake();
+    return this.ackCount !== before;
   }
 
   private sendHandshake(): void {
@@ -279,13 +299,23 @@ export class BridgeClient {
     const parsed = readDetail(event) as { sid?: unknown } | null;
     if (!parsed || parsed.sid !== this.session?.sid) return;
     this.lastAckAt = Date.now();
+    this.ackCount += 1;
     if (!this.connected) this.setConnected(true);
   };
 
   private setConnected(value: boolean): void {
     if (this.connected === value) return;
     this.connected = value;
-    for (const listener of [...this.connectionListeners]) listener(value);
+    // The engine stopped answering probes, so in-flight replies can never
+    // arrive. Fail them now instead of letting each one run to its timeout.
+    if (!value) this.rejectPending("CONNECTION_LOST", "Connection to the MadarWA engine was lost");
+    for (const listener of [...this.connectionListeners]) {
+      try {
+        listener(value);
+      } catch {
+        // A broken UI listener must not break the bridge.
+      }
+    }
     if (value) {
       const waiters = this.readyWaiters.splice(0);
       for (const waiter of waiters) {
@@ -337,13 +367,26 @@ export class BridgeClient {
     }
   };
 
-  request<T>(cmd: string, params: unknown = {}, timeoutMs?: number): Promise<T> {
-    if (this.disposed) return Promise.reject(new BridgeProtocolError("DISPOSED", "Bridge client disposed"));
-    if (!this.session) return Promise.reject(new BridgeProtocolError("NOT_STARTED", "Bridge client not started"));
+  /**
+   * Sends a command. If the connection is momentarily down, the command waits
+   * up to the grace period for it to come back instead of failing at once.
+   */
+  async request<T>(cmd: string, params: unknown = {}, timeoutMs?: number): Promise<T> {
+    if (this.disposed) throw new BridgeProtocolError("DISPOSED", "Bridge client disposed");
+    if (!this.session) throw new BridgeProtocolError("NOT_STARTED", "Bridge client not started");
     if (!this.connected) {
-      return Promise.reject(new BridgeProtocolError("UNAVAILABLE", "MadarWA engine is not connected"));
+      try {
+        await this.waitForReady(this.graceMs);
+      } catch {
+        if (this.disposed) throw new BridgeProtocolError("DISPOSED", "Bridge client disposed");
+        throw new BridgeProtocolError("UNAVAILABLE", "MadarWA engine is not connected");
+      }
     }
+    return this.dispatchRequest<T>(cmd, params, timeoutMs);
+  }
 
+  private dispatchRequest<T>(cmd: string, params: unknown, timeoutMs?: number): Promise<T> {
+    if (!this.session) return Promise.reject(new BridgeProtocolError("NOT_STARTED", "Bridge client not started"));
     const reqId = randomToken(8);
     this.seq += 1;
     const raw = encodeEnvelope(this.session.key, this.session.sid, this.seq, "req", {
@@ -381,6 +424,9 @@ export class BridgeClient {
   }
 
   waitForReady(timeoutMs = 15_000): Promise<void> {
+    if (this.disposed) return Promise.reject(new BridgeProtocolError("DISPOSED", "Bridge disposed"));
+    // A throttled tab may not have run its heartbeat yet; probe right away.
+    if (!this.connected && this.started) this.sendHandshake();
     if (this.connected) return Promise.resolve();
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -392,15 +438,20 @@ export class BridgeClient {
     });
   }
 
+  private rejectPending(code: string, message: string): void {
+    const entries = [...this.pending.values()];
+    this.pending.clear();
+    for (const entry of entries) {
+      clearTimeout(entry.timer);
+      entry.reject(new BridgeProtocolError(code, `${message}: ${entry.cmd}`));
+    }
+  }
+
   dispose(): void {
     this.disposed = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
-    for (const [, entry] of this.pending) {
-      clearTimeout(entry.timer);
-      entry.reject(new BridgeProtocolError("DISPOSED", `Command aborted: ${entry.cmd}`));
-    }
-    this.pending.clear();
+    this.rejectPending("DISPOSED", "Command aborted");
     for (const waiter of this.readyWaiters.splice(0)) {
       clearTimeout(waiter.timer);
       waiter.reject(new BridgeProtocolError("DISPOSED", "Bridge disposed"));

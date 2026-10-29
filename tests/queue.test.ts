@@ -175,6 +175,55 @@ describe("broadcast queue", () => {
     expect(queue.snapshot()).toMatchObject({ processed: 3, sent: 0, failed: 3 });
   });
 
+  it("keeps the remaining anti-ban delay when paused and resumed mid-delay", async () => {
+    let clock = 0;
+    const timers: Array<{ until: number; resolve: () => void }> = [];
+    const advance = (ms: number) => {
+      clock += ms;
+      for (const timer of [...timers]) {
+        if (timer.until > clock) continue;
+        timers.splice(timers.indexOf(timer), 1);
+        timer.resolve();
+      }
+    };
+    const sentAt: number[] = [];
+
+    const queue = new BroadcastQueue<string>(
+      items.slice(0, 2),
+      {
+        minDelaySec: 10,
+        maxDelaySec: 10,
+        batchSize: 10,
+        batchCooldownSec: 0,
+        now: () => clock,
+        sleep: (ms) => new Promise<void>((resolve) => timers.push({ until: clock + ms, resolve })),
+      },
+      {
+        onItem: async () => {
+          sentAt.push(clock);
+          return { status: "sent" };
+        },
+        onProgress: () => undefined,
+        onLog: () => undefined,
+        onStateChange: () => undefined,
+      },
+    );
+
+    queue.start();
+    await waitFor(() => sentAt.length === 1 && timers.length === 1);
+    advance(3000);
+    queue.pause();
+    advance(1000);
+    queue.resume();
+    await wait(20);
+    // Resuming 4s into a 10s delay must not send at once.
+    expect(sentAt).toEqual([0]);
+
+    advance(6000);
+    await waitFor(() => sentAt.length === 2);
+    expect(sentAt).toEqual([0, 10_000]);
+  });
+
   it("completes synchronously for an empty queue", () => {
     const queue = new BroadcastQueue<string>(
       [],

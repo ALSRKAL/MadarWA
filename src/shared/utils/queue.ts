@@ -141,6 +141,21 @@ export class BroadcastQueue<T> {
     return new Promise<void>((resolve) => this.waiters.push(resolve));
   }
 
+  /** A wake-up signal that can be withdrawn, so finished sleeps leave no waiter behind. */
+  private wakeSignal(): { promise: Promise<true>; cancel: () => void } {
+    let waiter: (() => void) | null = null;
+    const promise = new Promise<true>((resolve) => {
+      waiter = () => resolve(true);
+      this.waiters.push(waiter);
+    });
+    return {
+      promise,
+      cancel: () => {
+        this.waiters = this.waiters.filter((entry) => entry !== waiter);
+      },
+    };
+  }
+
   private isStopped(): boolean {
     return this.statusValue === "stopped";
   }
@@ -152,9 +167,24 @@ export class BroadcastQueue<T> {
     return this.statusValue === "running" && token === this.runToken;
   }
 
+  /**
+   * Anti-ban delay. Pausing and resuming in the middle of a delay keeps the
+   * remaining time: resume continues the countdown, so it never triggers an
+   * immediate send. Stop ends the delay at once.
+   */
   private async sleep(ms: number, token: number): Promise<void> {
     if (ms <= 0 || token !== this.runToken) return;
-    await Promise.race([this.config.sleep(ms), this.waitForWake()]);
+    const deadline = this.config.now() + ms;
+    let remaining = ms;
+    while (token === this.runToken && !this.isStopped()) {
+      const wake = this.wakeSignal();
+      const woken = await Promise.race([this.config.sleep(remaining).then(() => false as const), wake.promise]);
+      wake.cancel();
+      if (!woken) return;
+      if (!(await this.waitWhilePaused(token))) return;
+      remaining = deadline - this.config.now();
+      if (remaining <= 0) return;
+    }
   }
 
   private async runLoop(token: number): Promise<void> {

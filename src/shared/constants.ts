@@ -3,6 +3,14 @@ export const EXTENSION_VERSION = "1.0.0";
 export const ENGINE_VERSION = "1.0.0";
 
 export const WHATSAPP_ORIGIN = "https://web.whatsapp.com";
+export const WHATSAPP_URL = `${WHATSAPP_ORIGIN}/`;
+export const WHATSAPP_TAB_PATTERN = `${WHATSAPP_ORIGIN}/*`;
+
+export const PROJECT_URL = "https://github.com/ALSRKAL/MadarWA";
+export const PROJECT_DOCS_URL = `${PROJECT_URL}#readme`;
+
+/** Language names are shown in their own script and never translated. */
+export const LANGUAGE_LABELS = { ar: "عربي", en: "EN" } as const;
 
 export const STORAGE_KEYS = {
   settings: "madarwa:settings",
@@ -33,6 +41,12 @@ export const BRIDGE = {
   commandResponse: "MADARWA_CMD_RESPONSE",
   eventStream: "MADARWA_EVENT_STREAM",
   handshakeRetryMs: 500,
+  /** Heartbeat interval while connected; the probe itself is synchronous. */
+  steadyHandshakeMs: 3000,
+  /** A connection is only declared lost when a probe fails AND no ack arrived for this long. */
+  staleAfterMs: 15_000,
+  /** How long a command waits for a momentarily lost connection before failing. */
+  connectGraceMs: 4000,
   requestTimeoutMs: 30_000,
   longRequestTimeoutMs: 120_000,
   maxEnvelopeBytes: 8_000_000,
@@ -57,6 +71,30 @@ export const BRIDGE_COMMANDS = {
   configureAntiDelete: "antidelete.configure",
   preindexMessages: "antidelete.preindex",
   revokedIndex: "antidelete.revokedIndex",
+} as const;
+
+/** Webhook delivery policy (service worker). */
+export const WEBHOOK = {
+  timeoutMs: 20_000,
+  maxBodyBytes: 512_000,
+  /** Waits before each retry of a transient failure; two retries after the first attempt. */
+  retryDelaysMs: [1000, 4000],
+  /** Upper bound for a receiver's Retry-After hint. */
+  maxRetryAfterMs: 10_000,
+  /** Same id on every retry so receivers can drop duplicates. */
+  deliveryHeader: "X-MadarWA-Delivery",
+} as const;
+
+/** Campaign safety policy. */
+export const CAMPAIGN = {
+  /** Per-recipient failures in a row before the campaign pauses itself for review. */
+  maxConsecutiveFailures: 5,
+  /** Retries of a send that never reached WhatsApp (safe: nothing was sent). */
+  maxTransportRetries: 3,
+  /** Safety-net poll while waiting for WhatsApp to come back. */
+  connectionPollMs: 2000,
+  /** Bridge envelope limit for attachments. */
+  maxAttachmentBytes: 4 * 1024 * 1024,
 } as const;
 
 export const QUICK_TOOLS = {

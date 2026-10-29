@@ -205,6 +205,8 @@ export interface CampaignState {
   startedAt: number;
   finishedAt: number;
   logs: CampaignLogEntry[];
+  /** Auto-paused because WhatsApp is unreachable; resumes by itself when it is back. */
+  waitingForConnection?: boolean;
 }
 
 export interface WebhookLogEntry {
@@ -215,6 +217,8 @@ export interface WebhookLogEntry {
   status: number;
   error: string;
   event: string;
+  /** Delivery attempts including retries of transient failures. */
+  attempts?: number;
 }
 
 export interface PrivacyGuardStatus {
@@ -234,6 +238,10 @@ export interface EngineInfo {
   wppVersion: string;
   me: string;
   connected: boolean;
+  /** WhatsApp Web has been loading for longer than expected; the engine keeps waiting. */
+  slow?: boolean;
+  /** Random id of the MAIN-world engine instance; changes only when the engine restarts. */
+  bootId?: string;
 }
 
 export interface IncomingMessageEvent extends MediaMetadata {

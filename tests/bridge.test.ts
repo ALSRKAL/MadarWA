@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BRIDGE } from "../src/shared/constants";
 import { BridgeClient, BridgeEngine } from "../src/shared/bridge/bridge";
 import {
@@ -216,5 +216,95 @@ describe("bridge engine/client", () => {
     const pending = client.request("hang", {}, 5000);
     client.dispose();
     await expect(pending).rejects.toBeInstanceOf(BridgeProtocolError);
+  });
+});
+
+describe("bridge liveness and recovery", () => {
+  function throttledPair(commandHandler: (cmd: string, params: unknown) => Promise<unknown>) {
+    const engine = new BridgeEngine({ target: window, origin, commandHandler });
+    const client = new BridgeClient({
+      target: window,
+      origin,
+      handshakeRetryMs: 500,
+      steadyHandshakeMs: 3000,
+      staleAfterMs: 15_000,
+      sessionFactory: () => ({ sid, key }),
+    });
+    const changes: boolean[] = [];
+    client.onConnectionChange((connected) => changes.push(connected));
+    client.start();
+    cleanup.push(() => client.dispose());
+    cleanup.push(() => engine.dispose());
+    return { engine, client, changes };
+  }
+
+  it("stays connected when a hidden tab throttles the heartbeat to once a minute", () => {
+    vi.useFakeTimers();
+    try {
+      const { client, changes } = throttledPair(async () => ({ ok: true }));
+      expect(client.isConnected()).toBe(true);
+
+      // Chrome's intensive throttling: no timer runs for a minute, then one does.
+      vi.setSystemTime(Date.now() + 60_000);
+      vi.advanceTimersByTime(500);
+
+      expect(client.isConnected()).toBe(true);
+      expect(changes).toEqual([true]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("declares the connection lost only when the engine stops answering, and fails in-flight commands fast", async () => {
+    vi.useFakeTimers();
+    try {
+      const { engine, client, changes } = throttledPair(async () => new Promise(() => undefined));
+      const pending = client.request("hang", {}, 120_000);
+      const outcome = pending.catch((error: unknown) => error);
+
+      engine.dispose();
+      vi.setSystemTime(Date.now() + 20_000);
+      vi.advanceTimersByTime(500);
+
+      expect(client.isConnected()).toBe(false);
+      expect(changes).toEqual([true, false]);
+      await expect(outcome).resolves.toMatchObject({ code: "CONNECTION_LOST" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds a command during a short outage and sends it once the engine is back", async () => {
+    const client = new BridgeClient({
+      target: window,
+      origin,
+      handshakeRetryMs: 20,
+      connectGraceMs: 1500,
+      requestTimeoutMs: 1000,
+      sessionFactory: () => ({ sid, key }),
+    });
+    client.start();
+    cleanup.push(() => client.dispose());
+    expect(client.isConnected()).toBe(false);
+
+    const pending = client.request<{ echoed: string }>("echo", { echoed: "رسالة" });
+    await wait(120);
+    const engine = new BridgeEngine({ target: window, origin, commandHandler: async (_cmd, params) => params });
+    cleanup.push(() => engine.dispose());
+
+    await expect(pending).resolves.toEqual({ echoed: "رسالة" });
+  });
+
+  it("gives up with UNAVAILABLE after the grace period when no engine exists", async () => {
+    const client = new BridgeClient({
+      target: window,
+      origin,
+      handshakeRetryMs: 20,
+      connectGraceMs: 80,
+      sessionFactory: () => ({ sid, key }),
+    });
+    client.start();
+    cleanup.push(() => client.dispose());
+    await expect(client.request("anything", {})).rejects.toMatchObject({ code: "UNAVAILABLE" });
   });
 });

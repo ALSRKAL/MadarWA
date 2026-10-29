@@ -1,5 +1,6 @@
+import { connectionLabelKey, connectionTone } from "../shared/connection";
 import { tFor } from "../shared/i18n";
-import { useAppStore } from "./store";
+import { selectConnectionPhase, useAppStore } from "./store";
 
 const HOST_ID = "madarwa-launcher-host";
 
@@ -175,17 +176,16 @@ export class LauncherManager {
     const state = useAppStore.getState();
     if (!this.button) return;
 
-    const language = state.settings.language;
-    const label = tFor(language)("launcher.open");
-    this.button.title = label;
-    this.button.setAttribute("aria-label", label);
+    const t = tFor(state.settings.language);
+    const phase = selectConnectionPhase(state);
+    const label = `${t("launcher.open")} · ${t(connectionLabelKey(phase))}`;
+    if (this.button.title !== label) {
+      this.button.title = label;
+      this.button.setAttribute("aria-label", label);
+    }
     this.button.dataset.active = String(state.panelOpen);
     this.button.dataset.theme = state.theme;
-    this.button.dataset.state = !state.bridgeConnected
-      ? "offline"
-      : state.engine.ready && state.engine.connected
-        ? "live"
-        : "waiting";
+    this.button.dataset.state = connectionTone(phase);
 
     if (this.badge) {
       const count = state.vault.length;

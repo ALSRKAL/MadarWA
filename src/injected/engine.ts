@@ -1,9 +1,11 @@
 import { BRIDGE_COMMANDS, ENGINE_VERSION, UI_LIMITS } from "../shared/constants";
 import { BridgeEngine } from "../shared/bridge/bridge";
+import { randomToken } from "../shared/bridge/protocol";
 import { mergeSettings } from "../shared/defaults";
 import { MediaVaultCache, type MediaVaultRecord } from "../shared/media-vault";
 import type {
   ContactRow,
+  EngineInfo,
   EnginePingResult,
   GroupParticipantRow,
   GroupSummary,
@@ -105,6 +107,8 @@ function serializeSend(result: WppSendResult): SendResult {
 
 class MadarEngine {
   private readonly bridge: BridgeEngine;
+  private readonly bootId = randomToken(8);
+  private slow = false;
   private wpp: WppApi | null = null;
   private eventsAttached = false;
   private eventRetries = 0;
@@ -127,13 +131,19 @@ class MadarEngine {
 
   private async bootstrap(): Promise<void> {
     try {
-      const wpp = await waitForWpp();
+      const wpp = await waitForWpp({
+        onSlow: () => {
+          this.slow = true;
+          this.bridge.emit("engine.state", this.info());
+        },
+      });
+      this.slow = false;
       this.wpp = wpp;
       this.attachEvents();
       this.attachStoreEvents();
       this.indexExistingMessages();
       window.setTimeout(() => this.indexExistingMessages(), 4000);
-      const info = engineInfo(wpp);
+      const info = this.info();
       window.__MADARWA_ENGINE__ = { version: ENGINE_VERSION, ready: true };
       this.bridge.announceReady({ ready: true, wppVersion: info.wppVersion, me: info.me });
       this.bridge.emit("engine.state", info);
@@ -473,8 +483,13 @@ class MadarEngine {
 
   private handleConnectionChange = (): void => {
     if (!this.wpp) return;
-    this.bridge.emit("engine.state", engineInfo(this.wpp));
+    this.bridge.emit("engine.state", this.info());
   };
+
+  /** Engine state shared by ping replies and pushed `engine.state` events. */
+  private info(): EngineInfo {
+    return { ...engineInfo(this.wpp), slow: this.slow, bootId: this.bootId };
+  }
 
   private handleNewMessage = (raw: unknown): void => {
     if (!this.wpp) return;
@@ -893,9 +908,8 @@ class MadarEngine {
   }
 
   private ping(): EnginePingResult {
-    const info = engineInfo(this.wpp);
     return {
-      ...info,
+      ...this.info(),
       engineVersion: ENGINE_VERSION,
       supportedWhatsappWeb: SUPPORTED_WA_JS,
     };

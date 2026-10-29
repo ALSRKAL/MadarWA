@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { connectionPhase, type ConnectionPhase } from "../shared/connection";
 import { tFor } from "../shared/i18n";
 import { createDefaultSettings } from "../shared/defaults";
 import type {
@@ -15,12 +16,18 @@ import type {
 export type TabId = "privacy" | "broadcaster" | "autoreply" | "exporter" | "vault" | "tools";
 export type ThemeName = "light" | "dark";
 
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 export interface ToastItem {
   id: string;
   kind: "success" | "error" | "info" | "deleted";
   title: string;
   body: string;
   at: number;
+  action?: ToastAction;
 }
 
 export interface ValidationState {
@@ -52,6 +59,10 @@ interface AppState {
   settings: AppSettings;
   engine: EngineInfo;
   bridgeConnected: boolean;
+  /** True once the bridge connected at least once; a later drop reads as "reconnecting". */
+  everConnected: boolean;
+  /** The extension was reloaded/updated while this page stayed open. */
+  orphaned: boolean;
   theme: ThemeName;
   activeTab: TabId;
   panelOpen: boolean;
@@ -67,6 +78,7 @@ interface AppState {
   setSettings: (settings: AppSettings) => void;
   setEngine: (engine: EngineInfo) => void;
   setBridgeConnected: (connected: boolean) => void;
+  setOrphaned: (orphaned: boolean) => void;
   setTheme: (theme: ThemeName) => void;
   setTab: (tab: TabId) => void;
   openPanel: (tab?: TabId) => void;
@@ -94,6 +106,8 @@ export const useAppStore = create<AppState>((set) => ({
   settings: createDefaultSettings(),
   engine: { ready: false, wppVersion: "", me: "", connected: false },
   bridgeConnected: false,
+  everConnected: false,
+  orphaned: false,
   theme: "dark",
   activeTab: "privacy",
   panelOpen: false,
@@ -109,7 +123,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   setSettings: (settings) => set({ settings }),
   setEngine: (engine) => set({ engine }),
-  setBridgeConnected: (bridgeConnected) => set({ bridgeConnected }),
+  setBridgeConnected: (bridgeConnected) =>
+    set((state) => ({ bridgeConnected, everConnected: state.everConnected || bridgeConnected })),
+  setOrphaned: (orphaned) => set({ orphaned }),
   setTheme: (theme) => set({ theme }),
   setTab: (activeTab) => set({ activeTab }),
   openPanel: (tab) => set((state) => ({ panelOpen: true, activeTab: tab ?? state.activeTab })),
@@ -148,6 +164,19 @@ export const useAppStore = create<AppState>((set) => ({
 }));
 
 export const useSettings = (): AppSettings => useAppStore((state) => state.settings);
+
+export function selectConnectionPhase(
+  state: Pick<AppState, "bridgeConnected" | "engine" | "orphaned" | "everConnected">,
+): ConnectionPhase {
+  return connectionPhase({
+    bridgeConnected: state.bridgeConnected,
+    engine: state.engine,
+    orphaned: state.orphaned,
+    everConnected: state.everConnected,
+  });
+}
+
+export const useConnectionPhase = (): ConnectionPhase => useAppStore(selectConnectionPhase);
 
 export const useT = (): ((key: string, variables?: Record<string, unknown>) => string) => {
   const language = useAppStore((state) => state.settings.language);

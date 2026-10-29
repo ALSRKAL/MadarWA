@@ -1,13 +1,46 @@
-import { EXTENSION_VERSION, RUNTIME_MESSAGES, STORAGE_KEYS } from "../shared/constants";
+import { EXTENSION_VERSION, RUNTIME_MESSAGES, STORAGE_KEYS, WEBHOOK, WHATSAPP_TAB_PATTERN, WHATSAPP_URL } from "../shared/constants";
 import { mergeSettings } from "../shared/defaults";
+import { isRetryableStatus, retryDelayMs } from "../shared/utils/retry";
 import { buildWebhookHeaders, validateWebhookUrl } from "../shared/utils/security";
 import type { AppSettings, WebhookLogEntry, WebhookPayload } from "../shared/types";
 
 const MAINTENANCE_ALARM = "madarwa:maintenance";
-const MAX_WEBHOOK_BODY = 512_000;
-const WEBHOOK_TIMEOUT_MS = 20_000;
 
 let logChain: Promise<void> = Promise.resolve();
+
+interface DeliveryAttempt {
+  response: Response | null;
+  error: string;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** One POST with a hard timeout. Never throws; failures come back as `error`. */
+async function attemptDelivery(url: string, headers: Record<string, string>, body: string): Promise<DeliveryAttempt> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEBHOOK.timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      signal: controller.signal,
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+      cache: "no-store",
+    });
+    void response.body?.cancel().catch(() => undefined);
+    return { response, error: response.ok ? "" : `HTTP ${response.status}` };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { response: null, error: /abort/i.test(message) ? "Request timed out" : message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function uid(): string {
   try {
@@ -82,7 +115,7 @@ async function postWebhook(
   }
 
   const body = JSON.stringify(payload);
-  if (body.length > MAX_WEBHOOK_BODY) {
+  if (body.length > WEBHOOK.maxBodyBytes) {
     const result = { ok: false, status: 0, error: "Payload too large" };
     await appendWebhookLog({
       id: uid(),
@@ -96,56 +129,37 @@ async function postWebhook(
     return result;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(check.url, {
-      method: "POST",
-      headers: buildWebhookHeaders(settings.webhook.token),
-      body,
-      signal: controller.signal,
-      credentials: "omit",
-      redirect: "error",
-      referrerPolicy: "no-referrer",
-      cache: "no-store",
-    });
-    void response.body?.cancel();
-    const result = {
-      ok: response.ok,
-      status: response.status,
-      error: response.ok ? "" : `HTTP ${response.status}`,
-    };
-    await appendWebhookLog({
-      id: uid(),
-      at: Date.now(),
-      url: redactUrl(check.url),
-      ok: result.ok,
-      status: result.status,
-      error: result.error,
-      event: payload.event,
-    });
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const result = {
-      ok: false,
-      status: 0,
-      error: message.toLowerCase().includes("abort") ? "Request timed out" : message,
-    };
-    await appendWebhookLog({
-      id: uid(),
-      at: Date.now(),
-      url: redactUrl(check.url),
-      ok: false,
-      status: 0,
-      error: result.error.slice(0, 300),
-      event: payload.event,
-    });
-    return result;
-  } finally {
-    clearTimeout(timer);
+  const headers = { ...buildWebhookHeaders(settings.webhook.token), [WEBHOOK.deliveryHeader]: uid() };
+  // A test should answer at once; real events retry transient failures
+  // (network errors, timeouts, 408/425/429/5xx) so a blip does not lose them.
+  const maxAttempts = payload.event === "test" ? 1 : WEBHOOK.retryDelaysMs.length + 1;
+  let attempts = 0;
+  let outcome: DeliveryAttempt = { response: null, error: "" };
+  while (attempts < maxAttempts) {
+    outcome = await attemptDelivery(check.url, headers, body);
+    attempts += 1;
+    const response = outcome.response;
+    const retryable = response ? !response.ok && isRetryableStatus(response.status) : true;
+    if (!retryable || attempts >= maxAttempts) break;
+    await sleep(retryDelayMs(attempts - 1, response?.headers.get("retry-after") ?? null));
   }
+
+  const result = {
+    ok: Boolean(outcome.response?.ok),
+    status: outcome.response?.status ?? 0,
+    error: outcome.error,
+  };
+  await appendWebhookLog({
+    id: uid(),
+    at: Date.now(),
+    url: redactUrl(check.url),
+    ok: result.ok,
+    status: result.status,
+    error: result.error.slice(0, 300),
+    event: payload.event,
+    attempts,
+  });
+  return result;
 }
 
 async function handleDeliver(message: Record<string, unknown>): Promise<unknown> {
@@ -188,13 +202,17 @@ async function handleTest(): Promise<{ ok: boolean; status: number; error: strin
 }
 
 async function focusWhatsApp(): Promise<void> {
-  const tabs = await chrome.tabs.query({ url: "https://web.whatsapp.com/*" });
-  const tab = tabs[0];
-  if (tab?.id) {
-    await chrome.tabs.update(tab.id, { active: true });
-    if (tab.windowId) await chrome.windows.update(tab.windowId, { focused: true });
-  } else {
-    await chrome.tabs.create({ url: "https://web.whatsapp.com/" });
+  try {
+    const tabs = await chrome.tabs.query({ url: WHATSAPP_TAB_PATTERN });
+    const tab = tabs.find((entry) => entry.active) ?? tabs[0];
+    if (tab?.id) {
+      await chrome.tabs.update(tab.id, { active: true });
+      if (tab.windowId !== undefined) await chrome.windows.update(tab.windowId, { focused: true });
+    } else {
+      await chrome.tabs.create({ url: WHATSAPP_URL });
+    }
+  } catch {
+    // The tab or window closed between query and focus; nothing to recover.
   }
 }
 
@@ -205,19 +223,24 @@ async function ensureAlarm(): Promise<void> {
   }
 }
 
+/** Fire-and-forget for listeners: a failed badge or alarm call must not surface as an unhandled rejection. */
+function runQuietly(task: Promise<unknown>): void {
+  task.catch(() => undefined);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  void ensureAlarm();
-  void refreshBadge();
+  runQuietly(ensureAlarm());
+  runQuietly(refreshBadge());
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void ensureAlarm();
-  void refreshBadge();
+  runQuietly(ensureAlarm());
+  runQuietly(refreshBadge());
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== MAINTENANCE_ALARM) return;
-  void (async () => {
+  runQuietly((async () => {
     const settings = await loadSettings();
     const stored = await chrome.storage.local.get([STORAGE_KEYS.messageCache, STORAGE_KEYS.webhookLog]);
     const cache = stored[STORAGE_KEYS.messageCache];
@@ -230,21 +253,21 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       await chrome.storage.local.set({ [STORAGE_KEYS.webhookLog]: log.slice(0, 60) });
     }
     await refreshBadge();
-  })();
+  })());
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes[STORAGE_KEYS.vault]) {
     const vault = changes[STORAGE_KEYS.vault]?.newValue;
-    void updateBadge(Array.isArray(vault) ? vault.length : 0);
+    runQuietly(updateBadge(Array.isArray(vault) ? vault.length : 0));
   }
 });
 
 chrome.notifications.onClicked.addListener((notificationId) => {
   if (!notificationId.startsWith("madarwa-")) return;
-  void focusWhatsApp();
-  void chrome.notifications.clear(notificationId);
+  runQuietly(focusWhatsApp());
+  runQuietly(chrome.notifications.clear(notificationId));
 });
 
 type MessageType = (typeof RUNTIME_MESSAGES)[keyof typeof RUNTIME_MESSAGES];

@@ -258,7 +258,19 @@ export function isIgnoredChat(chatId: string): boolean {
   return /@(broadcast|newsletter|status)$/i.test(chatId) || chatId === "status@broadcast";
 }
 
-export function waitForWpp(timeoutMs = 120_000): Promise<WppApi> {
+export interface WaitForWppOptions {
+  /** After this long `onSlow` fires once; waiting continues regardless. */
+  slowAfterMs?: number;
+  onSlow?: () => void;
+}
+
+/**
+ * Resolves once wa-js has hooked WhatsApp's webpack runtime. It never gives
+ * up: on slow networks WhatsApp can take minutes to boot, and a hard timeout
+ * would leave the engine dead until the user reloads the page.
+ */
+export function waitForWpp(options: WaitForWppOptions = {}): Promise<WppApi> {
+  const slowAfterMs = options.slowAfterMs ?? 120_000;
   const ready = (wpp: WppApi | undefined): wpp is WppApi => {
     if (!wpp) return false;
     if (wpp.loader?.isReady === true) return true;
@@ -268,10 +280,10 @@ export function waitForWpp(timeoutMs = 120_000): Promise<WppApi> {
 
   if (ready(window.WPP)) return Promise.resolve(window.WPP);
 
-  return new Promise<WppApi>((resolve, reject) => {
+  return new Promise<WppApi>((resolve) => {
     let finished = false;
     let interval = 0;
-    let timeout = 0;
+    let slowTimer = 0;
 
     const finish = () => {
       if (finished) return;
@@ -279,16 +291,8 @@ export function waitForWpp(timeoutMs = 120_000): Promise<WppApi> {
       if (!ready(wpp)) return;
       finished = true;
       window.clearInterval(interval);
-      window.clearTimeout(timeout);
+      window.clearTimeout(slowTimer);
       resolve(wpp);
-    };
-
-    const fail = () => {
-      if (finished) return;
-      finished = true;
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-      reject(new Error("WPP_READY_TIMEOUT"));
     };
 
     const loader = window.WPP?.loader ?? window.WPP?.webpack;
@@ -301,7 +305,17 @@ export function waitForWpp(timeoutMs = 120_000): Promise<WppApi> {
     }
 
     interval = window.setInterval(finish, 350);
-    timeout = window.setTimeout(fail, timeoutMs);
+    slowTimer = window.setTimeout(() => {
+      if (finished) return;
+      // Keep waiting, but poll less often once loading is clearly slow.
+      window.clearInterval(interval);
+      interval = window.setInterval(finish, 1000);
+      try {
+        options.onSlow?.();
+      } catch {
+        // Diagnostics must never stop the wait.
+      }
+    }, slowAfterMs);
     finish();
   });
 }

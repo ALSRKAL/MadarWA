@@ -31,6 +31,7 @@ import type {
   RevokedRowIndexEntry,
   WebhookLogEntry,
 } from "../shared/types";
+import { CLIENT_ERROR_CODES, codedError } from "../shared/errors";
 import { truncate, uid } from "../shared/format";
 import { extractStanzaId } from "../shared/utils/revoke";
 import type { Attachment, StartCampaignInput } from "./broadcast";
@@ -68,6 +69,7 @@ function asCampaignReport(value: unknown): { campaign: CampaignState; recipients
       ...campaign,
       status,
       logs: campaign.logs.slice(-500) as CampaignLogEntry[],
+      waitingForConnection: false,
     },
     recipients,
   };
@@ -113,7 +115,13 @@ export class ContentController {
   private pingTimer = 0;
   private lastEngineErrorAt = 0;
   private lastAutoReplyErrorAt = 0;
+  private orphaned = false;
+  private contextTimer = 0;
   private engineReady = false;
+  private engineAuthed = false;
+  private engineBootId = "";
+  private syncRunning: Promise<void> | null = null;
+  private syncAgain = false;
   private preindexRequested = false;
   private revokedIndexBusy = false;
 
@@ -169,12 +177,11 @@ export class ContentController {
 
     this.bridge.onConnectionChange((connected) => {
       useAppStore.getState().setBridgeConnected(connected);
-      this.preindexRequested = false;
       if (connected) {
-        this.engineReady = false;
-        void this.refreshEngineInfo(true);
+        // The ping reply carries the engine boot id; config is re-pushed only
+        // if the engine actually restarted, not on every reconnect.
+        void this.refreshEngineInfo();
       } else {
-        this.engineReady = false;
         const current = useAppStore.getState().engine;
         useAppStore.getState().setEngine({ ...current, ready: false, connected: false });
       }
@@ -223,20 +230,26 @@ export class ContentController {
     this.setupActivityTracking();
     this.launcher.start();
     this.registerRuntimeMessages();
-
-    void this.bridge
-      .waitForReady(20_000)
-      .then(() => this.refreshEngineInfo(true))
-      .catch(() => undefined);
+    this.contextTimer = window.setInterval(() => this.checkExtensionContext(), 5000);
 
     this.pingTimer = window.setInterval(() => {
-      if (this.bridge.isConnected()) {
-        void this.refreshEngineInfo(false);
-        // A chat can load new store models after the initial scan; refreshing
-        // the revoke index keeps already-visible deleted rows restorable.
-        void this.requestRevokedIndex();
-      }
+      if (!this.bridge.isConnected()) return;
+      void this.refreshEngineInfo();
+      // A chat can load new store models after the initial scan; refreshing
+      // the revoke index keeps already-visible deleted rows restorable. No
+      // rows render while the tab is hidden, so skip the scan until visible.
+      if (!document.hidden) void this.requestRevokedIndex();
     }, 6000);
+
+    const onVisible = () => {
+      if (document.hidden) return;
+      this.checkExtensionContext();
+      if (!this.bridge.isConnected()) return;
+      void this.refreshEngineInfo();
+      void this.requestRevokedIndex();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    this.cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
   }
 
   private handleEngineEvent(event: string, data: unknown): void {
@@ -255,19 +268,9 @@ export class ContentController {
       case "autoreply.error":
         this.showAutoReplyError(data);
         break;
-      case "engine.state": {
-        const info = data as EngineInfo;
-        useAppStore.getState().setEngine(info);
-        if (info.ready && !this.engineReady) {
-          this.engineReady = true;
-          this.preindexRequested = false;
-          this.resetPushSignatures();
-          void this.pushConfig();
-          void this.requestPreindex();
-          void this.requestRevokedIndex();
-        }
+      case "engine.state":
+        if (typeof data === "object" && data !== null) this.applyEngineInfo(data as EngineInfo);
         break;
-      }
       case "engine.error":
         this.showEngineError(data);
         break;
@@ -276,21 +279,45 @@ export class ContentController {
     }
   }
 
-  private async refreshEngineInfo(forcePush: boolean): Promise<void> {
+  private async refreshEngineInfo(): Promise<void> {
     try {
       const info = await this.bridge.request<EnginePingResult>(BRIDGE_COMMANDS.ping, {}, 8000);
-      const wasReady = this.engineReady;
-      useAppStore.getState().setEngine(info);
-      this.engineReady = info.ready;
-      if (info.ready && (!wasReady || forcePush)) {
-        this.preindexRequested = false;
-        this.resetPushSignatures();
-        void this.pushConfig();
-        void this.requestPreindex();
-        void this.requestRevokedIndex();
-      }
+      this.applyEngineInfo(info);
     } catch {
       // Connection listeners handle availability; avoid noisy toasts.
+    }
+  }
+
+  /**
+   * Single entry point for engine state, from ping replies and pushed events.
+   * Config is synced only on a real transition: the engine restarted, became
+   * ready, or WhatsApp finished logging in. A reconnect or a duplicate
+   * ready signal does not re-send anything.
+   */
+  private applyEngineInfo(info: EngineInfo): void {
+    if (info.bootId && info.bootId !== this.engineBootId) {
+      this.engineBootId = info.bootId;
+      this.engineReady = false;
+      this.engineAuthed = false;
+    }
+    useAppStore.getState().setEngine(info);
+
+    const wasReady = this.engineReady;
+    const wasUsable = this.engineReady && this.engineAuthed;
+    this.engineReady = info.ready;
+    this.engineAuthed = info.connected;
+    const usable = info.ready && info.connected;
+
+    if (usable && !wasUsable) {
+      // Logged in (or engine restarted): account-level privacy calls only
+      // succeed now, so everything is re-applied once.
+      this.preindexRequested = false;
+      this.resetPushSignatures();
+      void this.pushConfig();
+      void this.requestPreindex();
+      void this.requestRevokedIndex();
+    } else if (info.ready && !wasReady) {
+      void this.pushConfig();
     }
   }
 
@@ -322,16 +349,63 @@ export class ContentController {
     }, 250);
   }
 
-  private async persistAndPush(settings: AppSettings): Promise<void> {
+  /** Persists settings and pushes them to the engine; resolves to whether the save succeeded. */
+  private async persistAndPush(settings: AppSettings): Promise<boolean> {
     const currentSignature = signature(settings);
+    let saved = true;
     if (currentSignature !== this.lastSaved) {
-      const saved = await saveSettings(settings);
+      saved = await saveSettings(settings);
       if (saved) this.lastSaved = currentSignature;
+      else this.checkExtensionContext();
     }
-    await this.pushConfig(settings);
+    await this.pushConfig();
+    return saved;
   }
 
-  private async pushConfig(settings = useAppStore.getState().settings): Promise<void> {
+  /**
+   * After an extension reload or update, this content script keeps running
+   * but every chrome.* call fails. Detect that once and surface a reload
+   * prompt instead of silently dropping saves. Bridge features keep working
+   * with the old engine, so a running campaign is not interrupted.
+   */
+  private checkExtensionContext(): boolean {
+    if (this.orphaned) return false;
+    if (isExtensionContextValid()) return true;
+    this.orphaned = true;
+    window.clearInterval(this.contextTimer);
+    this.contextTimer = 0;
+    useAppStore.getState().setOrphaned(true);
+    return false;
+  }
+
+  reloadPage(): void {
+    window.location.reload();
+  }
+
+  /**
+   * Single-flight config sync. Concurrent callers share the running sync; a
+   * request that arrives mid-flight schedules exactly one follow-up pass with
+   * the latest settings, so the engine never receives interleaved duplicates.
+   */
+  private pushConfig(): Promise<void> {
+    if (this.syncRunning) {
+      this.syncAgain = true;
+      return this.syncRunning;
+    }
+    this.syncRunning = (async () => {
+      try {
+        do {
+          this.syncAgain = false;
+          await this.pushConfigOnce(useAppStore.getState().settings);
+        } while (this.syncAgain);
+      } finally {
+        this.syncRunning = null;
+      }
+    })();
+    return this.syncRunning;
+  }
+
+  private async pushConfigOnce(settings: AppSettings): Promise<void> {
     if (!this.bridge.isConnected() || !this.engineReady) return;
 
     const privacySignature = JSON.stringify(settings.privacy);
@@ -695,7 +769,12 @@ export class ContentController {
       }
       if (type === RUNTIME_MESSAGES.status) {
         const state = useAppStore.getState();
-        sendResponse({ ok: true, bridgeConnected: state.bridgeConnected, engine: state.engine });
+        sendResponse({
+          ok: true,
+          bridgeConnected: state.bridgeConnected,
+          everConnected: state.everConnected,
+          engine: state.engine,
+        });
         return false;
       }
       return false;
@@ -738,7 +817,7 @@ export class ContentController {
 
   async sendTemplateToActiveChat(text: string): Promise<void> {
     const active = await this.bridge.request<{ chatId: string }>(BRIDGE_COMMANDS.activeChat, {}, 10_000);
-    if (!active.chatId) throw new Error(tFor(useAppStore.getState().settings.language)("errors.noChat"));
+    if (!active.chatId) throw codedError(CLIENT_ERROR_CODES.noActiveChat, "No active chat");
     await this.sendText(active.chatId, text);
   }
 
@@ -750,14 +829,21 @@ export class ContentController {
     return this.broadcast.start(input);
   }
 
-  async saveNow(): Promise<void> {
-    await this.persistAndPush(useAppStore.getState().settings);
+  /** Flushes pending settings immediately; resolves to false if storage rejected the write. */
+  async saveNow(): Promise<boolean> {
+    if (this.settingsTimer) {
+      window.clearTimeout(this.settingsTimer);
+      this.settingsTimer = 0;
+    }
+    return this.persistAndPush(useAppStore.getState().settings);
   }
 
   async testWebhook(): Promise<{ ok: boolean; status: number; error: string }> {
     const settings = useAppStore.getState().settings;
     await this.persistAndPush(settings);
-    if (!isExtensionContextValid()) return { ok: false, status: 0, error: "Extension context unavailable" };
+    if (!this.checkExtensionContext()) {
+      return { ok: false, status: 0, error: tFor(settings.language)("errors.updated") };
+    }
     try {
       const response = (await chrome.runtime.sendMessage({
         type: RUNTIME_MESSAGES.webhookTest,
@@ -815,6 +901,7 @@ export class ContentController {
   dispose(): void {
     window.clearInterval(this.lockTimer);
     window.clearInterval(this.pingTimer);
+    window.clearInterval(this.contextTimer);
     if (this.settingsTimer) window.clearTimeout(this.settingsTimer);
     if (this.cacheFlushTimer) window.clearTimeout(this.cacheFlushTimer);
     if (this.campaignPersistTimer) window.clearTimeout(this.campaignPersistTimer);
