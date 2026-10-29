@@ -18,6 +18,12 @@ describe("revoke key extraction", () => {
     expect(extractStanzaId(stanza)).toBe(stanza);
     expect(extractStanzaId("")).toBe("");
   });
+
+  it("returns the stanza, not the author, for group messages from someone else", () => {
+    expect(extractStanzaId("false_120363000000000000@g.us_3EB0GROUPMSG_966501234567@c.us")).toBe("3EB0GROUPMSG");
+    expect(extractStanzaId("false_120363000000000000@g.us_ACA72FD6_204857193846012@lid")).toBe("ACA72FD6");
+    expect(extractStanzaId("false_204857193846012@lid_ACA72FD67E385C8C")).toBe("ACA72FD67E385C8C");
+  });
 });
 
 describe("cascading revoke resolver", () => {

@@ -25,18 +25,19 @@ export interface RevokeKeyCandidates {
   primary: string;
 }
 
+/**
+ * The stanza id of a serialized message key. WhatsApp serializes keys as
+ * `fromMe_chat_stanza`, and group messages from someone else add the author
+ * as a fourth part (`false_<group>@g.us_<stanza>_<participant>`), so the
+ * stanza is the third part, not the last one. Stanzas and JIDs never contain
+ * "_". A bare stanza is returned as is.
+ */
 export function extractStanzaId(serialized: string): string {
   const value = String(serialized ?? "");
   if (!value) return "";
-  const at = value.indexOf("@");
-  if (at !== -1) {
-    const tail = value.slice(value.lastIndexOf("_") + 1);
-    if (tail && tail !== value) return tail;
-  }
-  if (value.includes("_")) {
-    const tail = value.slice(value.lastIndexOf("_") + 1);
-    if (tail) return tail;
-  }
+  const parts = value.split("_");
+  if (parts.length >= 3 && (parts[0] === "true" || parts[0] === "false")) return parts[2] || value;
+  if (parts.length > 1) return parts[parts.length - 1] || value;
   return value;
 }
 
