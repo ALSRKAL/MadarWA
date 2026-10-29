@@ -105,8 +105,42 @@ plain statistic.
   something is wrong. The unseen count is an accent pill with a ring in the header colour.
 - **Floating launcher:** only on screens without that toolbar (QR, loading); draggable; never shown
   together with the header launcher.
-- **In-chat restore pills** follow WhatsApp's theme (`body[data-madarwa-theme]`), set from
-  WhatsApp's own theme, not from a setting.
+- **In-chat blocks** follow WhatsApp's theme (`body[data-madarwa-theme]`), set from WhatsApp's own
+  theme, not from a setting. They use WhatsApp's palette, the bundled typeface and an 11px floor.
+
+## Deleted messages in the chat
+
+Every deleted bubble in the open chat gets exactly one of two blocks, inside the bubble (the part
+of WhatsApp's message container that holds the time), under WhatsApp's own "This message was
+deleted", which is never removed:
+
+| Block | When | Looks like |
+|---|---|---|
+| **Pill** (`data-madarwa-inline-restore`) | A saved copy has something to show: text, a caption, a preview or a media type | Rounded WhatsApp-green pill "Show deleted message"; opens a panel with the text, times, copy and media |
+| **Note** (`data-madarwa-inline-missing`) | No saved copy, or a saved record whose text never arrived | One quiet line under a hairline: info icon, "No saved copy", and the reason |
+
+Reasons, from what is actually known (`InlineRestorer.missingPlan`):
+
+- **Deleted before MadarWA received it**: a record exists but only the deletion notice arrived, or
+  the message is newer than when saving started. The tooltip explains when MadarWA receives messages.
+- **Older than when saving started (date)**: the message predates `STORAGE_KEYS.captureSince`,
+  written on first run and again whenever saving is switched back on.
+- **Its copy was removed when the vault was cleared (date)**: older than
+  `STORAGE_KEYS.vaultClearedAt`.
+
+Deleted rows are recognised from WhatsApp's own store (the engine's revoked-row index), not from the
+deleted-message text, so the note works in any WhatsApp language.
+
+Staying on screen: the restorer watches the open chat (mutations in `#main` only, 120ms debounce,
+a 4s safety pass) and re-applies blocks whenever WhatsApp renders the chat again: reopening it,
+scrolling, or replacing a bubble. A pill the user opened reopens expanded. A block remembers the row
+id it was built for, so a recycled row is rebuilt instead of showing another message's pill. New
+rows trigger one revoke-index refresh, so deletions loaded by scrolling up get their block too.
+
+No repeats: WhatsApp reports old deletions again after every reload. A deletion already in the
+vault only fills in what it lacked (its revoke id, the real message time, content found later) and
+does not toast, notify or post a webhook again. A deletion with nothing to show that predates saving
+or the last clear is not added to the vault at all; its note explains it.
 
 ## Connection states
 
@@ -153,7 +187,8 @@ only the top layer.
 ## Signature moves
 
 1. **Interactive deleted-message pill** inside the real WhatsApp bubble: restored text, times and
-   copy, a photo lightbox, inline video and voice players, or a document download.
+   copy, a photo lightbox, inline video and voice players, or a document download; and where no
+   copy exists, a note that says why instead of silence.
 2. **Surgical hover-to-reveal:** only the hovered name, number, preview, avatar, message or media
    unblurs (160ms), never the whole screen.
 3. **A launcher that belongs to WhatsApp:** same size, colour and hover as WhatsApp's own toolbar
@@ -177,6 +212,11 @@ cannot control the linked phone, so the option says "best effort" in its descrip
 
 ## Changelog
 
+- **Deleted messages in the chat:** pills come back after WhatsApp re-renders a chat (the watcher
+  never started before), sit inside the bubble, and stay open; a note with the reason replaces the
+  empty "Text" pill and appears under deletions with no copy at all; old deletions no longer re-toast
+  or re-post webhooks after a reload; group message ids parse correctly; in-chat text is 11px or
+  larger in the bundled typeface.
 - **Framed sheet, light only:** frame/sheet shell, IBM Plex Sans Arabic bundled, ink actions,
   accent limited to logo/progress/focus/unseen count, theme setting removed (a stored value from
   older versions is dropped), launcher moved into WhatsApp's toolbar, unseen-only counts,

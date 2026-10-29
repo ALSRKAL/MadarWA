@@ -7,7 +7,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-19694f?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-153%20passing-19694f?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-175%20passing-19694f?style=flat-square" />
   <a href="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ALSRKAL/MadarWA/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-64748b?style=flat-square" />
 </p>
@@ -51,7 +51,7 @@ MadarWA (مدار = Orbit) يضيف زر مدار إلى شريط واتساب �
 |---|---|
 | **الخصوصية والتمويه** | تمويه دقيق لكل عنصر على حدة: أسماء، أرقام هواتف، معاينات، صور شخصية، نص الرسالة، **مربع الكتابة**، ووسائط. موسوم عبر `data-madarwa-el` من `privacyTagger` ثم يُكشف **العنصر الذي يمر عليه المؤشر فقط** خلال 160ms. إخفاء الحالة والكتابة **والتسجيل**، **عرض الحالات بشكل خاص**، وإيقاف إيصالات القراءة والاستماع عبر `WPP.privacy` الحقيقي، وخيار «صح واحد» يحجب **كل** إيصالات واتساب ويب (delivery/read/read-self/inactive/played/sender) مع تحديث عدّاد غير المقروء محلياً فقط (أفضل جهد). |
 | **قفل PIN** | قفل تلقائي بعد خمول قابل للضبط، رمز 4–8 أرقام مخزّن كـ PBKDF2-SHA256 (120,000 دورة + ملح عشوائي). لا يُحفظ الرمز نصاً أبداً. لوحة مفاتيح مدمجة ودعم لوحة المفاتيح. |
-| **خزنة الرسائل المحذوفة** | فهرسة مسبقة لآخر رسائل `MsgStore`، ومراقبة `add` و`change:type` و`chat.msg_revoke`، بما في ذلك نماذج `revoked` التي يضيفها واتساب كصف جديد عبر `add`، مع حل متسلسل لمفتاح الرسالة الأصلي. تنزيل استباقي للوسائط المفكوكة عبر `WPP.chat.downloadMedia` قبل الحذف (≤25MB) وتخزينها في IndexedDB (`madarwa_media_vault`) بحد LRU 150. تُعاد الرسالة المحذوفة **داخل فقاعة واتساب** كزر تفاعلي: نص + نسخ + أوقات، صورة مع Lightbox وتنزيل، فيديو/صوت قابل للتشغيل، ومستند بتنزيله. |
+| **خزنة الرسائل المحذوفة** | فهرسة مسبقة لآخر رسائل `MsgStore`، ومراقبة `add` و`change:type` و`chat.msg_revoke`، بما في ذلك نماذج `revoked` التي يضيفها واتساب كصف جديد عبر `add`، مع حل متسلسل لمفتاح الرسالة الأصلي. تنزيل استباقي للوسائط المفكوكة عبر `WPP.chat.downloadMedia` قبل الحذف (≤25MB) وتخزينها في IndexedDB (`madarwa_media_vault`) بحد LRU 150. تُعاد الرسالة المحذوفة **داخل فقاعة واتساب** كزر تفاعلي: نص + نسخ + أوقات، صورة مع Lightbox وتنزيل، فيديو/صوت قابل للتشغيل، ومستند بتنزيله. يعود الزر فوراً كلما أعاد واتساب رسم المحادثة (فتحها من جديد أو التمرير)، ويبقى مفتوحاً إن كنت فتحته. وإذا لم تُحفظ نسخة، تظهر داخل الفقاعة ملاحظة قصيرة بالسبب: حُذفت قبل أن يستلمها مدار، أو أقدم من بدء الحفظ، أو أُزيلت عند مسح الخزنة. الحذف القديم الذي يعيد واتساب إرساله بعد إعادة التحميل لا يكرر التنبيه ولا الـWebhook. |
 | **الإرسال الجماعي الذكي** | مسار من 3 خطوات (أرقام ← رسالة ← إرسال). لصق أرقام أو رفع CSV/XLSX. تطبيع دولي، تحقق مسبق عبر `contact.queryWidExists`، متغيرات `{{name}}/{{custom1}}/{{custom2}}/{{phone}}`، Spintax، مرفقات حتى 4MB، تأخير عشوائي ودفعات وراحة، إيقاف/استئناف/إيقاف نهائي، إيقاف مؤقت تلقائي عند انقطاع واتساب واستئناف ذاتي دون تخطي أي رقم مع الحفاظ على باقي فاصل الحماية، تقدير المدة قبل البدء، سجل مباشر وتقرير CSV. |
 | **الرد الآلي والقوالب** | قواعد Exact/Contains/StartsWith/Regex/Fallback، نطاق فردي/مجموعات/الكل، تهدئة لكل جهة اتصال، محاكاة كتابة، ومنع التكرار أثناء التنفيذ. تظهر القواعد فقط عند تفعيل الرد الآلي؛ والقوالب جاهزة للإرسال أو الإدراج في حقل الكتابة. |
 | **سحب الأرقام والمجموعات** | جلب المجموعات، أعضاء مجموعة (مع تمييز المشرفين)، جهات الاتصال المحفوظة، المحادثات. تصفية: استبعاد المشرفين، غير المحفوظين، مفتاح الدولة. تصدير CSV بترميز UTF-8 BOM (متوافق مع Excel العربي) أو JSON، مع حماية من حقن صيغ Excel. |
@@ -178,7 +178,7 @@ npm run verify
 | `npm install` | تثبيت الاعتماديات |
 | `npm run dev` | مراقبة `src/`, `public/`, `icons/`, `popup.html` وإعادة بناء `dist/` (بدون HMR؛ أعد تحميل الإضافة/الصفحة) |
 | `npm run typecheck` | `tsc --noEmit` — صفر أخطاء |
-| `npm test` | 153 اختبار Vitest |
+| `npm test` | 175 اختبار Vitest |
 | `npm run test:watch` | الاختبارات في وضع المراقبة |
 | `npm run build` | بناء Popup + content + preload + injected + background ونسخ wa-js والأيقونات |
 | `npm run verify` | 99 فحصاً هيكلياً على `dist/` |
@@ -187,7 +187,7 @@ npm run verify
 
 ### الاختبارات والتحقق
 
-**153 اختباراً** في 22 ملفاً:
+**175 اختباراً** في 23 ملفاً:
 
 | الاختبار | العدد | التغطية |
 |---|---:|---|
@@ -203,8 +203,9 @@ npm run verify
 | `queue.test.ts` | 7 | Jitter، الدفعات، Pause/Resume مع الحفاظ على باقي فاصل الحماية، Stop، الأخطاء، طابور فارغ |
 | `defaults-i18n.test.ts` | 6 | تطهير الإعدادات، تطابق مفاتيح ar/en، القيم الافتراضية |
 | `pin.test.ts` | 6 | PBKDF2، ملح فريد، رفض الرمز الخاطئ، صيغة الرمز |
-| `revoke.test.ts` | 6 | حل مفاتيح الإلغاء المتسلسل وfallback للـstanza |
-| `inline-restore.test.tsx` | 16 | زر الكشف التفاعلي، التوسيع/الطي، صورة مع Lightbox، فيديو/صوت، معاينة فقط، الوضع التلقائي، RTL/LTR |
+| `revoke.test.ts` | 7 | حل مفاتيح الإلغاء المتسلسل وfallback للـstanza، ومعرّفات رسائل المجموعات ذات الأجزاء الأربعة |
+| `inline-restore.test.tsx` | 32 | زر الكشف التفاعلي، التوسيع/الطي، صورة مع Lightbox، فيديو/صوت، معاينة فقط، الوضع التلقائي، RTL/LTR، العودة بعد إعادة رسم واتساب، ملاحظة السبب حين لا توجد نسخة، الترقية من الملاحظة إلى الزر، المجموعات |
+| `vault-dedupe.test.ts` | 5 | عدم تكرار الحذف القديم بعد إعادة التحميل، إكمال الحقول الناقصة، تصحيح وقت الرسالة |
 | `exporter.test.ts` | 5 | أسماء المجموعات العربية، LID←PN، صيغة +Phone |
 | `autoreply.test.ts` | 3 | منع الرد على رسائل النفس، الوسائط، التهدئة |
 | `wpp-message.test.ts` | 6 | استخراج النص/التسمية ومعاينات الوسائط |
@@ -224,11 +225,13 @@ npm run verify
 - احتواء الحزم على نقاط التكامل الحقيقية: `chat.new_message`، `chat.msg_revoke`، `sendTextMessage`، Webhook، إلخ.
 - عدم وجود `node_modules` داخل `dist/`.
 
-**نتيجة البوابة الحالية:** `typecheck` ✅ · `153/153 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**نتيجة البوابة الحالية:** `typecheck` ✅ · `175/175 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **تحقق حقيقي داخل المتصفح:** تم تحميل `dist/` كإضافة Unpacked في Chromium 153 على حساب واتساب مسجّل. تأكدنا من تحميل `@wppconnect/wa-js 4.7.2`، واتصال محرك MAIN والجسر (`live`)، وتركيب الواجهة. أُرسلت أربع رسائل تجريبية عبر `WPP.emit` (نص، صورة، فيديو WebM، صورة بمعاينة فقط) ثم أُلغيت: ظهرت أربع فقاعات مستعادة بجانب «تم حذف هذه الرسالة»، والتوسيع أظهر النص والأوقات وزر النسخ؛ صورة PNG كاملة مع Lightbox وتكبير وتنزيل؛ فيديو WebM قابل للتشغيل مع تنزيل؛ ومعاينة `data:image/jpeg;base64,...` مع ملاحظة «معاينة فقط». اختُبرت الخزنة الحقيقية: 5 مرشحات (الكل/نصوص/صور/فيديو/صوتيات) وتنزيل `deleted-photo.png` من معاينة الوسائط. عند تفعيل «وضع الخصوصية الكامل» وُسمت عناصر واتساب الحقيقية (اسم/رقم/معاينة/صورة/نص/وسائط)، وتمرير المؤشر على اسم أزال التمويه عنه فقط (`blur(0px)`) بينما بقي الاسم الآخر `blur(4px)` والرسالة `blur(5px)`. كما اختُبر مسار الإلغاء الحقيقي `MsgStore change:type`: صف واتساب الذي يحمل `data-id` مجرّداً (32 حرفاً) استقبل الفقاعة والنص المستعاد، واختُبر ربط سجل خزنة قديم بصف إلغاء ظاهر بعد إعادة التحميل عبر `antidelete.revokedIndex`. الرسائل التي حُذفت قبل التقاطها لا يمكن إعادة بنائها لأن واتساب لا يحتفظ بنصها الأصلي.
 
 **تحقق الواجهة الفاتحة (Google Chrome 156، واتساب بالوضع الداكن):** حُمّلت الخطوط الستة المضمّنة (عربي ولاتيني × 400/500/600) رغم سياسة CSP في واتساب، وظهر زر مدار داخل شريط أدوات واتساب دون إزاحة مربع البحث، واستُعرضت الأقسام الستة بالعربية والإنجليزية. إضافة رسالة محذوفة جديدة أظهرت «1» على شارة المتصفح وزر واتساب وشريط التنقل، وفتح الخزنة أخفاها من الثلاثة. جُلبت 35 مجموعة خلال ثانية، واستخراج أعضاء مجموعة أظهر 36 صفاً وفعّل التصدير.
+
+**تحقق الاستعادة داخل المحادثة:** في محادثة فيها 9 رسائل محذوفة، كانت العودة إليها من محادثة أخرى تترك الرسائل التسع بلا شيء حتى بعد 12 ثانية. بعد الإصلاح غُطّيت التسع خلال أقل من ثلث ثانية (زرّان لنسختين محفوظتين و7 ملاحظات)، دون أي علامة على الرسائل العادية. الزر المفتوح بقي مفتوحاً بعد إعادة رسم الفقاعة، ورسالة محذوفة عمرها 134 يوماً أظهرت «أقدم من بدء الحفظ». إعادة تحميل الصفحة لم تُظهر أي تنبيه مكرر (كانت تُظهر تنبيهين)، وحذف جديد تجريبي أظهر تنبيهاً واحداً وحُفظ بنصه ثم أُزيل.
 
 ### الخصوصية والأمان
 
@@ -333,7 +336,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 153 Vitest tests
+├── tests/                        # 175 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
@@ -382,7 +385,7 @@ MadarWA (“Orbit”) adds an orbit button to the WhatsApp Web top bar and opens
 |---|---|
 | **Privacy & stealth** | Surgical per-element blurring for names, phone numbers, previews, avatars, message text, media and the **composer input**. `data-madarwa-el` tags from `privacyTagger` let CSS reveal **only the hovered item** in 160ms. Presence/typing/**recording** hiding, **private status viewing**, real read/played-receipt controls through `WPP.privacy`, and a best-effort “one tick” option that suppresses **every** WhatsApp Web receipt job (delivery/read/read-self/inactive/played/sender) while clearing the local unread state. |
 | **PIN lock** | Auto-lock after configurable idle time. 4–8 digit PIN stored as PBKDF2-SHA256 (120,000 iterations, random salt); plaintext is never persisted. Keypad + keyboard support. |
-| **Anti-delete vault** | Pre-indexes the latest `MsgStore` messages, listens to `add`, `change:type` and `chat.msg_revoke`, including `revoked` models that WhatsApp inserts as a new row through `add`, and resolves the original key through cascading fallbacks. Proactively downloads decrypted media with `WPP.chat.downloadMedia` before deletion (≤25MB) into IndexedDB (`madarwa_media_vault`, LRU 150). Restores an **interactive pill inside the WhatsApp bubble**: text + copy + timestamps, photo with lightbox/download, playable video/voice note, and document download. |
+| **Anti-delete vault** | Pre-indexes the latest `MsgStore` messages, listens to `add`, `change:type` and `chat.msg_revoke`, including `revoked` models that WhatsApp inserts as a new row through `add`, and resolves the original key through cascading fallbacks. Proactively downloads decrypted media with `WPP.chat.downloadMedia` before deletion (≤25MB) into IndexedDB (`madarwa_media_vault`, LRU 150). Restores an **interactive pill inside the WhatsApp bubble**: text + copy + timestamps, photo with lightbox/download, playable video/voice note, and document download. The pill comes back as soon as WhatsApp renders the chat again (reopening it, scrolling) and stays open if you opened it. When no copy exists, a short note inside the bubble says why: deleted before MadarWA received it, older than when saving started, or removed when the vault was cleared. Old deletions that WhatsApp reports again after a reload do not repeat the toast or the webhook. |
 | **Smart broadcaster** | Three-step flow (numbers → message → send). Paste numbers or upload CSV/XLSX. International sanitizer, pre-validation with `contact.queryWidExists`, `{{name}}/{{custom1}}/{{custom2}}/{{phone}}` variables, Spintax, attachments up to 4MB, random jitter and batch cooldowns, start/pause/resume/stop, automatic pause while WhatsApp is unreachable with self-resume (nobody skipped, remaining anti-ban delay kept), an estimated duration before starting, live logs and CSV report. |
 | **Auto-reply & templates** | Exact/Contains/StartsWith/Regex/Fallback rules, private/groups/all scope, per-contact cooldown, typing simulation, in-flight dedupe. Rules appear only when auto-reply is enabled; templates can be sent or inserted into the composer. |
 | **Contacts & groups export** | Load groups, group participants (admins flagged), saved contacts and chats. Filters: exclude admins, unsaved only, country code. Export UTF-8 BOM CSV (Excel/Arabic friendly) or JSON, with spreadsheet formula-injection protection. |
@@ -507,7 +510,7 @@ npm run verify
 | `npm install` | Install dependencies |
 | `npm run dev` | Watch `src/`, `public/`, `icons/`, `popup.html` and rebuild `dist/` (no HMR; reload extension/page) |
 | `npm run typecheck` | `tsc --noEmit` — zero errors |
-| `npm test` | 153 Vitest tests |
+| `npm test` | 175 Vitest tests |
 | `npm run test:watch` | Watch tests |
 | `npm run build` | Build popup + content + preload + injected + background, copy wa-js and icons |
 | `npm run verify` | 99 structural assertions on `dist/` |
@@ -516,7 +519,7 @@ npm run verify
 
 ### Tests & verification
 
-**153 tests** across 22 files:
+**175 tests** across 23 files:
 
 | Suite | Count | Coverage |
 |---|---:|---|
@@ -532,8 +535,9 @@ npm run verify
 | `queue.test.ts` | 7 | Jitter, batches, pause/resume that keeps the remaining anti-ban delay, stop, failures, empty queue |
 | `defaults-i18n.test.ts` | 6 | Settings sanitization, ar/en key parity, defaults |
 | `pin.test.ts` | 6 | PBKDF2, unique salt, wrong PIN, format validation |
-| `revoke.test.ts` | 6 | Cascading revoke-key resolver and stanza fallback |
-| `inline-restore.test.tsx` | 16 | Interactive pill, expand/collapse, photo lightbox, video/audio players, preview-only fallback, auto-expanded mode, RTL/LTR |
+| `revoke.test.ts` | 7 | Cascading revoke-key resolver, stanza fallback and four-part group message ids |
+| `inline-restore.test.tsx` | 32 | Interactive pill, expand/collapse, photo lightbox, video/audio players, preview-only fallback, auto-expanded mode, RTL/LTR, coming back after WhatsApp re-renders, the reason note when no copy exists, note-to-pill upgrade, groups |
+| `vault-dedupe.test.ts` | 5 | Old deletions reported again after a reload, filling missing fields, correcting the message time |
 | `exporter.test.ts` | 5 | Arabic group names, LID→PN resolution and +phone formatting |
 | `autoreply.test.ts` | 3 | Self-send guard, media caption, cooldown |
 | `wpp-message.test.ts` | 6 | Body/caption extraction and media previews |
@@ -553,11 +557,13 @@ npm run verify
 - Bundles contain the real integration points (`chat.new_message`, `chat.msg_revoke`, `sendTextMessage`, webhooks, etc.).
 - No `node_modules` inside `dist/`.
 
-**Current gate:** `typecheck` ✅ · `153/153 tests` ✅ · `build` ✅ · `verify-build` ✅.
+**Current gate:** `typecheck` ✅ · `175/175 tests` ✅ · `build` ✅ · `verify-build` ✅.
 
 **Real browser verification:** `dist/` was loaded as an unpacked extension in Chromium 153 against a signed-in WhatsApp account. Confirmed: local `@wppconnect/wa-js 4.7.2`, MAIN engine + bridge (`live`), and the Shadow DOM UI. Four synthetic messages were emitted through `WPP.emit` (text, photo, WebM video, preview-only photo) and then revoked: four restored pills appeared next to “This message was deleted”; expanding showed the text, timestamps and copy button; the full PNG opened a lightbox with zoom/download; the WebM played inline with a download; the preview-only photo rendered a normalized `data:image/jpeg;base64,...` with the preview-only note. The real vault was checked with five filters (all/text/photos/videos/audio) and `deleted-photo.png` downloaded from the media preview. With **Full Stealth Mode**, real WhatsApp elements were tagged (name/phone/preview/avatar/message/media); hovering one name removed its blur only (`blur(0px)`) while the other name stayed `blur(4px)` and the message `blur(5px)`. The real `MsgStore change:type` revoke path was also exercised: a WhatsApp row whose `data-id` is the bare 32-char revoke stanza received the pill and restored text, and an old vault entry was reconnected to an on-screen revoked row after reload through `antidelete.revokedIndex`. Messages deleted before they were captured cannot be reconstructed because WhatsApp does not retain their original text.
 
 **Light UI verification (Google Chrome 156, WhatsApp in its dark theme):** all six bundled font faces (Arabic and Latin × 400/500/600) loaded under WhatsApp's CSP; the MadarWA button sat inside WhatsApp's toolbar without pushing the search box down; all six sections were reviewed in Arabic and English. Adding one new deleted message showed "1" on the toolbar badge, the WhatsApp button and the rail, and opening the vault cleared all three. 35 groups loaded in about a second, and extracting one group's members rendered 36 rows and enabled export.
+
+**In-chat restore verification:** in a chat with 9 deleted messages, coming back from another chat used to leave all nine bare even after 12 seconds. After the fix all nine were covered within 300 ms (two pills for saved copies, seven notes), with no mark on ordinary messages. An open pill stayed open after its bubble was re-rendered, and a 134-day-old deletion showed "older than when saving started". A page reload showed no repeated toast (it used to show two), and a synthetic new deletion showed exactly one toast, was saved with its text, and was then removed.
 
 ### Privacy & security
 
@@ -657,7 +663,7 @@ MadarWA/
 │   ├── build.mjs                 # Multi-target Vite build
 │   ├── generate-icons.mjs
 │   └── verify-build.mjs
-├── tests/                        # 153 Vitest tests
+├── tests/                        # 175 Vitest tests
 ├── tailwind.config.js
 ├── vitest.config.ts
 └── tsconfig.json
