@@ -65,12 +65,10 @@ async function queryStatus(tabId: number): Promise<ContentStatus | null> {
   }
 }
 
-function applyDocumentTheme(settings: AppSettings): void {
-  const prefersLight = window.matchMedia?.("(prefers-color-scheme: light)").matches ?? false;
-  const theme = settings.theme === "auto" ? (prefersLight ? "light" : "dark") : settings.theme;
+/** The interface is light-only; only language and direction vary. */
+function applyDocumentLanguage(settings: AppSettings): void {
   const root = document.documentElement;
   root.classList.add("mw-app");
-  root.dataset.madarwaTheme = theme;
   root.lang = settings.language;
   root.dir = dirFor(settings.language);
 }
@@ -131,7 +129,7 @@ export function Popup() {
   }, [refresh]);
 
   useEffect(() => {
-    applyDocumentTheme(settings);
+    applyDocumentLanguage(settings);
   }, [settings]);
 
   useEffect(() => {
@@ -244,7 +242,7 @@ export function Popup() {
   return (
     <div className="flex flex-col" aria-busy={phase === "checking"}>
       <header className="mw-header flex h-12 items-center gap-2 px-4">
-        <OrbitMark className="h-5 w-5 shrink-0 text-wa-brand" />
+        <OrbitMark className="h-5 w-5 shrink-0 text-wa-accent" />
         <h1 className="min-w-0 flex-1 truncate text-mw-base font-semibold">{t("popup.title")}</h1>
         <div className="mw-segmented" role="group" aria-label={t("common.languageSwitch")}>
           {LANGUAGES.map((language) => (
@@ -305,21 +303,23 @@ export function Popup() {
           {primary.label}
         </button>
         {phase !== "absent" && phase !== "checking" ? (
-          <div className="grid grid-cols-2 gap-2">
+          // "Lock" only exists once a PIN is set, instead of a button that is always disabled.
+          <div className={settings.pin.enabled ? "grid grid-cols-2 gap-2" : "grid"}>
             <button type="button" onClick={() => void openWhatsApp()} disabled={busy} className="mw-btn mw-btn-secondary w-full">
               <MessageCircle className="h-4 w-4" aria-hidden="true" />
               {t("popup.openWhatsapp")}
             </button>
-            <button
-              type="button"
-              onClick={() => void lockPanel()}
-              disabled={busy || !settings.pin.enabled || phase === "unreachable"}
-              title={settings.pin.enabled ? undefined : t("privacy.lockEnableHint")}
-              className="mw-btn mw-btn-secondary w-full"
-            >
-              <Lock className="h-4 w-4" aria-hidden="true" />
-              {t("popup.lock")}
-            </button>
+            {settings.pin.enabled ? (
+              <button
+                type="button"
+                onClick={() => void lockPanel()}
+                disabled={busy || phase === "unreachable"}
+                className="mw-btn mw-btn-secondary w-full"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                {t("popup.lock")}
+              </button>
+            ) : null}
           </div>
         ) : null}
         <p className="min-h-[20px] text-center text-mw-xs leading-5 text-wa-muted" aria-live="polite">

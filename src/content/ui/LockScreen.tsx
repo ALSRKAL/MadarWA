@@ -8,7 +8,6 @@ import { OrbitMark } from "./OrbitMark";
 export function LockScreen() {
   const t = useT();
   const settings = useAppStore((state) => state.settings);
-  const theme = useAppStore((state) => state.theme);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,8 +56,7 @@ export function LockScreen() {
 
   return (
     <div
-      className="mw-app fixed inset-0 z-[2147483600] flex items-center justify-center px-4"
-      data-madarwa-theme={settings.theme === "auto" ? theme : settings.theme}
+      className="mw-app fixed inset-0 z-[2147483600] flex items-center justify-center bg-wa-bg px-4"
       dir={settings.language === "ar" ? "rtl" : "ltr"}
       lang={settings.language}
       style={{ pointerEvents: "auto" }}
@@ -68,7 +66,7 @@ export function LockScreen() {
     >
       <div className="w-full max-w-[320px]">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-wa-surface text-wa-brand">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-wa-line bg-wa-surface text-wa-accent">
             <OrbitMark className="h-6 w-6" />
           </div>
           <h1 className="mt-3 text-mw-lg font-semibold leading-6">{t("privacy.unlockTitle")}</h1>

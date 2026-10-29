@@ -4,7 +4,6 @@
  */
 
 export type Language = "ar" | "en";
-export type ThemeMode = "auto" | "light" | "dark";
 
 export interface PrivacySettings {
   blurPreview: boolean;
@@ -89,7 +88,6 @@ export interface PinSettings {
 export interface AppSettings {
   version: number;
   language: Language;
-  theme: ThemeMode;
   privacy: PrivacySettings;
   antiDelete: AntiDeleteSettings;
   autoReply: AutoReplySettings;

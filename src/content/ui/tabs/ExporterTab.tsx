@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileJson, FileSpreadsheet, RefreshCw, Search, Users } from "lucide-react";
+import { FileJson, FileSpreadsheet, RefreshCw, Search } from "lucide-react";
 import { BRIDGE_COMMANDS } from "../../../shared/constants";
 import { describeError } from "../../../shared/errors";
 import { formatNumber } from "../../../shared/format";
@@ -180,12 +180,7 @@ export function ExporterTab() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle
-        icon={<Users className="h-4 w-4" />}
-        title={t("exporter.title")}
-        subtitle={t("exporter.subtitle")}
-        action={hasExtracted ? <Badge tone="neutral">{formatNumber(filtered.length, settings.language)}</Badge> : null}
-      />
+      <SectionTitle title={t("exporter.title")} subtitle={t("exporter.subtitle")} />
 
       <Card>
         <h3 id="mw-exporter-source" className="mb-2 text-mw-xs font-semibold text-wa-muted">
@@ -228,7 +223,10 @@ export function ExporterTab() {
                   }}
                   className="flex-1"
                 >
-                  {groups.length === 0 ? <option value="">{t("exporter.noGroups")}</option> : null}
+                  {/* "No groups" is only true once loading has finished. */}
+                  {groups.length === 0 ? (
+                    <option value="">{loadingGroups ? t("exporter.loadingGroups") : t("exporter.noGroups")}</option>
+                  ) : null}
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.participantsCount > 0
@@ -249,7 +247,6 @@ export function ExporterTab() {
                 </Button>
               </div>
             </Field>
-            {loadingGroups ? <p className="text-mw-xs text-wa-muted">{t("exporter.loadingGroups")}</p> : null}
           </div>
         ) : null}
 
@@ -320,25 +317,20 @@ export function ExporterTab() {
         </div>
 
         {!hasExtracted ? (
-          <EmptyState icon={<Download className="h-8 w-8" />} title={t("exporter.noData")} />
+          <EmptyState title={t("exporter.noData")} />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<Search className="h-8 w-8" />} title={t("common.noResults")} />
+          <EmptyState title={t("common.noResults")} />
         ) : (
           <>
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <Badge tone="neutral">
-                {t(source === "groupMembers" ? "exporter.membersCount" : "exporter.contactsCount", {
-                  count: formatNumber(filtered.length, settings.language),
-                })}
-              </Badge>
-              {filtered.length > preview.length ? <Badge tone="neutral">{t("exporter.truncation")}</Badge> : null}
-            </div>
-            <div className="mw-scroll max-h-[420px] space-y-1 overflow-y-auto pe-0.5">
+            <p className="mw-lang-pill mb-1 text-mw-xs leading-5 text-wa-muted">
+              {t(source === "groupMembers" ? "exporter.membersCount" : "exporter.contactsCount", {
+                count: formatNumber(filtered.length, settings.language),
+              })}
+              {filtered.length > preview.length ? ` · ${t("exporter.truncation")}` : ""}
+            </p>
+            <div className="mw-scroll max-h-[420px] divide-y divide-wa-line overflow-y-auto">
               {preview.map((row) => (
-                <div
-                  key={`${row.id}-${row.phone}`}
-                  className="flex items-center justify-between gap-2 rounded-md border border-wa-line px-2.5 py-1.5"
-                >
+                <div key={`${row.id}-${row.phone}`} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0">
                     <p className="mw-code truncate text-mw-sm font-semibold" dir="ltr">
                       {row.formattedPhone || row.phone || row.id}

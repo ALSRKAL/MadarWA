@@ -14,7 +14,6 @@ import type { PrivacySettings } from "../../../shared/types";
 import { contentController } from "../../controller";
 import { useAppStore, useSettings, useT } from "../../store";
 import {
-  Alert,
   Badge,
   Button,
   Card,
@@ -171,36 +170,26 @@ export function PrivacyTab() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle
-        icon={<ShieldCheck className="h-4 w-4" />}
-        title={t("privacy.title")}
-        subtitle={t("privacy.subtitle")}
-      />
+      <SectionTitle title={t("privacy.title")} subtitle={t("privacy.subtitle")} />
 
-      <Card className="p-2">
-        <h3 className="mb-1.5 px-0.5 text-mw-xs font-semibold text-wa-muted">{t("privacy.quickActions")}</h3>
-        <div className="grid gap-1.5">
+      <Card className="p-3">
+        <h3 className="text-mw-xs font-semibold text-wa-muted">{t("privacy.quickActions")}</h3>
+        <p className="mt-0.5 text-mw-xs leading-5 text-wa-muted">{t("privacy.fullStealthHint")}</p>
+        <div className="mt-2.5 flex flex-wrap gap-2">
           <Button
-            size="sm"
             icon={<ShieldCheck className="h-3.5 w-3.5" />}
-            className="w-full"
             onClick={() => applyPreset(ALL_PRIVACY_ON, t("privacy.presetStealth"))}
           >
             {t("privacy.fullStealth")}
           </Button>
           <Button
             variant="secondary"
-            size="sm"
             icon={<ShieldOff className="h-3.5 w-3.5" />}
-            className="w-full"
             onClick={() => applyPreset(ALL_PRIVACY_OFF, t("privacy.presetOff"))}
           >
             {t("privacy.disableAll")}
           </Button>
         </div>
-        <p className="text-wa-muted px-0.5 pb-0.5 pt-2 text-mw-xs leading-5">
-          {t("privacy.fullStealthHint")}
-        </p>
       </Card>
 
       <Card className="p-0">
@@ -256,7 +245,7 @@ export function PrivacyTab() {
           onChange={(value) => patchPrivacy({ hidePresence: value })}
           label={t("privacy.hidePresence")}
           hint={t("privacy.hidePresenceHint")}
-          warning
+          warning={t("privacy.accountChange")}
         />
         <Toggle
           checked={settings.privacy.hideTyping}
@@ -279,18 +268,17 @@ export function PrivacyTab() {
           onChange={(value) => patchPrivacy({ disableReadReceipts: value })}
           label={t("privacy.disableReadReceipts")}
           hint={t("privacy.disableReadReceiptsHint")}
-          warning
+          warning={t("privacy.accountChange")}
         />
+        {/* A pill appears only when an interception is on but this WhatsApp build blocks it. */}
         <Toggle
           checked={settings.privacy.privateStatusView}
           onChange={(value) => patchPrivacy({ privateStatusView: value })}
           label={t("privacy.privateStatusView")}
           hint={t("privacy.privateStatusViewHint")}
-          action={
-            settings.privacy.privateStatusView && privacyGuard ? (
-              <Badge tone={privacyGuard.statusActive ? "success" : "warning"}>
-                {privacyGuard.statusActive ? t("privacy.stealthActive") : t("privacy.stealthUnsupported")}
-              </Badge>
+          status={
+            settings.privacy.privateStatusView && privacyGuard && !privacyGuard.statusActive ? (
+              <Badge tone="warning">{t("privacy.stealthUnsupported")}</Badge>
             ) : undefined
           }
         />
@@ -298,51 +286,32 @@ export function PrivacyTab() {
           checked={settings.privacy.suppressDeliveryReceipts}
           onChange={(value) => patchPrivacy({ suppressDeliveryReceipts: value })}
           label={t("privacy.suppressDelivery")}
-          hint={t("privacy.suppressDeliveryHint")}
-          warning
-          action={
-            settings.privacy.suppressDeliveryReceipts && privacyGuard ? (
-              <Badge tone={privacyGuard.deliveryActive ? "success" : "warning"}>
-                {privacyGuard.deliveryActive ? t("privacy.stealthActive") : t("privacy.stealthUnsupported")}
-              </Badge>
+          hint={
+            settings.privacy.suppressDeliveryReceipts
+              ? `${t("privacy.suppressDeliveryHint")} ${t("privacy.suppressDeliveryWarning")}`
+              : t("privacy.suppressDeliveryHint")
+          }
+          status={
+            settings.privacy.suppressDeliveryReceipts && privacyGuard && !privacyGuard.deliveryActive ? (
+              <Badge tone="warning">{t("privacy.stealthUnsupported")}</Badge>
             ) : undefined
           }
         />
-        {settings.privacy.suppressDeliveryReceipts ? (
-          <div className="px-2 pb-1">
-            <Alert tone="warning">{t("privacy.suppressDeliveryWarning")}</Alert>
-          </div>
-        ) : null}
         <Toggle
           checked={settings.privacy.disableAudioReceipts}
           onChange={(value) => patchPrivacy({ disableAudioReceipts: value })}
           label={t("privacy.disableAudioReceipts")}
           hint={t("privacy.disableAudioReceiptsHint")}
-          action={
-            settings.privacy.disableAudioReceipts && privacyGuard ? (
-              <Badge tone={privacyGuard.audioActive ? "success" : "warning"}>
-                {privacyGuard.audioActive ? t("privacy.guardActive") : t("privacy.guardUnsupported")}
-              </Badge>
+          status={
+            settings.privacy.disableAudioReceipts && privacyGuard && !privacyGuard.audioActive ? (
+              <Badge tone="warning">{t("privacy.stealthUnsupported")}</Badge>
             ) : undefined
           }
         />
-        {settings.privacy.disableReadReceipts ||
-        settings.privacy.privateStatusView ||
-        settings.privacy.suppressDeliveryReceipts ||
-        settings.privacy.disableAudioReceipts ? (
-          <div className="px-2 pb-2">
-            <Alert tone="warning">{t("privacy.warning")}</Alert>
-          </div>
-        ) : null}
       </Card>
 
       <Card className="p-0">
-        <GroupLabel
-          icon={<KeyRound className="h-3.5 w-3.5" />}
-          action={settings.pin.enabled ? <Badge tone="success">{t("common.on")}</Badge> : null}
-        >
-          {t("privacy.lockSection")}
-        </GroupLabel>
+        <GroupLabel icon={<KeyRound className="h-3.5 w-3.5" />}>{t("privacy.lockSection")}</GroupLabel>
 
         <Toggle
           checked={settings.pin.enabled || pinFormOpen}

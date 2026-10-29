@@ -10,7 +10,7 @@ import { LANGUAGE_LABELS } from "../../shared/constants";
 import { dirFor } from "../../shared/i18n";
 import type { Language } from "../../shared/types";
 import { contentController } from "../controller";
-import { useAppStore, useConnectionPhase, useT, type TabId } from "../store";
+import { useAppStore, useConnectionPhase, useT, useUnseenVault, type TabId } from "../store";
 import { Button, cn, IconButton, useDialogFocus } from "./components";
 import { LockScreen } from "./LockScreen";
 import { OrbitMark } from "./OrbitMark";
@@ -34,11 +34,22 @@ const TABS: Array<{ id: TabId; key: string; icon: typeof ShieldCheck }> = [
 const LANGUAGES: Language[] = ["ar", "en"];
 const FAB_POSITION_KEY = "madarwa:fab-position";
 
+function UnseenCount({ count, className }: { count: number; className?: string }) {
+  const t = useT();
+  if (count <= 0) return null;
+  return (
+    <span className={cn("mw-count", className)} title={t("vault.unseen", { count })}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 function FloatingLauncher() {
   const t = useT();
   const openPanel = useAppStore((state) => state.openPanel);
-  const vaultCount = useAppStore((state) => state.vault.length);
+  const unseen = useUnseenVault();
   const phase = useConnectionPhase();
+  const tone = connectionTone(phase);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
     try {
       const raw = sessionStorage.getItem(FAB_POSITION_KEY);
@@ -133,12 +144,11 @@ function FloatingLauncher() {
         )}
       >
         <OrbitMark className="h-6 w-6" />
-        <span className="mw-status-dot absolute bottom-2 end-2" data-state={connectionTone(phase)} aria-hidden="true" />
-        {vaultCount > 0 ? (
-          <span className="mw-num absolute -end-1 -top-1 min-w-[18px] rounded-full bg-wa-danger px-1 text-center text-mw-2xs font-bold leading-[18px] text-wa-on-danger">
-            {vaultCount > 99 ? "99+" : vaultCount}
-          </span>
+        {/* The dot only appears when something is wrong; the label carries the state. */}
+        {tone !== "live" ? (
+          <span className="mw-status-dot absolute bottom-2 end-2" data-state={tone} aria-hidden="true" />
         ) : null}
+        <UnseenCount count={unseen} className="absolute -end-1 -top-1" />
       </button>
     </div>
   );
@@ -148,8 +158,9 @@ function NavRail() {
   const t = useT();
   const activeTab = useAppStore((state) => state.activeTab);
   const setTab = useAppStore((state) => state.setTab);
-  const vaultCount = useAppStore((state) => state.vault.length);
-  const campaignBusy = useAppStore((state) => state.campaign.status === "running" || state.campaign.status === "paused");
+  const unseen = useUnseenVault();
+  const campaignStatus = useAppStore((state) => state.campaign.status);
+  const campaignBusy = campaignStatus === "running" || campaignStatus === "paused";
 
   return (
     <nav className="mw-rail" aria-label={t("common.sections")}>
@@ -164,12 +175,15 @@ function NavRail() {
             className="mw-nav-item"
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="line-clamp-2 text-start leading-5">{t(key)}</span>
-            {id === "vault" && vaultCount > 0 ? (
-              <span className="mw-nav-count">{vaultCount > 99 ? "99+" : vaultCount}</span>
-            ) : null}
+            <span className="min-w-0 truncate text-start leading-5">{t(key)}</span>
+            {id === "vault" ? <UnseenCount count={unseen} className="ms-auto" /> : null}
             {id === "broadcaster" && campaignBusy ? (
-              <span className="ms-auto h-1.5 w-1.5 shrink-0 rounded-full bg-wa-brand" aria-hidden="true" />
+              <span
+                className="mw-status-dot ms-auto"
+                data-state={campaignStatus === "running" ? "live" : "waiting"}
+                title={t(`status.${campaignStatus}`)}
+                aria-hidden="true"
+              />
             ) : null}
           </button>
         );
@@ -230,14 +244,14 @@ function Drawer() {
 
   return (
     <div className="fixed inset-0 z-[2147483000]" style={{ pointerEvents: "auto" }}>
-      <div className="absolute inset-0 bg-black/55" onClick={closePanel} aria-hidden="true" />
+      <div className="absolute inset-0 bg-wa-brand/25" onClick={closePanel} aria-hidden="true" />
       <aside
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={t("app.name")}
         tabIndex={-1}
-        className="mw-drawer mw-drawer-in absolute inset-y-0 end-0 flex w-[min(660px,100vw)] flex-col overflow-hidden outline-none"
+        className="mw-drawer mw-drawer-in absolute inset-y-0 end-0 flex w-[min(720px,100vw)] flex-col overflow-hidden outline-none"
         onKeyDown={(event) => {
           // Dialogs inside handle Escape first and mark it handled.
           if (event.key === "Escape" && !event.defaultPrevented) {
@@ -251,9 +265,9 @@ function Drawer() {
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="mw-header flex h-10 shrink-0 items-center gap-2 pe-1.5 ps-3">
-          <OrbitMark className="h-[18px] w-[18px] shrink-0 text-wa-brand" />
-          <h1 className="min-w-0 truncate text-mw-base font-semibold leading-5">{t("app.name")}</h1>
+        <header className="mw-header flex h-12 shrink-0 items-center gap-2.5 pe-2 ps-4">
+          <OrbitMark className="h-5 w-5 shrink-0 text-wa-accent" />
+          <h1 className="min-w-0 truncate text-mw-base font-semibold leading-6">{t("app.name")}</h1>
 
           <div className="ms-auto flex items-center gap-1">
             <span
@@ -290,20 +304,22 @@ function Drawer() {
           </div>
         </header>
 
-        <ConnectionBanner />
-
+        {/* Framed sheet: header and rail share the frame; the work sits on one white sheet. */}
         <div className="mw-workspace">
           <NavRail />
-          <main className="mw-scroll min-w-0 flex-1 overflow-y-auto px-3 py-3">
-            <div key={activeTab} className="mw-fade-enter">
-              {activeTab === "privacy" ? <PrivacyTab /> : null}
-              {activeTab === "broadcaster" ? <BroadcasterTab /> : null}
-              {activeTab === "autoreply" ? <AutoReplyTab /> : null}
-              {activeTab === "exporter" ? <ExporterTab /> : null}
-              {activeTab === "vault" ? <VaultTab /> : null}
-              {activeTab === "tools" ? <ToolsTab /> : null}
-            </div>
-          </main>
+          <section className="mw-sheet">
+            <ConnectionBanner />
+            <main className="mw-scroll min-w-0 flex-1 overflow-y-auto px-5 pb-6 pt-5">
+              <div key={activeTab} className="mw-fade-enter">
+                {activeTab === "privacy" ? <PrivacyTab /> : null}
+                {activeTab === "broadcaster" ? <BroadcasterTab /> : null}
+                {activeTab === "autoreply" ? <AutoReplyTab /> : null}
+                {activeTab === "exporter" ? <ExporterTab /> : null}
+                {activeTab === "vault" ? <VaultTab /> : null}
+                {activeTab === "tools" ? <ToolsTab /> : null}
+              </div>
+            </main>
+          </section>
         </div>
       </aside>
     </div>
@@ -312,13 +328,11 @@ function Drawer() {
 
 export function App() {
   const settings = useAppStore((state) => state.settings);
-  const theme = useAppStore((state) => state.theme);
   const panelOpen = useAppStore((state) => state.panelOpen);
   const locked = useAppStore((state) => state.locked);
   const launcherFallback = useAppStore((state) => state.launcherFallback);
   const closePanel = useAppStore((state) => state.closePanel);
 
-  const effectiveTheme = settings.theme === "auto" ? theme : settings.theme;
   const dir = dirFor(settings.language);
 
   useEffect(() => {
@@ -326,7 +340,7 @@ export function App() {
   }, [closePanel, locked]);
 
   return (
-    <div className="mw-app" data-madarwa-theme={effectiveTheme} dir={dir} lang={settings.language}>
+    <div className="mw-app" dir={dir} lang={settings.language}>
       {locked ? <LockScreen /> : null}
       {launcherFallback && !panelOpen ? <FloatingLauncher /> : null}
       {panelOpen ? <Drawer /> : null}

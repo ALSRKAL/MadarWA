@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * MadarWA design system: "Framed sheet", light only.
+ * A green-grey frame (header + rail, one tint, no rule between them) holds a
+ * white sheet with a hairline edge. Ink carries actions; colour is spent only
+ * on state (connected, failed, warning) and on the logo. See DESIGN.md.
+ */
+
 :host {
   display: block;
 }
@@ -10,65 +17,57 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 .mw-app {
-  --wa-bg: 17 27 33;
-  --wa-panel: 32 44 51;
-  --wa-surface: 24 34 41;
-  --wa-input: 42 57 66;
-  --wa-text: 233 237 239;
-  --wa-muted: 134 150 160;
-  --wa-brand: 0 168 132;
-  --wa-brand-strong: 6 207 156;
-  --wa-danger: 241 92 109;
-  --wa-warning: 245 158 11;
-  --wa-line: rgba(134, 150, 160, 0.15);
-  --wa-hover: rgba(134, 150, 160, 0.1);
-  --wa-on-brand: #0b141a;
-  --wa-on-danger: #1b1013;
-  --wa-chat-bg: #0b141a;
-  --wa-bubble-out: #005c4b;
-  --wa-media-backdrop: rgba(11, 20, 26, 0.72);
-  /* Type scale: 11px is the floor (counters, badges); body text is 13px. */
-  --mw-text-2xs: 11px;
-  --mw-text-xs: 12px;
-  --mw-text-sm: 13px;
-  --mw-text-base: 14px;
-  --mw-text-lg: 16px;
-  --mw-text-xl: 20px;
-  color-scheme: dark;
-  color: rgb(var(--wa-text));
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-
-.mw-app[dir="rtl"],
-.mw-app[lang="ar"] {
-  font-family: Tajawal, Cairo, "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
-}
-
-.mw-app[data-madarwa-theme="light"] {
-  --wa-bg: 240 242 245;
-  --wa-panel: 240 242 245;
+  /* Ground and surfaces */
+  --wa-bg: 245 247 246;
+  --wa-panel: 245 247 246;
   --wa-surface: 255 255 255;
-  --wa-input: 240 242 245;
-  --wa-text: 17 27 33;
-  --wa-muted: 102 119 129;
-  --wa-brand: 0 128 105;
-  --wa-brand-strong: 0 168 132;
-  --wa-danger: 241 92 109;
-  --wa-warning: 180 83 9;
-  --wa-line: #e9edef;
-  --wa-hover: rgba(17, 27, 33, 0.06);
+  --wa-raised: 246 247 248;
+  --wa-input: 238 240 241;
+  --wa-active: 233 236 234;
+  /* Ink */
+  --wa-text: 19 20 22;
+  --wa-muted: 91 95 99;
+  --wa-brand: 19 20 22;
+  --wa-brand-strong: 44 47 51;
+  /* The only hue outside state: logo, data, focus */
+  --wa-accent: 25 105 79;
+  /* State */
+  --wa-success: 30 123 79;
+  --wa-danger: 196 36 42;
+  --wa-warning: 146 64 14;
+  /* Lines in three steps */
+  --wa-line: #e6e8ea;
+  --wa-rule: #eef0f1;
+  --wa-control: #cfd2d6;
+  /* Placeholder text, and the off switch (3:1 on the panel) */
+  --wa-faint: #6b6f73;
+  --wa-switch-off: #858a90;
+  --wa-switch-knob: #6b6f73;
+  --wa-hover: rgba(19, 20, 22, 0.045);
   --wa-on-brand: #ffffff;
+  --wa-on-danger: #ffffff;
+  /* WhatsApp's own chat surfaces, used only by the message preview */
   --wa-chat-bg: #efeae2;
   --wa-bubble-out: #d9fdd3;
+  --wa-media-backdrop: rgba(17, 20, 24, 0.72);
+  /* Type scale 11 / 12 / 14 / 16 / 20 / 24 */
+  --mw-text-2xs: 11px;
+  --mw-text-xs: 12px;
+  --mw-text-sm: 14px;
+  --mw-text-base: 16px;
+  --mw-text-lg: 20px;
+  --mw-text-xl: 24px;
   color-scheme: light;
+  color: rgb(var(--wa-text));
+  font-family: "MadarWA Plex", "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .mw-app svg {
@@ -76,7 +75,7 @@
 }
 
 .mw-app :focus-visible {
-  outline: 2px solid rgb(var(--wa-brand));
+  outline: 2px solid rgb(var(--wa-accent));
   outline-offset: 2px;
 }
 
@@ -93,319 +92,381 @@
   font-feature-settings: "tnum" 1;
 }
 
-/* Flat surfaces. Separation is tone + hairline, never a resting shadow. */
 @layer components {
-.mw-card {
-  background: rgb(var(--wa-surface));
-  border: 1px solid var(--wa-line);
-  border-radius: 8px;
+  /* Panels inside the sheet: one tone step, no border, no shadow.
+     Radii step down from the sheet: 16 (sheet), 8 (panel), 6 (control), 4 (tag). */
+  .mw-card {
+    background: rgb(var(--wa-raised));
+    border-radius: 8px;
+  }
+
+  /* An empty block keeps its place: one dashed box and one sentence. */
+  .mw-empty {
+    border: 1px dashed var(--wa-control);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  /* Things that float (dialogs): white, hairline, one soft elevation. */
+  .mw-card-strong {
+    background: rgb(var(--wa-surface));
+    border: 1px solid var(--wa-line);
+    border-radius: 12px;
+  }
+
+  .mw-panel {
+    background: rgb(var(--wa-panel));
+  }
+
+  .mw-input {
+    width: 100%;
+    min-height: 36px;
+    border-radius: 6px;
+    border: 1px solid var(--wa-control);
+    background: rgb(var(--wa-surface));
+    color: rgb(var(--wa-text));
+    padding: 7px 10px;
+    font-size: var(--mw-text-sm);
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  /* Placeholders hold 4.5:1 on white too (#6b6f73). */
+  .mw-input::placeholder {
+    color: var(--wa-faint);
+  }
+
+  .mw-input:hover {
+    border-color: #b9bdc2;
+  }
+
+  .mw-input:focus {
+    outline: none;
+    border-color: rgb(var(--wa-text));
+    box-shadow: 0 0 0 3px rgba(19, 20, 22, 0.08);
+  }
+
+  /* Disabled stays readable: a quieter ground, not a faded control. */
+  .mw-input:disabled {
+    border-color: var(--wa-line);
+    background: rgb(var(--wa-raised));
+    color: rgb(var(--wa-muted));
+    cursor: not-allowed;
+  }
+
+  textarea.mw-input {
+    resize: vertical;
+    min-height: 92px;
+  }
+
+  .mw-muted {
+    color: rgb(var(--wa-muted));
+  }
+
+  .mw-line {
+    border-color: var(--wa-line);
+  }
+
+  .mw-hover:hover {
+    background: var(--wa-hover);
+  }
+
+  .mw-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    direction: ltr;
+    unicode-bidi: plaintext;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mw-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(19, 20, 22, 0.18) transparent;
+  }
+
+  .mw-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .mw-scroll::-webkit-scrollbar-thumb {
+    background: rgba(19, 20, 22, 0.18);
+    border-radius: 999px;
+  }
+
+  .mw-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* The drawer floats over WhatsApp, so it alone carries an edge shadow. */
+  .mw-drawer {
+    background: rgb(var(--wa-bg));
+    color: rgb(var(--wa-text));
+    box-shadow:
+      0 0 0 1px rgba(19, 20, 22, 0.06),
+      -18px 0 48px rgba(19, 20, 22, 0.12);
+  }
+
+  .mw-app[dir="rtl"] .mw-drawer {
+    box-shadow:
+      0 0 0 1px rgba(19, 20, 22, 0.06),
+      18px 0 48px rgba(19, 20, 22, 0.12);
+  }
+
+  /* Header and rail share the frame tint with no rule between them. */
+  .mw-header {
+    background: transparent;
+  }
+
+  .mw-workspace {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    padding-inline-end: 8px;
+    padding-bottom: 8px;
+  }
+
+  .mw-sheet {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--wa-line);
+    border-radius: 16px;
+    background: rgb(var(--wa-surface));
+  }
+
+  /* 192px holds the longest label plus a count on one line (measured in Plex). */
+  .mw-rail {
+    width: 192px;
+    flex: 0 0 192px;
+    padding: 4px 8px 8px;
+    overflow-y: auto;
+  }
+
+  .mw-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: rgb(var(--wa-muted));
+    font-size: var(--mw-text-sm);
+    font-weight: 500;
+    text-align: start;
+    transition:
+      background 120ms ease,
+      color 120ms ease;
+  }
+
+  .mw-nav-item svg {
+    flex: 0 0 auto;
+  }
+
+  .mw-nav-item:hover {
+    background: var(--wa-hover);
+    color: rgb(var(--wa-text));
+  }
+
+  .mw-nav-item[aria-current="page"] {
+    background: rgb(var(--wa-active));
+    color: rgb(var(--wa-text));
+    font-weight: 600;
+  }
+
+  /* Unseen deleted messages only, in the accent, like WhatsApp's unread count.
+     It disappears once the vault has been looked at. */
+  .mw-count {
+    flex: 0 0 auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgb(var(--wa-accent));
+    color: var(--wa-on-brand);
+    font-size: var(--mw-text-2xs);
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Buttons are ranked by importance, never coloured by meaning. */
+  /* 36px matches the inputs, so a field and its button share one height. */
+  .mw-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: var(--mw-text-sm);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    transition:
+      background 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+
+  /* Disabled buttons stay legible (muted ink on a grey ground, 5:1); a busy
+     button keeps its own look and shows the spinner. */
+  .mw-btn:disabled {
+    cursor: not-allowed;
+  }
+
+  .mw-btn[aria-busy="true"] {
+    cursor: progress;
+  }
+
+  .mw-btn-primary:disabled:not([aria-busy="true"]),
+  .mw-btn-success:disabled:not([aria-busy="true"]),
+  .mw-btn-danger:disabled:not([aria-busy="true"]) {
+    background: #eceeef;
+    color: rgb(var(--wa-muted));
+  }
+
+  .mw-btn-secondary:disabled:not([aria-busy="true"]) {
+    border-color: var(--wa-line);
+    color: rgb(var(--wa-muted));
+  }
+
+  .mw-btn-ghost:disabled,
+  .mw-btn-danger-ghost:disabled {
+    background: transparent;
+    color: rgb(var(--wa-muted));
+  }
+
+  .mw-btn-sm {
+    height: 30px;
+    padding: 0 10px;
+  }
+
+  .mw-btn-primary,
+  .mw-btn-success {
+    background: rgb(var(--wa-brand));
+    color: var(--wa-on-brand);
+  }
+
+  .mw-btn-primary:hover:not(:disabled),
+  .mw-btn-success:hover:not(:disabled) {
+    background: rgb(var(--wa-brand-strong));
+  }
+
+  .mw-btn-secondary {
+    background: rgb(var(--wa-surface));
+    border-color: var(--wa-control);
+    color: rgb(var(--wa-text));
+  }
+
+  .mw-btn-secondary:hover:not(:disabled) {
+    background: #f3f4f5;
+  }
+
+  .mw-btn-ghost {
+    background: transparent;
+    color: rgb(var(--wa-muted));
+  }
+
+  .mw-btn-ghost:hover:not(:disabled) {
+    background: var(--wa-hover);
+    color: rgb(var(--wa-text));
+  }
+
+  .mw-btn-danger {
+    background: rgb(var(--wa-danger));
+    color: var(--wa-on-danger);
+  }
+
+  .mw-btn-danger:hover:not(:disabled) {
+    background: rgb(var(--wa-danger) / 0.88);
+  }
+
+  .mw-btn-danger-ghost {
+    background: transparent;
+    border-color: rgb(var(--wa-danger) / 0.35);
+    color: rgb(var(--wa-danger));
+  }
+
+  .mw-btn-danger-ghost:hover:not(:disabled) {
+    background: #ffedea;
+  }
+
+  .mw-icon-btn {
+    display: inline-flex;
+    height: 32px;
+    width: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: rgb(var(--wa-muted));
+    transition:
+      background 120ms ease,
+      color 120ms ease;
+  }
+
+  .mw-icon-btn:hover {
+    background: var(--wa-hover);
+    color: rgb(var(--wa-text));
+  }
+
+  .mw-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
-.mw-card-strong {
-  background: rgb(var(--wa-surface));
-  border: 1px solid var(--wa-line);
-  border-radius: 10px;
-}
-
-.mw-panel {
-  background: rgb(var(--wa-panel));
-}
-
-.mw-input {
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: rgb(var(--wa-input));
-  color: rgb(var(--wa-text));
-  padding: 7px 10px;
-  font-size: var(--mw-text-sm);
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease;
-}
-
-.mw-input::placeholder {
-  color: rgb(var(--wa-muted) / 0.85);
-}
-
-.mw-input:hover {
-  border-color: var(--wa-line);
-}
-
-.mw-input:focus {
-  outline: none;
-  border-color: rgb(var(--wa-brand));
-  background: rgb(var(--wa-input));
-}
-
-.mw-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-textarea.mw-input {
-  resize: vertical;
-  min-height: 88px;
-}
-
-.mw-muted {
-  color: rgb(var(--wa-muted));
-}
-
-.mw-line {
-  border-color: var(--wa-line);
-}
-
-.mw-hover:hover {
-  background: var(--wa-hover);
-}
-
-.mw-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  direction: ltr;
-  unicode-bidi: plaintext;
-  font-variant-numeric: tabular-nums;
-}
-
-.mw-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(134, 150, 160, 0.35) transparent;
-}
-
-.mw-scroll::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-.mw-scroll::-webkit-scrollbar-thumb {
-  background: rgba(134, 150, 160, 0.35);
-  border-radius: 999px;
-}
-
-.mw-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Drawer floats, so a controlled shadow is allowed only here. */
-.mw-drawer {
-  background: rgb(var(--wa-bg));
-  color: rgb(var(--wa-text));
-  border-inline-start: 1px solid var(--wa-line);
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.22);
-}
-
-.mw-app[dir="rtl"] .mw-drawer {
-  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.22);
-}
-
-.mw-header {
-  background: rgb(var(--wa-panel));
-  border-bottom: 1px solid var(--wa-line);
-}
-
-/* Navigation rail: one emerald 2px indicator, no pills. */
-.mw-workspace {
-  display: flex;
-  min-height: 0;
-  flex: 1;
-}
-
-.mw-rail {
-  width: 152px;
-  flex: 0 0 152px;
-  border-inline-end: 1px solid var(--wa-line);
-  background: rgb(var(--wa-panel));
-  padding: 8px 6px;
-  overflow-y: auto;
-}
-
-.mw-nav-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-height: 32px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: rgb(var(--wa-muted));
-  font-size: var(--mw-text-sm);
-  font-weight: 600;
-  text-align: start;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
-}
-
-.mw-nav-item svg {
-  flex: 0 0 auto;
-}
-
-.mw-nav-item:hover {
-  background: var(--wa-hover);
-  color: rgb(var(--wa-text));
-}
-
-.mw-nav-item[aria-current="page"] {
-  background: rgb(var(--wa-brand) / 0.08);
-  color: rgb(var(--wa-brand-strong));
-}
-
-.mw-nav-item[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  border-radius: 2px;
-  background: rgb(var(--wa-brand));
-}
-
-.mw-nav-count {
-  margin-inline-start: auto;
-  font-size: var(--mw-text-2xs);
-  font-weight: 700;
-  color: rgb(var(--wa-danger));
-  font-variant-numeric: tabular-nums;
-}
-
-/* Controls */
-.mw-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: var(--mw-text-sm);
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  transition:
-    background 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
-  border: 1px solid transparent;
-}
-
-.mw-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.mw-btn-sm {
-  height: 28px;
-  padding: 0 10px;
-  font-size: var(--mw-text-xs);
-}
-
-.mw-btn-primary {
-  background: rgb(var(--wa-brand));
-  color: var(--wa-on-brand);
-}
-
-.mw-btn-primary:hover:not(:disabled) {
-  background: rgb(var(--wa-brand-strong));
-}
-
-.mw-btn-secondary {
-  background: rgb(var(--wa-input));
-  color: rgb(var(--wa-text));
-}
-
-.mw-btn-secondary:hover:not(:disabled) {
-  background: rgb(var(--wa-muted) / 0.18);
-}
-
-.mw-btn-ghost {
-  background: transparent;
-  color: rgb(var(--wa-muted));
-}
-
-.mw-btn-ghost:hover:not(:disabled) {
-  background: var(--wa-hover);
-  color: rgb(var(--wa-text));
-}
-
-.mw-btn-danger {
-  background: rgb(var(--wa-danger));
-  color: var(--wa-on-danger);
-}
-
-.mw-btn-danger:hover:not(:disabled) {
-  background: rgb(var(--wa-danger) / 0.85);
-}
-
-.mw-btn-danger-ghost {
-  background: transparent;
-  color: rgb(var(--wa-danger));
-}
-
-.mw-btn-danger-ghost:hover:not(:disabled) {
-  background: rgb(var(--wa-danger) / 0.1);
-}
-
-.mw-btn-success {
-  background: rgb(var(--wa-brand));
-  color: var(--wa-on-brand);
-}
-
-.mw-icon-btn {
-  display: inline-flex;
-  height: 32px;
-  width: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: rgb(var(--wa-muted));
-  transition:
-    background 120ms ease,
-    color 120ms ease;
-}
-
-.mw-icon-btn:hover {
-  background: var(--wa-hover);
-  color: rgb(var(--wa-text));
-}
-
-.mw-icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-}
-
+/* Switch: ink when on, not an accent colour. Off is an outlined track with a
+   small grey knob, so it holds 3:1 against the panel instead of fading into it. */
 .mw-toggle {
   position: relative;
-  width: 36px;
-  height: 20px;
+  width: 32px;
+  height: 18px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgb(var(--wa-muted) / 0.35);
-  transition: background 140ms ease;
+  background: rgb(var(--wa-surface));
+  box-shadow: inset 0 0 0 1.5px var(--wa-switch-off);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .mw-toggle[aria-checked="true"] {
   background: rgb(var(--wa-brand));
+  box-shadow: none;
 }
 
 .mw-toggle > span {
   position: absolute;
-  top: 2px;
-  inset-inline-start: 2px;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  inset-inline-start: 4px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-  transition: inset-inline-start 140ms ease;
+  background: var(--wa-switch-knob);
+  transition:
+    inset-inline-start 140ms ease,
+    top 140ms ease,
+    width 140ms ease,
+    height 140ms ease,
+    background 140ms ease;
 }
 
 .mw-toggle[aria-checked="true"] > span {
-  inset-inline-start: 18px;
+  top: 2px;
+  inset-inline-start: 16px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(19, 20, 22, 0.25);
 }
 
 .mw-toggle:disabled {
@@ -419,27 +480,25 @@ textarea.mw-input {
   gap: 4px;
   height: 28px;
   padding: 0 8px;
-  border: 1px solid var(--wa-line);
+  border: 1px solid var(--wa-control);
   border-radius: 6px;
-  background: transparent;
-  color: rgb(var(--wa-muted));
+  background: rgb(var(--wa-surface));
+  color: rgb(var(--wa-text));
   font-size: var(--mw-text-xs);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     background 120ms ease,
-    color 120ms ease,
     border-color 120ms ease;
 }
 
 .mw-configure:hover {
-  background: var(--wa-hover);
-  color: rgb(var(--wa-text));
+  background: #f3f4f5;
 }
 
 .mw-configure.is-open {
-  border-color: rgb(var(--wa-brand) / 0.4);
-  color: rgb(var(--wa-brand-strong));
+  background: rgb(var(--wa-active));
+  border-color: transparent;
 }
 
 .mw-configure svg:last-child {
@@ -477,10 +536,11 @@ textarea.mw-input {
 }
 
 .mw-disclosure-content {
-  border-top: 1px solid var(--wa-line);
+  margin: 4px 8px 8px;
+  border-radius: 6px;
   background: rgb(var(--wa-surface));
-  padding: 10px 12px;
-  animation: mw-disclosure-in 160ms cubic-bezier(0.2, 0, 0, 1);
+  padding: 12px;
+  animation: mw-disclosure-in 160ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 
 @keyframes mw-disclosure-in {
@@ -494,50 +554,59 @@ textarea.mw-input {
   }
 }
 
+/* Stepper: the current step is a white segment on the panel. */
 .mw-stepper {
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 4px;
-  border: 1px solid var(--wa-line);
-  border-radius: 8px;
-  background: var(--wa-surface);
 }
 
+/* Each group after the first is [line][step]. Steps take their label's width
+   and the lines share what is left, so a label is only cut when the row truly
+   runs out of room. The first group has no line and does not grow. */
 .mw-step-group {
   display: flex;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   align-items: center;
   min-width: 0;
+}
+
+.mw-step-group:first-child {
+  flex: 0 1 auto;
 }
 
 .mw-step-line {
   flex: 1 1 auto;
   min-width: 8px;
   height: 1px;
-  margin: 0 4px;
-  background: var(--wa-line);
+  margin: 0 6px;
+  background: var(--wa-control);
 }
 
 .mw-step {
   display: flex;
   flex: 0 1 auto;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  padding: 4px 8px;
+  padding: 5px 10px 5px 6px;
   border-radius: 6px;
   color: rgb(var(--wa-muted));
   font-size: var(--mw-text-xs);
-  font-weight: 600;
+  font-weight: 500;
   transition:
     background 120ms ease,
     color 120ms ease;
 }
 
+.mw-app[dir="rtl"] .mw-step {
+  padding: 5px 6px 5px 10px;
+}
+
 .mw-step[data-state="active"] {
-  background: rgb(var(--wa-brand) / 0.1);
-  color: rgb(var(--wa-brand-strong));
+  background: rgb(var(--wa-surface));
+  color: rgb(var(--wa-text));
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--wa-line);
 }
 
 .mw-step[data-state="done"] {
@@ -548,10 +617,10 @@ textarea.mw-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
-  border: 1px solid currentColor;
+  border: 1px solid var(--wa-control);
   border-radius: 999px;
   font-size: var(--mw-text-2xs);
   font-variant-numeric: tabular-nums;
@@ -565,8 +634,8 @@ textarea.mw-input {
 
 .mw-step[data-state="done"] .mw-step-index {
   border-color: transparent;
-  background: rgb(var(--wa-brand) / 0.15);
-  color: rgb(var(--wa-brand-strong));
+  background: #dcfae5;
+  color: #04250e;
 }
 
 .mw-step-label {
@@ -575,9 +644,10 @@ textarea.mw-input {
   white-space: nowrap;
 }
 
+/* Filter chips: outlined; the selected one is ink. */
 .mw-chips {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   overflow-x: auto;
   padding-bottom: 1px;
   scrollbar-width: none;
@@ -590,15 +660,15 @@ textarea.mw-input {
 .mw-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--wa-line);
-  border-radius: 999px;
-  background: transparent;
-  color: rgb(var(--wa-muted));
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--wa-control);
+  border-radius: 6px;
+  background: rgb(var(--wa-surface));
+  color: rgb(var(--wa-text));
   font-size: var(--mw-text-xs);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     background 120ms ease,
@@ -607,87 +677,111 @@ textarea.mw-input {
 }
 
 .mw-chip:hover {
-  background: var(--wa-hover);
-  color: rgb(var(--wa-text));
+  background: #f3f4f5;
 }
 
 .mw-chip[data-active="1"] {
-  border-color: rgb(var(--wa-brand) / 0.35);
-  background: rgb(var(--wa-brand) / 0.12);
-  color: rgb(var(--wa-brand-strong));
+  border-color: rgb(var(--wa-brand));
+  background: rgb(var(--wa-brand));
+  color: var(--wa-on-brand);
 }
 
 .mw-chip-count {
-  min-width: 14px;
-  padding: 0 3px;
-  border-radius: 999px;
-  background: rgb(var(--wa-muted) / 0.15);
+  color: inherit;
+  opacity: 0.65;
   font-size: var(--mw-text-2xs);
   font-variant-numeric: tabular-nums;
-  text-align: center;
 }
 
+/* Status pills: pale pairs that pass 4.5:1; neutral unless it is a state. */
 .mw-badge {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 4px;
+  height: 20px;
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 0 7px;
   font-size: var(--mw-text-2xs);
-  font-weight: 600;
-  line-height: 18px;
+  font-weight: 500;
+  line-height: 20px;
   white-space: nowrap;
 }
 
-.mw-badge-neutral {
-  background: rgb(var(--wa-muted) / 0.14);
-  color: rgb(var(--wa-muted));
-}
-
+.mw-badge-neutral,
 .mw-badge-brand {
-  background: rgb(var(--wa-brand) / 0.12);
-  color: rgb(var(--wa-brand-strong));
+  background: #eceeef;
+  color: #353736;
 }
 
 .mw-badge-success {
-  background: rgb(var(--wa-brand) / 0.14);
-  color: rgb(var(--wa-brand-strong));
+  background: #dcfae5;
+  color: #04250e;
 }
 
 .mw-badge-warning {
-  background: rgb(var(--wa-warning) / 0.14);
-  color: rgb(var(--wa-warning));
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: inset 0 0 0 1px #fde68a;
 }
 
 .mw-badge-danger {
-  background: rgb(var(--wa-danger) / 0.14);
-  color: rgb(var(--wa-danger));
+  background: #ffedea;
+  color: #831c1e;
+}
+
+/* Inline notices share the pill pairs. An info note is plain help text: no
+   box, so it never adds a fourth surface inside a panel. */
+.mw-alert-info {
+  border-color: transparent;
+  background: transparent;
+  padding-inline: 0;
+  color: rgb(var(--wa-muted));
+}
+
+.mw-alert-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.mw-alert-danger {
+  border-color: transparent;
+  background: #ffedea;
+  color: #831c1e;
+}
+
+.mw-alert-success {
+  border-color: transparent;
+  background: #dcfae5;
+  color: #04250e;
 }
 
 .mw-progress {
-  height: 4px;
+  height: 6px;
   width: 100%;
   overflow: hidden;
   border-radius: 999px;
-  background: rgb(var(--wa-muted) / 0.22);
+  background: #e6e8ea;
 }
 
 .mw-progress > span {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: rgb(var(--wa-brand));
+  background: rgb(var(--wa-accent));
   transition: width 240ms ease;
 }
 
 .mw-metric {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 6px 10px;
+  gap: 2px;
+  padding: 10px 14px;
   border-inline-start: 1px solid var(--wa-line);
 }
 
+/* The first figure starts on the panel's text edge. */
 .mw-metric:first-child {
   border-inline-start: 0;
   padding-inline-start: 0;
@@ -701,76 +795,48 @@ textarea.mw-input {
 
 .mw-metric-value {
   font-size: var(--mw-text-lg);
-  font-weight: 700;
-  line-height: 24px;
+  font-weight: 500;
+  line-height: 26px;
   color: rgb(var(--wa-text));
   font-variant-numeric: tabular-nums;
 }
 
+/* A static dot: the label says the state, the dot repeats it. No pulse. */
 .mw-status-dot {
-  position: relative;
   display: inline-flex;
-  height: 7px;
-  width: 7px;
+  height: 8px;
+  width: 8px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: rgb(var(--wa-muted));
 }
 
 .mw-status-dot[data-state="live"] {
-  background: rgb(var(--wa-brand-strong));
-}
-
-.mw-status-dot[data-state="live"]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 999px;
-  border: 1px solid rgb(var(--wa-brand) / 0.55);
-  animation: mw-live-pulse 2.4s ease-out infinite;
+  background: rgb(var(--wa-success));
 }
 
 .mw-status-dot[data-state="waiting"] {
-  background: rgb(var(--wa-warning));
+  background: #b45309;
 }
 
 .mw-status-dot[data-state="offline"] {
   background: rgb(var(--wa-danger));
 }
 
-@keyframes mw-live-pulse {
-  0% {
-    transform: scale(0.7);
-    opacity: 0.8;
-  }
-  70% {
-    transform: scale(1.35);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.35);
-    opacity: 0;
-  }
-}
-
 .mw-toast {
   pointer-events: auto;
-  background: rgb(var(--wa-panel));
+  background: rgb(var(--wa-surface));
   border: 1px solid var(--wa-line);
   color: rgb(var(--wa-text));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-  border-radius: 8px;
-}
-
-.mw-toast-deleted {
-  border-inline-start: 2px solid rgb(var(--wa-danger));
+  box-shadow: 0 12px 32px rgba(19, 20, 22, 0.14);
+  border-radius: 12px;
 }
 
 .mw-pin-dot {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  border: 1px solid rgb(var(--wa-muted) / 0.55);
+  border: 1px solid var(--wa-control);
   transition:
     background 120ms ease,
     border-color 120ms ease;
@@ -782,19 +848,19 @@ textarea.mw-input {
 }
 
 .mw-keypad-key {
-  height: 48px;
+  height: 52px;
   border-radius: 8px;
   border: 1px solid var(--wa-line);
   background: rgb(var(--wa-surface));
   color: rgb(var(--wa-text));
   font-size: var(--mw-text-xl);
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   transition: background 100ms ease;
 }
 
 .mw-keypad-key:hover {
-  background: var(--wa-hover);
+  background: #f3f4f5;
 }
 
 .mw-keypad-key:active {
@@ -870,16 +936,18 @@ textarea.mw-input {
   }
 }
 
+/* Fallback launcher (QR screen): a white disc, ink mark, state dot. */
 .mw-fab {
-  background: rgb(var(--wa-brand));
-  color: var(--wa-on-brand);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  background: rgb(var(--wa-surface));
+  color: rgb(var(--wa-text));
+  border: 1px solid var(--wa-line);
+  box-shadow: 0 8px 24px rgba(19, 20, 22, 0.16);
   touch-action: none;
   user-select: none;
 }
 
 .mw-fab:hover {
-  background: rgb(var(--wa-brand-strong));
+  background: #f6f7f8;
 }
 
 /* Locale-formatted values (times, dates, counts). The run takes its direction
@@ -890,59 +958,13 @@ textarea.mw-input {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 560px) {
-  .mw-workspace {
-    flex-direction: column;
-  }
-
-  .mw-rail {
-    width: auto;
-    flex: 0 0 auto;
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--wa-line);
-    padding: 6px;
-  }
-
-  .mw-nav-item {
-    width: auto;
-    flex: 0 0 auto;
-    min-height: 32px;
-    padding: 6px 10px;
-    font-size: var(--mw-text-xs);
-  }
-
-  /* Narrow screens: only the current step keeps its label, and its group
-     sizes to that label instead of an equal third of the row. */
-  .mw-step:not([data-state="active"]) .mw-step-label {
-    display: none;
-  }
-
-  .mw-step-group {
-    flex: 1 1 auto;
-  }
-
-  .mw-nav-item[aria-current="page"]::before {
-    inset-inline-start: 6px;
-    inset-block: auto 0;
-    top: auto;
-    bottom: 0;
-    width: auto;
-    height: 2px;
-    left: 6px;
-    right: 6px;
-  }
-}
-
 /* Connection banner: one line of state plus the single action that fixes it. */
 .mw-banner {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--wa-line);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--wa-rule);
   background: rgb(var(--wa-surface));
 }
 
@@ -966,22 +988,22 @@ textarea.mw-input {
 
 .mw-segmented {
   display: inline-flex;
-  height: 28px;
+  height: 30px;
   align-items: center;
   gap: 2px;
   padding: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: rgb(var(--wa-input));
 }
 
 .mw-segmented > button {
-  height: 24px;
-  min-width: 36px;
-  padding: 0 8px;
-  border-radius: 4px;
+  height: 26px;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: 6px;
   color: rgb(var(--wa-muted));
   font-size: var(--mw-text-xs);
-  font-weight: 600;
+  font-weight: 500;
   transition:
     background 120ms ease,
     color 120ms ease;
@@ -994,9 +1016,11 @@ textarea.mw-input {
 .mw-segmented > button[aria-pressed="true"] {
   background: rgb(var(--wa-surface));
   color: rgb(var(--wa-text));
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--wa-line);
 }
 
-/* Message preview uses WhatsApp's own chat surfaces for each theme. */
+/* Message preview uses WhatsApp's own chat surfaces. */
 .mw-chat-surface {
   background: var(--wa-chat-bg);
 }
@@ -1028,6 +1052,45 @@ textarea.mw-input {
   border: 0;
 }
 
+@media (max-width: 560px) {
+  /* On a phone-width window the frame disappears: the sheet is the screen. */
+  .mw-workspace {
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .mw-sheet {
+    border-width: 1px 0 0;
+    border-radius: 0;
+  }
+
+  .mw-rail {
+    width: auto;
+    flex: 0 0 auto;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 8px 8px;
+  }
+
+  .mw-nav-item {
+    width: auto;
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: var(--mw-text-xs);
+  }
+
+  /* Only the current step keeps its label, and its group sizes to it. */
+  .mw-step:not([data-state="active"]) .mw-step-label {
+    display: none;
+  }
+
+  .mw-step-group {
+    flex: 1 1 auto;
+  }
+}
+
 /* One rule for every animation and transition in the panel. */
 @media (prefers-reduced-motion: reduce) {
   .mw-app *,
@@ -1037,9 +1100,5 @@ textarea.mw-input {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .mw-status-dot[data-state="live"]::after {
-    animation: none !important;
   }
 }

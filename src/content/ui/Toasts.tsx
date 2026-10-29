@@ -39,7 +39,7 @@ function ToastCard({ toast }: { toast: ToastItem }) {
 
   const icon =
     toast.kind === "success" ? (
-      <CheckCircle2 className="h-4 w-4 text-wa-brand" aria-hidden="true" />
+      <CheckCircle2 className="h-4 w-4 text-wa-success" aria-hidden="true" />
     ) : toast.kind === "error" ? (
       <AlertTriangle className="h-4 w-4 text-wa-danger" aria-hidden="true" />
     ) : toast.kind === "deleted" ? (
@@ -50,9 +50,7 @@ function ToastCard({ toast }: { toast: ToastItem }) {
 
   return (
     <div
-      className={`mw-toast flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5 px-3 py-2.5 ${
-        toast.kind === "deleted" ? "mw-toast-deleted" : ""
-      }`}
+      className="mw-toast flex w-[min(400px,calc(100vw-32px))] items-start gap-2.5 px-3.5 py-3"
       role={toast.kind === "error" ? "alert" : "status"}
       onPointerEnter={pause}
       onPointerLeave={start}
@@ -71,7 +69,7 @@ function ToastCard({ toast }: { toast: ToastItem }) {
             toast.action?.run();
             dismiss(toast.id);
           }}
-          className="mw-btn mw-btn-ghost mw-btn-sm shrink-0 text-wa-brand-strong"
+          className="mw-btn mw-btn-secondary mw-btn-sm shrink-0"
         >
           {toast.action.label}
         </button>

@@ -54,7 +54,7 @@ describe("settings defaults and defensive merge", () => {
     });
 
     expect(merged.language).toBe("ar");
-    expect(merged.theme).toBe("auto");
+    expect("theme" in merged).toBe(false);
     expect(merged.privacy.blurPreview).toBe(false);
     expect(merged.privacy.blurMessages).toBe(true);
     expect(merged.privacy.suppressDeliveryReceipts).toBe(false);
@@ -93,7 +93,8 @@ describe("settings defaults and defensive merge", () => {
       webhook: { enabled: true, url: "https://hooks.example.org/x", token: "t" },
     });
     expect(merged.language).toBe("en");
-    expect(merged.theme).toBe("dark");
+    // The panel is light only; a stored theme from older versions is dropped.
+    expect("theme" in merged).toBe(false);
     expect(merged.privacy.disableReadReceipts).toBe(true);
     expect(merged.privacy.suppressDeliveryReceipts).toBe(true);
     expect(merged.privacy.blurComposer).toBe(true);
@@ -125,13 +126,13 @@ describe("bilingual resources", () => {
         phone: "{{phone}}",
       }),
     ).toContain("{{custom2}}");
-    expect(tFor("en")("nav.vault")).toBe("Deleted Messages");
+    expect(tFor("en")("nav.vault")).toBe("Deleted messages");
     expect(dirFor("ar")).toBe("rtl");
     expect(dirFor("en")).toBe("ltr");
   });
 
   it("interpolates count variables", () => {
     expect(tFor("en")("broadcaster.parsedCount", { count: 12 })).toContain("12");
-    expect(tFor("ar")("vault.count", { count: 3 })).toContain("3");
+    expect(tFor("ar")("vault.unseen", { count: 3 })).toContain("3");
   });
 });

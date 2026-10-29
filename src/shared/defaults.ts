@@ -6,7 +6,6 @@ export function createDefaultSettings(): AppSettings {
   return {
     version: SETTINGS_VERSION,
     language: "ar",
-    theme: "auto",
     privacy: {
       blurPreview: false,
       blurNames: false,
@@ -139,8 +138,8 @@ export function mergeSettings(input: unknown): AppSettings {
 
   return {
     version: SETTINGS_VERSION,
+    // A stored "theme" from older versions is dropped: the panel is light only.
     language: input.language === "en" ? "en" : "ar",
-    theme: input.theme === "light" || input.theme === "dark" ? input.theme : "auto",
     privacy: {
       blurPreview: bool(privacy.blurPreview, base.privacy.blurPreview),
       blurNames: bool(privacy.blurNames, base.privacy.blurNames),

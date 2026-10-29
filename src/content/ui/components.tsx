@@ -139,31 +139,45 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cn("mw-card", !customPadding && "p-3", className)}>{children}</div>;
 }
 
+/**
+ * Page title (default): the section's name as the sheet's heading, with no
+ * icon (the rail already shows it). Card title: a smaller heading inside a
+ * panel, with an optional muted icon.
+ */
 export function SectionTitle({
   icon,
   title,
   subtitle,
   action,
+  size = "page",
 }: {
   icon?: ReactNode;
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  size?: "page" | "card";
 }) {
+  const page = size === "page";
   return (
-    <div className="mb-2 flex items-start justify-between gap-3">
+    <div className={cn("flex items-start justify-between gap-3", page ? "mb-4" : "mb-3")}>
       <div className="flex min-w-0 items-start gap-2">
-        {icon ? (
-          <span className="mt-0.5 shrink-0 text-wa-muted" aria-hidden="true">
+        {!page && icon ? (
+          <span className="mt-1 shrink-0 text-wa-muted" aria-hidden="true">
             {icon}
           </span>
         ) : null}
         <div className="min-w-0">
-          <h2 className="text-mw-base font-semibold leading-5 text-wa-text">{title}</h2>
-          {subtitle ? <p className="mt-0.5 text-mw-xs leading-5 text-wa-muted">{subtitle}</p> : null}
+          {page ? (
+            <h2 className="text-mw-lg font-semibold leading-7 text-wa-text">{title}</h2>
+          ) : (
+            <h3 className="text-mw-base font-semibold leading-6 text-wa-text">{title}</h3>
+          )}
+          {subtitle ? (
+            <p className={cn("leading-5 text-wa-muted", page ? "mt-1 text-mw-sm" : "mt-0.5 text-mw-xs")}>{subtitle}</p>
+          ) : null}
         </div>
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="shrink-0 pt-1">{action}</div> : null}
     </div>
   );
 }
@@ -195,7 +209,9 @@ export function Toggle({
   label,
   hint,
   disabled,
+  disabledReason,
   warning,
+  status,
   action,
 }: {
   checked: boolean;
@@ -203,32 +219,44 @@ export function Toggle({
   label: string;
   hint?: string;
   disabled?: boolean;
-  warning?: boolean;
+  /** Shown instead of the hint while disabled, so the row says why. */
+  disabledReason?: string;
+  /** Accessible text for the warning mark (e.g. "changes your account settings"). */
+  warning?: string;
+  /** One short status pill after the title; pass it only for an exception. */
+  status?: ReactNode;
   action?: ReactNode;
 }) {
   const id = useId();
   const labelId = `${id}-label`;
   const hintId = `${id}-hint`;
+  const description = disabled && disabledReason ? disabledReason : hint;
   return (
     <div
       className={cn(
         "flex items-start justify-between gap-4 px-3 py-2.5",
-        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer hover:bg-wa-hover",
+        disabled ? "cursor-not-allowed" : "cursor-pointer hover:bg-wa-hover",
       )}
       onClick={() => {
         if (!disabled) onChange(!checked);
       }}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span id={labelId} className="text-mw-sm font-medium leading-5 text-wa-text">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span id={labelId} className={cn("text-mw-sm font-medium leading-5", disabled ? "text-wa-muted" : "text-wa-text")}>
             {label}
+            {warning ? (
+              <span className="ms-1.5 inline-flex align-[-2px] text-wa-warning" title={warning}>
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="mw-sr-only">{warning}</span>
+              </span>
+            ) : null}
           </span>
-          {warning ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-wa-warning" aria-hidden="true" /> : null}
+          {status}
         </div>
-        {hint ? (
+        {description ? (
           <p id={hintId} className="mt-0.5 text-mw-xs leading-5 text-wa-muted">
-            {hint}
+            {description}
           </p>
         ) : null}
       </div>
@@ -244,7 +272,7 @@ export function Toggle({
           role="switch"
           aria-checked={checked}
           aria-labelledby={labelId}
-          aria-describedby={hint ? hintId : undefined}
+          aria-describedby={description ? hintId : undefined}
           disabled={disabled}
           onClick={(event) => {
             event.stopPropagation();
@@ -547,34 +575,23 @@ export function Progress({
   );
 }
 
-export function EmptyState({
-  icon,
-  title,
-  body,
-  action,
-}: {
-  icon?: ReactNode;
-  title: string;
-  body?: string;
-  action?: ReactNode;
-}) {
+/**
+ * An empty block keeps its place on the page: one dashed box with one
+ * sentence (and the next step, when there is one). No illustration.
+ */
+export function EmptyState({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-      {icon ? (
-        <div className="mb-2 text-wa-muted" aria-hidden="true">
-          {icon}
-        </div>
-      ) : null}
-      <p className="text-mw-sm font-medium text-wa-text">{title}</p>
-      {body ? <p className="mt-1 max-w-sm text-mw-xs leading-5 text-wa-muted">{body}</p> : null}
-      {action ? <div className="mt-3">{action}</div> : null}
+    <div className="mw-empty">
+      <p className="text-mw-sm font-medium leading-5 text-wa-text">{title}</p>
+      {body ? <p className="mt-0.5 text-mw-xs leading-5 text-wa-muted">{body}</p> : null}
+      {action ? <div className="mt-2.5">{action}</div> : null}
     </div>
   );
 }
 
 export function Stat({ label, value, tone = "neutral" }: { label: string; value: ReactNode; tone?: BadgeTone }) {
   const color =
-    tone === "success" ? "text-wa-brand" : tone === "danger" ? "text-wa-danger" : tone === "warning" ? "text-wa-warning" : "text-wa-text";
+    tone === "success" ? "text-wa-success" : tone === "danger" ? "text-wa-danger" : tone === "warning" ? "text-wa-warning" : "text-wa-text";
   return (
     <div className="mw-metric">
       <span className="mw-metric-label">{label}</span>
@@ -593,15 +610,15 @@ export function Alert({
   children: ReactNode;
 }) {
   const styles = {
-    info: "border-wa-line bg-wa-surface text-wa-text",
-    warning: "border-wa-warning/30 bg-wa-warning/10 text-wa-warning",
-    danger: "border-wa-danger/30 bg-wa-danger/10 text-wa-danger",
-    success: "border-wa-brand/30 bg-wa-brand/10 text-wa-brand",
+    info: "mw-alert-info",
+    warning: "mw-alert-warning",
+    danger: "mw-alert-danger",
+    success: "mw-alert-success",
   }[tone];
   return (
     <div className={cn("rounded-md border px-2.5 py-2 text-mw-xs leading-5", styles)} role={tone === "danger" ? "alert" : undefined}>
       {title ? <p className="mb-0.5 font-semibold">{title}</p> : null}
-      <div className="opacity-90">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -638,13 +655,8 @@ export function CopyButton({ text, label, copiedLabel }: { text: string; label: 
   };
 
   return (
-    <button
-      type="button"
-      onClick={() => void copy()}
-      className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-mw-xs font-medium text-wa-muted transition-colors hover:bg-wa-hover hover:text-wa-text"
-      aria-live="polite"
-    >
-      {copied ? <Check className="h-3.5 w-3.5 text-wa-brand" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+    <button type="button" onClick={() => void copy()} className="mw-btn mw-btn-ghost mw-btn-sm" aria-live="polite">
+      {copied ? <Check className="h-3.5 w-3.5 text-wa-success" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
       {copied ? copiedLabel : label}
     </button>
   );
@@ -684,7 +696,7 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-[2147483200] flex items-center justify-center p-4" style={{ pointerEvents: "auto" }}>
-      <div className="absolute inset-0 bg-black/55" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-wa-brand/25" onClick={onClose} aria-hidden="true" />
       <div
         ref={ref}
         role="dialog"

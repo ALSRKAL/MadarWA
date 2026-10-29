@@ -1,45 +1,10 @@
 /** @type {import('tailwindcss').Config} */
+// Light only. Every colour is a token from src/content/styles/shadow.css.
 export default {
   content: ["./src/content/**/*.{ts,tsx}", "./src/popup/**/*.{ts,tsx}", "./popup.html"],
-  darkMode: ['class', '[data-madarwa-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "#e6f7f2",
-          100: "#c2eee3",
-          200: "#8fe3d1",
-          300: "#4fd6bd",
-          400: "#06cf9c",
-          500: "#00a884",
-          600: "#008069",
-          700: "#006b59",
-          800: "#005445",
-          900: "#003b31",
-          950: "#00251f",
-        },
-        danger: {
-          50: "#fdecef",
-          100: "#fbd5db",
-          200: "#f7aab6",
-          300: "#f58a9e",
-          400: "#f47c8e",
-          500: "#f15c6d",
-          600: "#d94a5c",
-          700: "#b83a4b",
-          800: "#922d3b",
-          900: "#6d222d",
-        },
-        warning: {
-          50: "#fef7e6",
-          100: "#fdedc1",
-          200: "#fbd98a",
-          300: "#f9c74f",
-          400: "#f7b731",
-          500: "#f59e0b",
-          600: "#d97706",
-          700: "#b45309",
-        },
         wa: {
           bg: "rgb(var(--wa-bg) / <alpha-value>)",
           panel: "rgb(var(--wa-panel) / <alpha-value>)",
@@ -47,19 +12,26 @@ export default {
           input: "rgb(var(--wa-input) / <alpha-value>)",
           text: "rgb(var(--wa-text) / <alpha-value>)",
           muted: "rgb(var(--wa-muted) / <alpha-value>)",
+          raised: "rgb(var(--wa-raised) / <alpha-value>)",
+          active: "rgb(var(--wa-active) / <alpha-value>)",
           brand: "rgb(var(--wa-brand) / <alpha-value>)",
           "brand-strong": "rgb(var(--wa-brand-strong) / <alpha-value>)",
+          accent: "rgb(var(--wa-accent) / <alpha-value>)",
+          success: "rgb(var(--wa-success) / <alpha-value>)",
           danger: "rgb(var(--wa-danger) / <alpha-value>)",
           warning: "rgb(var(--wa-warning) / <alpha-value>)",
           line: "var(--wa-line)",
+          rule: "var(--wa-rule)",
+          control: "var(--wa-control)",
           hover: "var(--wa-hover)",
           "on-brand": "var(--wa-on-brand)",
           "on-danger": "var(--wa-on-danger)",
         },
       },
+      // Preflight applies this to :host and html; "MadarWA Plex" is the bundled
+      // IBM Plex Sans Arabic declared by src/shared/fonts.ts.
       fontFamily: {
-        sans: ["Inter", "Segoe UI", "system-ui", "sans-serif"],
-        arabic: ["Tajawal", "Cairo", "IBM Plex Sans Arabic", "Segoe UI", "Tahoma", "sans-serif"],
+        sans: ["MadarWA Plex", "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", "Tahoma", "system-ui", "sans-serif"],
       },
       // One type scale for the panel and the popup (values live in shadow.css).
       // Size only: line height stays with the leading-* utilities.

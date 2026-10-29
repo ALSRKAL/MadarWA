@@ -6,7 +6,6 @@ import {
   Eye,
   FileSpreadsheet,
   ImageIcon,
-  Megaphone,
   Minus,
   Pause,
   Play,
@@ -53,7 +52,7 @@ function statusTone(status: CampaignStatus): "neutral" | "success" | "warning" |
   if (status === "completed") return "success";
   if (status === "running") return "brand";
   if (status === "paused") return "warning";
-  if (status === "stopped") return "danger";
+  // A campaign the user stopped is not a failure: no red.
   return "neutral";
 }
 
@@ -73,11 +72,12 @@ function formatDuration(seconds: number, t: (key: string, variables?: Record<str
   return hours > 0 ? t("common.durationHours", { hours, minutes }) : t("common.durationMinutes", { minutes: totalMinutes });
 }
 
+// A plain 14px icon per row; colour only on what failed or needs a look.
 const LOG_ICONS = {
-  sent: { icon: Check, className: "bg-wa-brand/15 text-wa-brand", key: "broadcaster.sent" },
-  failed: { icon: X, className: "bg-wa-danger/15 text-wa-danger", key: "broadcaster.failed" },
-  invalid: { icon: UserX, className: "bg-wa-warning/15 text-wa-warning", key: "broadcaster.invalid" },
-  skipped: { icon: Minus, className: "bg-wa-muted/15 text-wa-muted", key: "broadcaster.skipped" },
+  sent: { icon: Check, className: "text-wa-success", key: "broadcaster.sent" },
+  failed: { icon: X, className: "text-wa-danger", key: "broadcaster.failed" },
+  invalid: { icon: UserX, className: "text-wa-warning", key: "broadcaster.invalid" },
+  skipped: { icon: Minus, className: "text-wa-muted", key: "broadcaster.skipped" },
 } as const;
 
 export function BroadcasterTab() {
@@ -300,10 +300,13 @@ export function BroadcasterTab() {
   return (
     <div className="space-y-3">
       <SectionTitle
-        icon={<Megaphone className="h-4 w-4" />}
         title={t("broadcaster.title")}
         subtitle={t("broadcaster.subtitle")}
-        action={<Badge tone={waiting ? "warning" : statusTone(campaign.status)}>{statusLabel}</Badge>}
+        action={
+          campaign.status !== "idle" ? (
+            <Badge tone={waiting ? "warning" : statusTone(campaign.status)}>{statusLabel}</Badge>
+          ) : null
+        }
       />
 
       <Card className="p-2">
@@ -327,7 +330,10 @@ export function BroadcasterTab() {
           <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5">
             <h3 className="text-mw-sm font-semibold">{t("broadcaster.recipients")}</h3>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge tone="success">{t("broadcaster.parsedCount", { count: combined.recipients.length })}</Badge>
+              {/* A real zero stays neutral; green only once there is someone to send to. */}
+              <Badge tone={combined.recipients.length > 0 ? "success" : "neutral"}>
+                {t("broadcaster.parsedCount", { count: formatNumber(combined.recipients.length, settings.language) })}
+              </Badge>
               {combined.invalid > 0 ? <Badge tone="danger">{t("broadcaster.invalidCount", { count: combined.invalid })}</Badge> : null}
               {combined.duplicates > 0 ? <Badge tone="warning">{t("broadcaster.duplicatesRemoved", { count: combined.duplicates })}</Badge> : null}
             </div>
@@ -345,7 +351,7 @@ export function BroadcasterTab() {
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <label
               className={cn(
-                "mw-card relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-mw-sm font-semibold transition-colors hover:bg-wa-hover focus-within:ring-2 focus-within:ring-wa-brand",
+                "mw-btn mw-btn-secondary mw-btn-sm relative cursor-pointer focus-within:ring-2 focus-within:ring-wa-accent",
                 (busy || fileBusy) && "pointer-events-none opacity-50",
               )}
             >
@@ -374,7 +380,7 @@ export function BroadcasterTab() {
                     setFileName("");
                     setFileRecipients([]);
                   }}
-                  className="rounded p-0.5 hover:bg-wa-brand/15"
+                  className="rounded p-0.5 hover:bg-wa-hover"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -447,7 +453,7 @@ export function BroadcasterTab() {
               </div>
               <label
                 className={cn(
-                  "mw-card relative inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-mw-sm font-semibold transition-colors hover:bg-wa-hover focus-within:ring-2 focus-within:ring-wa-brand",
+                  "mw-btn mw-btn-secondary mw-btn-sm relative shrink-0 cursor-pointer focus-within:ring-2 focus-within:ring-wa-accent",
                   busy && "pointer-events-none opacity-50",
                 )}
               >
@@ -541,8 +547,8 @@ export function BroadcasterTab() {
             </div>
 
             {validation.active ? (
-              <div className="mb-3 rounded-md border border-wa-brand/25 bg-wa-brand/10 px-3 py-2">
-                <p className="text-mw-sm font-semibold text-wa-brand">
+              <div className="mb-3">
+                <p className="text-mw-sm font-medium text-wa-text">
                   {t("broadcaster.validating", { current: formatNumber(validation.current, settings.language), total: formatNumber(validation.total, settings.language) })}
                 </p>
                 <Progress className="mt-2" value={validation.current} max={validation.total} label={t("broadcaster.progress")} />
@@ -551,15 +557,28 @@ export function BroadcasterTab() {
               <>
                 <div className="mb-2 flex items-center justify-between text-mw-xs">
                   <span className="text-wa-muted">{t("broadcaster.progress")}</span>
-                  <span className="mw-lang-pill font-bold">
+                  <span className="mw-lang-pill font-semibold">
                     {formatNumber(campaign.processed, settings.language)} / {formatNumber(campaign.total, settings.language)}
                   </span>
                 </div>
                 <Progress value={campaign.processed} max={campaign.total} label={t("broadcaster.progress")} />
-                <div className="mw-card mt-3 grid grid-cols-3">
-                  <Stat label={t("broadcaster.sent")} value={formatNumber(campaign.sent, settings.language)} tone="success" />
-                  <Stat label={t("broadcaster.failed")} value={formatNumber(campaign.failed, settings.language)} tone="danger" />
-                  <Stat label={t("broadcaster.invalid")} value={formatNumber(campaign.invalid, settings.language)} tone="warning" />
+                {/* One strip split by hairlines; a zero stays in ink, never in a state colour. */}
+                <div className="mt-3 grid grid-cols-3 border-t border-wa-line pt-1">
+                  <Stat
+                    label={t("broadcaster.sent")}
+                    value={formatNumber(campaign.sent, settings.language)}
+                    tone={campaign.sent > 0 ? "success" : "neutral"}
+                  />
+                  <Stat
+                    label={t("broadcaster.failed")}
+                    value={formatNumber(campaign.failed, settings.language)}
+                    tone={campaign.failed > 0 ? "danger" : "neutral"}
+                  />
+                  <Stat
+                    label={t("broadcaster.invalid")}
+                    value={formatNumber(campaign.invalid, settings.language)}
+                    tone={campaign.invalid > 0 ? "warning" : "neutral"}
+                  />
                 </div>
               </>
             ) : (
@@ -587,14 +606,14 @@ export function BroadcasterTab() {
                     {t("broadcaster.report")}
                   </button>
                 </div>
-                <div className="mw-scroll max-h-52 space-y-1 overflow-y-auto rounded-lg border border-wa-line bg-wa-input p-1.5">
+                <div className="mw-scroll max-h-52 divide-y divide-wa-line overflow-y-auto">
                   {[...campaign.logs].reverse().slice(0, 60).map((log, index) => {
                     const entry = LOG_ICONS[log.status as keyof typeof LOG_ICONS] ?? LOG_ICONS.skipped;
                     const Icon = entry.icon;
                     return (
-                      <div key={`${log.at}-${log.index}-${index}`} className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-mw-xs">
-                        <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full", entry.className)}>
-                          <Icon className="h-3 w-3" aria-hidden="true" />
+                      <div key={`${log.at}-${log.index}-${index}`} className="flex items-center gap-2 py-1.5 text-mw-xs">
+                        <span className={cn("flex shrink-0 items-center", entry.className)}>
+                          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                           <span className="mw-sr-only">{t(entry.key)}</span>
                         </span>
                         {/* The number is the identifier, so it never truncates; the reason does. */}

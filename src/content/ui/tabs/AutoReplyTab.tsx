@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, Pencil, Plus, Send, Trash2, Type } from "lucide-react";
+import { Pencil, Plus, Send, Trash2, Type } from "lucide-react";
 import type { AutoReplyRule, QuickTemplate, RuleMatchType, RuleScope } from "../../../shared/types";
 import { describeError } from "../../../shared/errors";
 import { uid } from "../../../shared/format";
@@ -167,12 +167,7 @@ export function AutoReplyTab() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle
-        icon={<Bot className="h-4 w-4" />}
-        title={t("autoreply.title")}
-        subtitle={t("autoreply.subtitle")}
-        action={<Badge tone={settings.autoReply.enabled ? "success" : "neutral"}>{settings.autoReply.enabled ? t("common.active") : t("common.inactive")}</Badge>}
-      />
+      <SectionTitle title={t("autoreply.title")} subtitle={t("autoreply.subtitle")} />
 
       <Card className="p-0">
         <Toggle
@@ -211,7 +206,7 @@ export function AutoReplyTab() {
           </div>
 
           {settings.autoReply.rules.length === 0 ? (
-            <EmptyState title={t("autoreply.noRules")} body={t("autoreply.fallbackHint")} icon={<Bot className="h-5 w-5" />} />
+            <EmptyState title={t("autoreply.noRules")} body={t("autoreply.noRulesHint")} />
           ) : (
             <div className="mw-card divide-y divide-wa-line">
               {settings.autoReply.rules.map((rule) => (
@@ -221,7 +216,6 @@ export function AutoReplyTab() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="truncate text-mw-sm font-semibold">{rule.name || t("common.unnamed")}</p>
                         <Badge tone="neutral">{matchLabel(t, rule.matchType)}</Badge>
-                        {!rule.enabled ? <Badge tone="neutral">{t("common.off")}</Badge> : null}
                       </div>
                       {rule.matchType !== "fallback" ? (
                         <p className="mw-code mt-1 truncate text-mw-xs text-wa-muted">{rule.pattern}</p>
@@ -279,11 +273,12 @@ export function AutoReplyTab() {
             <Alert tone="info">{t("autoreply.fallbackHint")}</Alert>
           </div>
         </div>
-      ) : (
-        <Card>
-          <EmptyState icon={<Bot className="h-5 w-5" />} title={t("autoreply.noRules")} body={t("autoreply.enableHint")} />
-        </Card>
-      )}
+      ) : settings.autoReply.rules.length > 0 ? (
+        // Rules stay hidden while the switch is off; say that they are kept.
+        <p className="px-1 text-mw-xs leading-5 text-wa-muted">
+          {t("autoreply.savedRules", { count: settings.autoReply.rules.length })}
+        </p>
+      ) : null}
 
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -302,7 +297,7 @@ export function AutoReplyTab() {
         </div>
 
         {settings.autoReply.templates.length === 0 ? (
-          <EmptyState title={t("autoreply.noTemplates")} body={t("autoreply.noTemplatesHint")} icon={<Type className="h-5 w-5" />} />
+          <EmptyState title={t("autoreply.noTemplates")} body={t("autoreply.noTemplatesHint")} />
         ) : (
           <div className="mw-card divide-y divide-wa-line">
             {settings.autoReply.templates.map((template) => (

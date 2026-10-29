@@ -19,13 +19,13 @@ import { contentController } from "../../controller";
 import { useAppStore, useSettings, useT } from "../../store";
 import {
   Alert,
-  Badge,
   Button,
   Card,
   ConfigureButton,
   CopyButton,
   Disclosure,
   Field,
+  GroupLabel,
   SectionTitle,
   TextArea,
   TextInput,
@@ -212,15 +212,11 @@ export function ToolsTab() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle
-        icon={<Webhook className="h-4 w-4" />}
-        title={t("tools.title")}
-        subtitle={t("tools.subtitle")}
-        action={<Badge tone="neutral">{t("popup.version", { version: EXTENSION_VERSION })}</Badge>}
-      />
+      <SectionTitle title={t("tools.title")} subtitle={t("tools.subtitle")} />
 
       <Card>
         <SectionTitle
+          size="card"
           icon={<MessageCircle className="h-4 w-4" />}
           title={t("tools.startChat")}
           subtitle={t("tools.startChatHint")}
@@ -269,14 +265,10 @@ export function ToolsTab() {
       <Card className="p-0">
         <div className="px-3 pt-3">
           <SectionTitle
+            size="card"
             icon={<Link2 className="h-4 w-4" />}
             title={t("tools.webhook")}
             subtitle={t("tools.webhookHint")}
-            action={
-              <Badge tone={settings.webhook.enabled ? "success" : "neutral"}>
-                {settings.webhook.enabled ? t("common.on") : t("common.off")}
-              </Badge>
-            }
           />
         </div>
 
@@ -360,7 +352,7 @@ export function ToolsTab() {
                     <h4 className="text-mw-xs font-semibold">{t("tools.payloadTitle")}</h4>
                     <CopyButton text={samplePayload} label={t("common.copy")} copiedLabel={t("common.copied")} />
                   </div>
-                  <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md border border-wa-line bg-wa-input p-2.5 text-mw-2xs leading-5">
+                  <pre className="mw-code mw-scroll max-h-40 overflow-auto rounded-md bg-wa-raised p-2.5 text-mw-2xs leading-5">
                     {samplePayload}
                   </pre>
                 </div>
@@ -393,11 +385,11 @@ export function ToolsTab() {
               </div>
             </div>
 
-            <ul className="mw-scroll max-h-44 space-y-1 overflow-y-auto rounded-md border border-wa-line bg-wa-input p-1.5">
+            <ul className="mw-scroll max-h-44 divide-y divide-wa-line overflow-y-auto">
               {webhookLog.map((entry) => (
-                <li key={entry.id} className="flex items-start gap-2 rounded-lg px-1.5 py-1 text-mw-xs">
+                <li key={entry.id} className="flex items-start gap-2 py-1.5 text-mw-xs">
                   {entry.ok ? (
-                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-brand" aria-hidden="true" />
+                    <CircleCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-success" aria-hidden="true" />
                   ) : (
                     <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-wa-danger" aria-hidden="true" />
                   )}
@@ -423,28 +415,29 @@ export function ToolsTab() {
         ) : null}
       </Card>
 
-      <Card>
-        <SectionTitle icon={<ExternalLink className="h-4 w-4" />} title={t("tools.quickLinks")} />
-        <div className="mw-card divide-y divide-wa-line">
-          <a
-            href={PROJECT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between px-3 py-2.5 text-mw-sm font-medium hover:bg-wa-hover"
-          >
-            {t("tools.repo")}
-            <ExternalLink className="h-3.5 w-3.5 text-wa-muted" aria-hidden="true" />
-          </a>
-          <a
-            href={PROJECT_DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between px-3 py-2.5 text-mw-sm font-medium hover:bg-wa-hover"
-          >
-            {t("tools.docs")}
-            <ExternalLink className="h-3.5 w-3.5 text-wa-muted" aria-hidden="true" />
-          </a>
+      {/* Rows sit on the panel itself: frame, sheet and panel are the only levels. */}
+      <Card className="p-0">
+        <GroupLabel icon={<ExternalLink className="h-3.5 w-3.5" />}>{t("tools.quickLinks")}</GroupLabel>
+        <div className="divide-y divide-wa-line">
+          {[
+            { href: PROJECT_URL, label: t("tools.repo") },
+            { href: PROJECT_DOCS_URL, label: t("tools.docs") },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between px-3 py-2.5 text-mw-sm font-medium hover:bg-wa-hover"
+            >
+              {link.label}
+              <ExternalLink className="h-3.5 w-3.5 text-wa-muted" aria-hidden="true" />
+            </a>
+          ))}
         </div>
+        <p className="mw-lang-pill border-t border-wa-line px-3 py-2 text-mw-xs text-wa-muted">
+          {t("app.name")} · {t("popup.version", { version: EXTENSION_VERSION })}
+        </p>
       </Card>
     </div>
   );

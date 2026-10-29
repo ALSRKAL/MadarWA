@@ -85,6 +85,21 @@ async function copyStatic() {
     resolve(dist, "wppconnect-wa.js"),
   );
   await cp(resolve(root, "icons"), resolve(dist, "icons"), { recursive: true });
+
+  // UI typeface (IBM Plex Sans Arabic, OFL-1.1), shipped locally: no font CDN.
+  const fontSource = resolve(root, "node_modules/@fontsource/ibm-plex-sans-arabic/files");
+  await mkdir(resolve(dist, "fonts"), { recursive: true });
+  for (const weight of [400, 500, 600]) {
+    for (const subset of ["arabic", "latin"]) {
+      const file = `ibm-plex-sans-arabic-${subset}-${weight}-normal.woff2`;
+      await copyFile(resolve(fontSource, file), resolve(dist, "fonts", file));
+    }
+  }
+  // The OFL requires its text to travel with the font files.
+  await copyFile(
+    resolve(root, "node_modules/@fontsource/ibm-plex-sans-arabic/LICENSE"),
+    resolve(dist, "fonts", "OFL.txt"),
+  );
 }
 
 async function reportSizes(files) {

@@ -131,6 +131,22 @@ for (const file of [...referenced].sort()) {
   await checkFile(file, file);
 }
 
+// The bundled UI typeface: six faces, its licence, and only WhatsApp may load them.
+const fontAccess = (manifest.web_accessible_resources ?? []).find((entry) =>
+  (entry.resources ?? []).includes("fonts/*.woff2"),
+);
+assert(Boolean(fontAccess), "Font files are web-accessible");
+assert(
+  Boolean(fontAccess) && (fontAccess.matches ?? []).every((match) => match.startsWith("https://web.whatsapp.com/")),
+  "Font files are exposed to WhatsApp Web only",
+);
+for (const weight of [400, 500, 600]) {
+  for (const subset of ["arabic", "latin"]) {
+    await checkFile(`fonts/ibm-plex-sans-arabic-${subset}-${weight}-normal.woff2`);
+  }
+}
+await checkFile("fonts/OFL.txt", "Font licence (OFL-1.1)");
+
 for (const [size, file] of Object.entries(manifest.icons ?? {})) {
   try {
     const metadata = await sharp(safeResolve(file)).metadata();

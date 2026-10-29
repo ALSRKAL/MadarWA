@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Download,
-  ExternalLink,
-  FileText,
-  Inbox,
-  Play,
-  Search,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+import { Download, ExternalLink, FileText, Play, Search, Trash2 } from "lucide-react";
 import { describeError } from "../../../shared/errors";
-import { formatDateTime, formatNumber } from "../../../shared/format";
+import { formatDateTime, formatTime } from "../../../shared/format";
 import { MediaVaultCache, type MediaVaultRecord } from "../../../shared/media-vault";
 import { saveVault } from "../../../shared/storage";
 import type { AntiDeleteSettings, DeletedMessage, InlineRestoreMode } from "../../../shared/types";
@@ -102,10 +93,16 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
 
   const downloadLink = url ? (
     <a className="mw-btn mw-btn-secondary mw-btn-sm" href={url} download={filename}>
-      <Download className="h-3 w-3" />
+      <Download className="h-3.5 w-3.5" aria-hidden="true" />
       {downloadLabel}
     </a>
   ) : null;
+  // The download button already says the full file is kept; only the exception is spelled out.
+  const mediaFooter = (
+    <div className="mt-1.5 flex items-center gap-2">
+      {downloadLink ?? <span className="text-mw-xs leading-5 text-wa-muted">{t("vault.mediaPreviewOnly")}</span>}
+    </div>
+  );
 
   if (kind === "image" || kind === "sticker") {
     const source = url || preview;
@@ -130,17 +127,8 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
               </span>
             ) : null}
           </button>
-        ) : (
-          <div className="rounded-md bg-wa-input/50 px-2.5 py-2">
-            <Badge tone="neutral">{t("media.image")}</Badge>
-          </div>
-        )}
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <Badge tone={url ? "success" : "neutral"}>
-            {url ? t("vault.mediaReady") : t("vault.mediaPreviewOnly")}
-          </Badge>
-          {downloadLink}
-        </div>
+        ) : null}
+        {mediaFooter}
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -178,15 +166,8 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
               <Play className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </span>
           </button>
-        ) : (
-          <Badge tone="neutral">{t("media.video")}</Badge>
-        )}
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <Badge tone={url ? "success" : "neutral"}>
-            {url ? t("vault.mediaReady") : t("vault.mediaPreviewOnly")}
-          </Badge>
-          {downloadLink}
-        </div>
+        ) : null}
+        {mediaFooter}
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -202,18 +183,9 @@ function VaultMedia({ entry }: { entry: DeletedMessage }) {
 
   if (kind === "ptt" || kind === "audio") {
     return (
-      <div className="mt-2 space-y-1.5">
-        {url ? (
-          <audio src={url} controls preload="metadata" className="h-8 w-full max-w-xs" />
-        ) : (
-          <Badge tone="neutral">{kind === "ptt" ? t("media.ptt") : t("media.audio")}</Badge>
-        )}
-        <div className="flex items-center gap-1.5">
-          <Badge tone={url ? "success" : "neutral"}>
-            {url ? t("vault.mediaReady") : t("vault.mediaPreviewOnly")}
-          </Badge>
-          {downloadLink}
-        </div>
+      <div className="mt-2">
+        {url ? <audio src={url} controls preload="metadata" className="h-8 w-full max-w-xs" /> : null}
+        {mediaFooter}
       </div>
     );
   }
@@ -313,12 +285,7 @@ export function VaultTab() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle
-        icon={<ShieldAlert className="h-4 w-4" />}
-        title={t("vault.title")}
-        subtitle={t("vault.subtitle")}
-        action={<Badge tone="neutral">{t("vault.count", { count: formatNumber(vault.length, settings.language) })}</Badge>}
-      />
+      <SectionTitle title={t("vault.title")} subtitle={t("vault.subtitle")} />
 
       <Card className="p-0">
         <Toggle
@@ -413,79 +380,83 @@ export function VaultTab() {
       />
 
       {vault.length === 0 ? (
-        <EmptyState icon={<Inbox className="h-6 w-6" />} title={t("vault.empty")} body={t("vault.emptyHint")} />
+        <EmptyState title={t("vault.empty")} body={t("vault.emptyHint")} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={<Search className="h-5 w-5" />} title={t("common.noResults")} />
+        <EmptyState title={t("common.noResults")} />
       ) : (
         <div className="mw-card divide-y divide-wa-line">
-          {filtered.map((entry) => (
-            <div key={entry.id} className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-mw-sm font-semibold">{entry.chatName || entry.chatId}</p>
-                    <Badge tone="neutral">{entry.isGroup ? t("vault.group") : t("vault.private")}</Badge>
-                    {entry.recoveredFromCache ? <Badge tone="success">{t("vault.recovered")}</Badge> : null}
+          {filtered.map((entry) => {
+            const chat = entry.chatName || entry.chatId;
+            const sender = entry.senderName || entry.sender || "";
+            const sameDay = new Date(entry.timestamp).toDateString() === new Date(entry.revokedAt).toDateString();
+            // Each part keeps its separator, so a wrapped line never ends on a dangling "·".
+            const meta = [
+              entry.isGroup ? t("vault.group") : "",
+              sender && sender !== chat ? `${t("vault.sender")}: ${sender}` : "",
+              entry.timestamp > 0
+                ? `${t("vault.originalTime")}: ${
+                    sameDay ? formatTime(entry.timestamp, settings.language) : formatDateTime(entry.timestamp, settings.language)
+                  }`
+                : "",
+            ].filter(Boolean);
+            return (
+              <article key={entry.id} className="px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h3 className="truncate text-mw-sm font-semibold leading-5">{chat}</h3>
                     {kindOf(entry) ? <Badge tone="neutral">{mediaLabel(entry)}</Badge> : null}
                   </div>
-                  <div className="text-wa-muted mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-mw-xs">
-                    <span>
-                      {t("vault.sender")}: {entry.senderName || entry.sender || entry.revokedBy || t("common.unknown")}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>
-                      {t("vault.deletedAt")}: {formatDateTime(entry.revokedAt, settings.language)}
-                    </span>
+                  <time
+                    className="mw-lang-pill shrink-0 text-mw-xs leading-5 text-wa-muted"
+                    dateTime={new Date(entry.revokedAt).toISOString()}
+                    title={t("vault.deletedAt")}
+                  >
+                    {formatDateTime(entry.revokedAt, settings.language)}
+                  </time>
+                </div>
+                {meta.length > 0 ? (
+                  <p className="mt-0.5 text-mw-xs leading-5 text-wa-muted">
+                    {meta.map((part, index) => (
+                      <span key={part} className="mw-lang-pill whitespace-nowrap">
+                        {index > 0 ? " · " : ""}
+                        {part}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+
+                {entry.text ? (
+                  <p className="mt-2 whitespace-pre-wrap break-words text-mw-sm leading-6 text-wa-text" dir="auto">
+                    {entry.text}
+                  </p>
+                ) : null}
+
+                <VaultMedia entry={entry} />
+
+                {!entry.text && !kindOf(entry) && !entry.recoveredFromCache ? (
+                  <p className="mt-2 text-mw-xs leading-5 text-wa-muted">{t("vault.notCached")}</p>
+                ) : null}
+
+                {entry.text || entry.chatId ? (
+                  <div className="mt-2 flex items-center justify-end gap-1">
+                    {entry.text ? <CopyButton text={entry.text} label={t("vault.copyText")} copiedLabel={t("common.copied")} /> : null}
+                    {entry.chatId ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
+                        loading={openingId === entry.id}
+                        disabled={openingId !== ""}
+                        onClick={() => void openChat(entry)}
+                      >
+                        {t("vault.openChat")}
+                      </Button>
+                    ) : null}
                   </div>
-                </div>
-                <span
-                  className="text-wa-muted mw-lang-pill shrink-0 text-mw-2xs"
-                  title={t("vault.originalTime")}
-                  aria-label={`${t("vault.originalTime")}: ${formatDateTime(entry.timestamp, settings.language)}`}
-                >
-                  {formatDateTime(entry.timestamp, settings.language)}
-                </span>
-              </div>
-
-              {entry.text ? (
-                <p className="mt-2 whitespace-pre-wrap break-words border-s-2 border-wa-line ps-2.5 text-mw-sm leading-6" dir="auto">
-                  {entry.text}
-                </p>
-              ) : null}
-
-              <VaultMedia entry={entry} />
-
-              {!entry.text && !kindOf(entry) ? (
-                <div className="mt-2 rounded-sm bg-wa-input/50 px-2.5 py-2">
-                  <Badge tone="neutral">{mediaLabel(entry)}</Badge>
-                  {!entry.recoveredFromCache ? (
-                    <p className="text-wa-muted mt-1 text-mw-xs leading-5">{t("vault.notCached")}</p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="mt-2 flex items-center justify-between gap-1 border-t border-wa-line pt-1.5">
-                <span className="text-wa-muted mw-code truncate text-mw-2xs" dir="ltr">
-                  {entry.revokedBy || ""}
-                </span>
-                <div className="flex items-center gap-1">
-                  {entry.text ? <CopyButton text={entry.text} label={t("vault.copyText")} copiedLabel={t("common.copied")} /> : null}
-                  {entry.chatId ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
-                      loading={openingId === entry.id}
-                      disabled={openingId !== ""}
-                      onClick={() => void openChat(entry)}
-                    >
-                      {t("vault.openChat")}
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ))}
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       )}
 

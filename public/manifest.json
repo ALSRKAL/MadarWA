@@ -42,6 +42,12 @@
       "world": "ISOLATED"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["fonts/*.woff2"],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'none'"
   }
